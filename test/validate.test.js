@@ -66,6 +66,23 @@ test('agent-directed voice gets quarantined but not rejected', () => {
   assert.ok(r.warnings.some((w) => w.code === 'W-IMPERATIVE'));
 });
 
+test('unknown agent roles in scope.agents are rejected', () => {
+  const r = validateLesson(
+    makeLesson({
+      scope: { stacks: ['node'], task_kinds: [], projects: [], agents: ['developer', 'wizard'] }
+    })
+  );
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.code === 'E-SCHEMA'));
+});
+
+test('empty scope.agents means all agents (valid)', () => {
+  const r = validateLesson(
+    makeLesson({ scope: { stacks: ['node'], task_kinds: [], projects: [], agents: [] } })
+  );
+  assert.equal(r.ok, true);
+});
+
 test('unknown fields are rejected (strict schema)', () => {
   const content = makeLesson().replace('---\n', '---\nextra_field: sneaky\n');
   const r = validateLesson(content);

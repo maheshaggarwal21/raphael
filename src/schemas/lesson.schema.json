@@ -69,6 +69,23 @@
           "type": "array",
           "items": { "type": "string", "maxLength": 80 },
           "maxItems": 40
+        },
+        "agents": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "manager",
+              "developer",
+              "reviewer",
+              "security",
+              "debugger",
+              "designer",
+              "deployer",
+              "critique"
+            ]
+          },
+          "maxItems": 8,
+          "uniqueItems": true
         }
       }
     },

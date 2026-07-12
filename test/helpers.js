@@ -10,7 +10,12 @@ export function makeLesson(overrides = {}) {
     status: 'active',
     category: 'correctness',
     severity: 'high',
-    scope: { stacks: ['node', 'stripe'], task_kinds: ['webhook-handler'], projects: [] },
+    scope: {
+      stacks: ['node', 'stripe'],
+      task_kinds: ['webhook-handler'],
+      projects: [],
+      agents: ['developer', 'reviewer', 'debugger']
+    },
     triggers: { keywords: ['webhook', 'idempoten'], paths: ['**/webhook*/**'] },
     lesson:
       'Payment providers redeliver webhook events; handlers without event-id dedup produced duplicate charges (seen 3x across 2 projects).',

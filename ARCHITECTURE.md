@@ -112,6 +112,10 @@ scope:                   # user-extensible vocab (warn on unknown, don't reject)
   stacks: [node, stripe]
   task_kinds: [webhook-handler]
   projects: []           # empty = all
+  agents: [developer, reviewer, debugger]   # which agent roles this lesson serves; empty = all.
+                         # A retrieval FILTER, not the primary category — most lessons
+                         # serve several roles, so agent-as-folder would force duplicates.
+                         # Each agent retrieves only its slice → sharper injection, fewer tokens.
 triggers:                # DECLARATIVE ONLY — matched by raph code, never rendered into context
   keywords: [webhook, idempoten, "duplicate deliver"]
   paths: ["**/webhook*/**"]
@@ -269,7 +273,9 @@ fires the hook after the push. The genuine prevention for the flagship secrets c
 agent — it sidesteps Principle 2 entirely. Recommended early.
 
 ### Matching & ranking
-Deterministic weighted scorer over compiled.json:
+When retrieval runs for a specific agent (the Debugger, the Reviewer…), lessons whose
+`scope.agents` names other roles are filtered out first — each agent sees only its
+slice of the brain. Then the deterministic weighted scorer runs over compiled.json:
 `3.0·stack_overlap + 4.0·trigger_hits + 2.0·path_match + 1.0·recency/observations
 prior − 10.0·already_injected_this_session`, absolute threshold, severity tiebreak.
 Fully explainable: `raph explain <id> --prompt "..."` prints the exact score
