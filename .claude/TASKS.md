@@ -4,9 +4,9 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-13 (session 01)
+Updated: 2026-07-13 (session 01, second pass)
 
-## Phase 1 — Foundation (schema + chokepoint) ✅ CORE DONE
+## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
 - [x] `lesson.schema.json` — canonical v1 schema, strict (unknown fields rejected), trust tiers included
 - [x] Frontmatter parse/serialize (dates stay strings, Windows line endings handled)
@@ -16,9 +16,11 @@ Updated: 2026-07-13 (session 01)
 - [x] `raph init` (dir tree, config.yaml, brain git repo, pre-push guard hook)
 - [x] `raph status` (lesson counts by status, pending candidates, mode)
 - [x] `raph validate <file...> | --all`
-- [x] Tests green: 24/24 (`npm test`), CLI smoke-tested end to end in sandbox
-- [ ] `raph doctor` (env checks: git present, transcript dir readable, hook registered, conflicting plugins)
-- [ ] Evidence record schema (`ev_*.json`) + writer
+- [x] Tests green: 30/30 (`npm test`), CLI smoke-tested end to end in sandbox
+- [x] `raph doctor` (node/git/brain/config/hook/lessons/transcripts checks with fixes)
+- [x] Evidence record schema (`ev_*.json`) + writer (auto-scrubbed excerpts, yy/mm sharding)
+- [x] `scope.agents` audience field (owner suggestion, partially adopted: retrieval filter, not primary category; empty = all agents)
+- [x] First commits + GitHub repo created
 
 ## Phase 2 — Mining (`raph mine`)
 - [ ] Transcript locator: map cwd → `~/.claude/projects/<sanitized>` + per-project consent registry in config
