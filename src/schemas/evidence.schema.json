@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "raphael/evidence/v1",
+  "title": "Raphael evidence record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "kind", "observed_at", "project", "source"],
+  "properties": {
+    "schema": { "const": "raphael/evidence/v1" },
+    "id": { "type": "string", "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "kind": {
+      "enum": [
+        "mistake-observed",
+        "decision-outcome",
+        "fix-applied",
+        "user-correction",
+        "injection-confirmation",
+        "contradiction"
+      ]
+    },
+    "observed_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2})?(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})?)?$"
+    },
+    "project": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["claude-session", "git", "manual"] },
+        "session_id": { "type": "string", "maxLength": 120 },
+        "path": { "type": "string", "maxLength": 260 },
+        "line_span": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+      }
+    },
+    "excerpt": { "type": "string", "maxLength": 1500 },
+    "excerpt_redacted": { "type": "boolean" },
+    "notes": { "type": "string", "maxLength": 300 }
+  }
+}

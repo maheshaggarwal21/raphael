@@ -5,7 +5,8 @@ import path from 'node:path';
 const COMMANDS = {
   init: () => import('./commands/init.js'),
   status: () => import('./commands/status.js'),
-  validate: () => import('./commands/validate.js')
+  validate: () => import('./commands/validate.js'),
+  doctor: () => import('./commands/doctor.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -17,6 +18,7 @@ Commands:
   status      Show brain health: lesson counts, pending candidates, mode
   validate    Run the safety chokepoint on lesson files
               (raph validate <file...> | raph validate --all)
+  doctor      Check the environment and brain health, with fixes
   help        Show this help
   version     Show version
 
