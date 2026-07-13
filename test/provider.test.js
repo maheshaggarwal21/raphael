@@ -34,6 +34,20 @@ test('isLimitMessage + parseResetInfo recognize the real limit string', () => {
   assert.equal(resetZone, 'Asia/Calcutta');
 });
 
+test('parseCliResult reads structured_output even when result is an empty string (REAL envelope)', () => {
+  // The exact shape a real `claude -p --output-format json --json-schema` run returns:
+  // schema payload in structured_output, result === "". Regression for the live-run bug.
+  const env = JSON.stringify({
+    type: 'result',
+    subtype: 'success',
+    is_error: false,
+    result: '',
+    structured_output: { ok: true, word: 'raphael' },
+    total_cost_usd: 0.0073
+  });
+  assert.deepEqual(parseCliResult({ stdout: env, status: 0 }), { ok: true, word: 'raphael' });
+});
+
 test('parseCliResult returns the object when result is a JSON string', () => {
   const env = JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: JSON.stringify({ has_lesson: true }) });
   const obj = parseCliResult({ stdout: env, status: 0 });

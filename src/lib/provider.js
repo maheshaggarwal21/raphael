@@ -95,21 +95,32 @@ function makeLimitError(text) {
 }
 
 // Pull the structured object out of the `claude -p --output-format json` envelope.
+// VERIFIED against a real run (2026-07-13): with --json-schema the payload lands in
+// `structured_output`, and `result` is an EMPTY STRING. So structured_output MUST be
+// checked first, and empty/whitespace strings treated as absent — otherwise `result: ""`
+// (not nullish) shadows the real object and extraction returns null.
+function firstUsable(...vals) {
+  for (const v of vals) {
+    if (v && typeof v === 'object') return v;
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  return null;
+}
+
 function extractObject(env) {
-  const payload = env?.result ?? env?.structured_output ?? env?.output;
-  if (payload && typeof payload === 'object') return payload;
-  if (typeof payload === 'string') {
-    try {
-      return JSON.parse(payload);
-    } catch {
-      const start = payload.indexOf('{');
-      const end = payload.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        try {
-          return JSON.parse(payload.slice(start, end + 1));
-        } catch {
-          /* fall through */
-        }
+  const payload = firstUsable(env?.structured_output, env?.output, env?.result);
+  if (!payload) return null;
+  if (typeof payload === 'object') return payload;
+  try {
+    return JSON.parse(payload);
+  } catch {
+    const start = payload.indexOf('{');
+    const end = payload.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(payload.slice(start, end + 1));
+      } catch {
+        /* fall through */
       }
     }
   }

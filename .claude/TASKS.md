@@ -48,7 +48,9 @@ Updated: 2026-07-13 (session 01, second pass)
 - [x] Distilled ledger (write-last; deferred/cap-deferred episodes retry next run)
 - [x] Injectable model provider → 96/96 tests incl. every gate, URL-smuggling stopped by
       chokepoint, model-error deferral; verified dry-run against real mined episodes
-- [ ] Live-API smoke run (needs ANTHROPIC_API_KEY; ~6.5k tokens on Haiku for the 4 pending episodes)
+- [x] Live smoke run — DONE via SUBSCRIPTION (2026-07-13): real `claude -p --json-schema`
+      extraction → gated → staged candidate. Caught + fixed the structured_output/empty-result
+      shadowing bug in provider.js. (API-key path still unexercised live; subscription is the default.)
 
 ## Phase 4 — Review flow ✅ CLI SUBSTRATE COMPLETE
 - [x] `raph queue` (numbered, severity-sorted, quarantine/security flagged, --json for the future skill)

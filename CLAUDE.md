@@ -41,10 +41,15 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   substrate in plugin/skills/. 133/133 tests. Known follow-up: cold hook ~300ms on
   Windows > 150ms target (fine for the rare fires; warm-resident later).
 - Owner's four new directions (2026-07-13) — status:
-  (1) DONE — subscription model provider (src/lib/provider.js): distill uses local
-  `claude -p` (fixed-price subscription) by default, API key fallback; same zero-tool
-  containment; E-LIMIT stops cleanly with reset time. Pure logic tested; LIVE `claude -p`
-  call still needs one verification when the limit resets (docs/model-provider.md).
+  (1) DONE + LIVE-VERIFIED (2026-07-13 20:23 IST) — subscription model provider
+  (src/lib/provider.js): distill uses local `claude -p` (fixed-price subscription) by
+  default, API key fallback; same zero-tool containment; E-LIMIT stops cleanly with reset
+  time. Live run confirmed end to end: a real `claude -p --json-schema` extraction on the
+  subscription (zero tools, cost ~$0.007/tiny call) → gated → staged candidate. The live
+  run CAUGHT A REAL BUG the pure-logic tests missed: with `--json-schema` the payload lands
+  in `structured_output` and `result` is an EMPTY STRING ""; the old `result ?? structured_output`
+  let `""` (not nullish) shadow the real object → extraction returned null. Fixed:
+  extractObject prefers structured_output and skips empty strings (regression test added).
   (2) DONE — Planner + Architect added; roster 8 -> 10 (schema, ARCHITECTURE §8).
   (3) DONE — docs/prompt-library.md extracted from the 23 screenshots (agent-design input).
   (4) DESIGNED — self-training pipeline = ARCHITECTURE §12 + TASKS Phase 12 ("Raphael
@@ -57,8 +62,8 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   --session-id, --max-budget-usd. `--bare` forces API-key auth (so subscription = NO
   --bare + no ANTHROPIC_API_KEY in child env). claude.exe at
   ~/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe.
-- Next: (a) live subscription distill smoke when the limit resets; (b) then the core
-  roadmap gap — Phase 6 eval + Phase 8 agent layer — before Phase 12 Academy can run.
+- Next: the core roadmap gap — Phase 6 eval + Phase 8 agent layer — before Phase 12
+  Academy can run. (Live subscription distill smoke = DONE, see (1) above.)
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
