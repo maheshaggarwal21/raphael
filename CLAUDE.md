@@ -40,13 +40,25 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   `raph note --keywords` added. docs/hooks.md = manual hook wiring; brain-recall skill
   substrate in plugin/skills/. 133/133 tests. Known follow-up: cold hook ~300ms on
   Windows > 150ms target (fine for the rare fires; warm-resident later).
-- Next: owner's four new directions (see log "Owner's four new directions"):
-  (1) subscription model provider — shell out to local `claude -p` instead of an API key
-  (fixed price); API key becomes fallback. (2) Add Planner + Architect agents (roster
-  8 -> 10). (3) docs/prompt-library.md extracted from screenshots feeds agent design.
-  (4) self-training pipeline — Raphael autonomously builds real projects to generate
-  mining data, self-managing session limits / model switching / thinking. Design as a
-  new ARCHITECTURE section + phase. Live-API/subscription distill smoke still pending.
+- Owner's four new directions (2026-07-13) — status:
+  (1) DONE — subscription model provider (src/lib/provider.js): distill uses local
+  `claude -p` (fixed-price subscription) by default, API key fallback; same zero-tool
+  containment; E-LIMIT stops cleanly with reset time. Pure logic tested; LIVE `claude -p`
+  call still needs one verification when the limit resets (docs/model-provider.md).
+  (2) DONE — Planner + Architect added; roster 8 -> 10 (schema, ARCHITECTURE §8).
+  (3) DONE — docs/prompt-library.md extracted from the 23 screenshots (agent-design input).
+  (4) DESIGNED — self-training pipeline = ARCHITECTURE §12 + TASKS Phase 12 ("Raphael
+  Academy"): autopilot builds real diverse projects, self-manages limits (auto-resume at
+  reset), model/effort switching, checkpointing, enforced autonomy boundary (stops at
+  deploy/sign-in/spend), sandbox workspace. NOT built yet — awaits owner go + depends on
+  agent layer (Phase 8) and eval (Phase 6).
+- Installed Claude Code CLI is v2.1.168; confirmed flags: -p, --output-format json,
+  --json-schema, --tools "", --strict-mcp-config, --model, --effort, --resume,
+  --session-id, --max-budget-usd. `--bare` forces API-key auth (so subscription = NO
+  --bare + no ANTHROPIC_API_KEY in child env). claude.exe at
+  ~/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe.
+- Next: (a) live subscription distill smoke when the limit resets; (b) then the core
+  roadmap gap — Phase 6 eval + Phase 8 agent layer — before Phase 12 Academy can run.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

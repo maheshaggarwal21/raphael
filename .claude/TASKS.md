@@ -116,6 +116,29 @@ Updated: 2026-07-13 (session 01, second pass)
 - [ ] Signed pack releases + `raph update`; seed first pack from Mahesh's brain
 - [ ] README, LICENSE, launch post
 
+## Phase 12 — Self-training pipeline ("Raphael Academy") — ARCHITECTURE §12
+Depends on: subscription provider (done), agent layer (Phase 8), eval (Phase 6).
+- [ ] Checkpoint store: per-project state (project, milestone, step, per-stage Claude
+      Code session ids) with atomic writes; resume-from-exact-step on restart
+- [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
+      -> prep-deploy) stage by stage, output-of-one -> input-of-next
+- [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time
+      (schedule/loop mechanisms), continue where it stopped
+- [ ] Model policy table: task-kind -> model (Haiku mechanical / Sonnet dev / Opus hard)
+      via `claude --model`; effort policy via `claude --effort`
+- [ ] Session resume across pauses: `claude --resume <id>` / `--session-id` per stage
+- [ ] Autonomy boundary ENFORCED in code: reversible/local runs autonomously; deploy /
+      account sign-in / spend / public push / publish STOP and hand to the owner
+- [ ] Sandbox workspace: ~/raphael-academy/<project>/, own git repo, never auto-pushed,
+      no real secrets; unattended tool use only inside it
+- [ ] Wire the loop into mining: each build session -> `raph mine` -> `raph distill`
+      (subscription) -> candidates -> owner review (human gate unchanged)
+- [ ] Tokens-per-task ON-vs-OFF recorded per project; report project #1 vs #5 (the proof)
+- [ ] Project backlog finalized with the owner (web / mobile / AI agent / CLI / realtime)
+- [ ] LIVE prerequisite: verify `claude -p` structured extraction once the subscription
+      limit resets (also unblocks the pending Phase 3 live smoke)
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.
+(Checkpoint/resume machinery un-parked -> Phase 12.)

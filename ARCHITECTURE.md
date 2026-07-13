@@ -629,3 +629,122 @@ baselines + ablation, checkpoint/resume machinery, TUI review, trusted co-review
    machine automatically. Sharing is opt-in, per lesson, through the export scrubber.
 9. **Security-category lessons always pass a human** — the local user in curator
    mode, or the maintainer via the community pack. Never machine-only approval.
+
+---
+
+## 12. The self-training pipeline ("Raphael Academy")
+
+### The plain idea
+Raphael only gets smart if it has real lessons. Real lessons come from real building —
+not from toy examples. So Raphael trains itself: it **builds real, useful projects from
+start to finish**, and every mistake-and-fix along the way becomes a mined episode, then
+a candidate lesson, then (after the owner approves) a real lesson. The owner watches; he
+only does the parts a program cannot do (signing into accounts, anything that spends
+money, the final "go live"). Everything else — thinking of the idea, planning, designing,
+coding, testing, getting it deployment-ready — Raphael does on its own.
+
+This is the flywheel from §8, pointed at itself: **Raphael uses the agents to build →
+building creates episodes → episodes become lessons → lessons make the next build
+better.** Early projects (empty brain) vs later projects (full brain) are also the honest
+proof the whole product works — measured, not claimed (§7).
+
+### One project, start to finish (the build loop)
+Each project runs the 10-agent pipeline (§8) as stages. The output of one stage is the
+input of the next ("team prompting", docs/prompt-library.md):
+
+1. **Idea** — pick the next project from the backlog (below).
+2. **Plan** (Planner) — turn the idea into a sharp spec: scope, users, success criteria,
+   and explicit non-goals. One question at a time until the spec is solid.
+3. **Architect** (Architect) — a senior-level design: components, data flow, API, data
+   model, and the smallest version that can still grow. Pull past architecture lessons
+   for this stack first.
+4. **Build** (Developer, + Design) — implement in small increments, not one big dump.
+5. **Test** (Reviewer / Security / Debugger) — after every increment: run it, test it,
+   scan it. Never mark a step "done" without actually running it (the verify skill).
+6. **Prep-deploy** (Deployer) — make it deployment-ready: build, config, CI, a deploy
+   checklist. The *actual* deploy is handed to the owner (needs sign-in) — see boundary.
+7. **Mine → distill → review** — the session transcripts are mined (`raph mine`),
+   distilled on the subscription (`raph distill`), and the resulting candidates wait for
+   the owner's approval. The human gate never moves.
+
+### The autopilot driver (the new machinery)
+A long-running orchestrator drives the whole loop. It is the one genuinely new system
+this phase adds. It must survive limits, crashes, and restarts, and pick the right model
+and thinking level for each step by itself.
+
+- **Checkpoints.** After every step the driver saves state to disk: which project, which
+  milestone, which step, and the Claude Code **session id** for each stage. If anything
+  stops — a limit, a crash, the machine sleeping — a restart resumes from the exact step,
+  not the beginning. (This is the "checkpoint/resume machinery" §10 parked for later —
+  it lands here.)
+- **Session-limit handling (the big one).** The subscription has usage limits. The model
+  provider already turns a limit refusal into a clean `E-LIMIT` that carries the reset
+  time (docs/model-provider.md). The driver catches it, saves the checkpoint, and
+  **schedules an automatic resume at the reset time** (using the `schedule`/`loop`
+  mechanisms), then continues where it left off. No human needed to babysit the clock.
+- **Model switching.** A policy table maps task kind → model, to spend the cheap models
+  on cheap work: **Haiku** for scaffolding, mining, and mechanical edits; **Sonnet** for
+  most coding and review; **Opus** for hard architecture and stubborn debugging. Set per
+  call with `claude --model`.
+- **Thinking budget.** Same idea for reasoning: `claude --effort low|medium|high|xhigh|
+  max`. Mechanical steps get `low`; architecture and debugging get `high`+. More thinking
+  only where it pays.
+- **Resume across stages.** `claude --resume <session_id>` / `--session-id` keep a
+  stage's conversation intact across pauses, so context isn't rebuilt from scratch
+  (saves tokens, the core promise).
+
+All four control surfaces (`--model`, `--effort`, `--resume`, structured output) were
+confirmed present in the installed CLI (v2.1.168) — this is built on real flags, not
+hoped-for ones.
+
+### The autonomy boundary (the safety heart)
+Raphael runs unattended, so the line between "do it yourself" and "stop and ask the
+owner" must be **enforced by code, not by good intentions**. It matches the owner's own
+rule ("I only do the parts that are impossible for you or need a sign-in") and the
+product's global safety rules.
+
+**Raphael does autonomously (reversible, local):** think, plan, design, write code,
+run tests, run local builds, git commit to a *local* repo, generate a deploy checklist.
+
+**Raphael STOPS and hands to the owner (irreversible or external):** any deploy to a
+live service, creating or logging into any account, anything that spends money, pushing
+to a public remote, publishing anything, or installing something that needs elevated
+rights it wasn't already granted. At each of these the driver pauses, writes exactly what
+it wants done and why, and waits.
+
+**Isolation.** Academy projects live in their own workspace (e.g.
+`~/raphael-academy/<project>/`), each its own git repo, **never auto-pushed**, with **no
+real secrets** placed in them. Unattended tool use is only ever allowed inside that
+sandbox. (Running a coding agent unattended with broad permissions is powerful and risky;
+the sandbox + the stop-list above are what make it safe. This is called out as the main
+risk of this phase, not hidden.)
+
+### The project backlog (breadth on purpose)
+The brain must learn more than one kind of work, so the backlog spans domains. A starting
+set (final list is the owner's call):
+
+| # | Project | Domain / "latest tech" it exercises |
+|---|---|---|
+| 1 | Full-stack web app (e.g. a real tool the owner would use) | web front + back, auth, database, deploy |
+| 2 | Mobile app | React Native / Flutter, device concerns, app build |
+| 3 | An AI agent / LLM app | tool use, prompts, evals, streaming, cost control |
+| 4 | Developer CLI or library | packaging, tests, cross-platform (the Raphael home turf) |
+| 5 | Realtime / data-heavy service | websockets or a data pipeline, performance work |
+
+Each is chosen to hit **different** lessons — not five web apps. Diversity of experience
+is the whole point.
+
+### How it proves itself
+Every Academy run records tokens-per-completed-task with the brain ON vs OFF (§7). The
+headline result we want: **project #5 costs meaningfully fewer tokens per task than
+project #1**, because by then the brain is full. If that number doesn't move, the product
+doesn't work and we'll say so.
+
+### Where this sits in the build order
+This is a **post-core phase** (after eval §7 exists to measure it, and after the agent
+layer §8 ships, since it drives those agents). It depends on the subscription provider
+(done) and adds: the checkpoint store, the autopilot driver, the limit-aware scheduler,
+the model/effort policy table, and the sandbox workspace. See `.claude/TASKS.md`
+Phase 12 for the checklist. Nothing here weakens any security invariant — the human
+approval gate on lessons, the zero-tool extraction containment, and the stop-list on
+irreversible actions all still hold.
