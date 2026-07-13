@@ -228,10 +228,26 @@ export const RECIPES = [
     title: 'Pre-deploy check',
     steps: [
       'raph search "deploy <stack> migration env"  — deploy lessons become the checklist.',
+      'Run the security-audit recipe first — a build is not deploy-ready until it passes.',
       'Free checks: env-var diff, migration presence, secret scan, `git status`.',
       'Run the deterministic checklist; reason only about the exceptions.',
       'Produce infra/CI-CD/migration/monitoring/rollback plan. Do NOT deploy or spend — hand off to a human.',
       'Write back anything new that this deploy taught.'
+    ]
+  },
+  {
+    slug: 'security-audit',
+    title: 'Security audit before launch',
+    // The five professional checks (secret scan, PII flow, pre-deploy hardening,
+    // deep logic, attacker pass), run brain-first. `raph pack add security` seeds
+    // the curated pack these steps lean on. Findings stay advisory to a human.
+    steps: [
+      'raph search "security <stack>"  — pull the curated security pack plus your own past breaches.',
+      'Secrets: scan the tree AND git history; move every hardcoded key/token to env, never behind a NEXT_PUBLIC_/VITE_ prefix, and rotate anything ever committed.',
+      'Personal data: trace where PII enters, travels, and lands; keep it out of logs, hash passwords with a slow KDF, and filter each API response to an allowlist.',
+      'Pre-deploy hardening: security headers (helmet), rate-limit auth endpoints, restrict CORS to known origins, generic errors to clients, and no debug/test backdoors.',
+      'Deep logic: check IDOR (ownership on every client-supplied id), recompute money server-side, verify payment-webhook signatures, and parameterize every query.',
+      "Attacker pass: try id manipulation, login bypass, privilege escalation, feature abuse, and content injection; report exploit + fix. Never auto-apply a security change — hand it to a human."
     ]
   }
 ];

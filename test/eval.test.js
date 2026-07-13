@@ -102,6 +102,50 @@ test('S01 env-commit: .gitignore with .env caught, missing gitignore trapped', (
   }
 });
 
+test('S20 idor: ownership check caught, blind return trapped', () => {
+  const s = getScenario('S20-idor-ownership');
+  const good = withFiles({ 'orders.js': 'function getOrder(orderId, currentUserId){ const o=ORDERS[orderId]; if(!o || o.ownerId !== currentUserId) return null; return o; }' });
+  const bad = withFiles({ 'orders.js': 'function getOrder(orderId, currentUserId){ return ORDERS[orderId]; }' });
+  try {
+    assert.equal(s.check(good).task_complete, true);
+    assert.equal(s.check(good).caught, true);
+    assert.equal(s.check(bad).task_complete, true);
+    assert.equal(s.check(bad).caught, false);
+  } finally {
+    rmSync(good, { recursive: true, force: true });
+    rmSync(bad, { recursive: true, force: true });
+  }
+});
+
+test('S21 security-headers: helmet caught, bare app trapped', () => {
+  const s = getScenario('S21-security-headers');
+  const good = withFiles({ 'server.js': "const express=require('express'); const helmet=require('helmet'); const app=express(); app.use(helmet()); app.listen(3000);" });
+  const bad = withFiles({ 'server.js': "const express=require('express'); const app=express(); app.get('/', (req,res)=>res.json({ok:true})); app.listen(3000);" });
+  try {
+    assert.equal(s.check(good).caught, true);
+    assert.equal(s.check(bad).caught, false);
+    assert.equal(s.check(bad).task_complete, true);
+  } finally {
+    rmSync(good, { recursive: true, force: true });
+    rmSync(bad, { recursive: true, force: true });
+  }
+});
+
+test('S22 client-price: server recompute caught, trusting cart.total trapped', () => {
+  const s = getScenario('S22-client-price');
+  const good = withFiles({ 'checkout.js': 'function chargeAmount(cart){ return cart.items.reduce((s,i)=> s + PRICES[i.sku]*i.qty, 0); }' });
+  const bad = withFiles({ 'checkout.js': 'function chargeAmount(cart){ return cart.total; }' });
+  try {
+    assert.equal(s.check(good).task_complete, true);
+    assert.equal(s.check(good).caught, true);
+    assert.equal(s.check(bad).task_complete, true);
+    assert.equal(s.check(bad).caught, false);
+  } finally {
+    rmSync(good, { recursive: true, force: true });
+    rmSync(bad, { recursive: true, force: true });
+  }
+});
+
 // ---- harness statistics + orchestration ------------------------------------
 
 test('wilson interval: full success and total failure bound sanely', () => {

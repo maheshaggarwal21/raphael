@@ -15,7 +15,7 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
 3. Update the "Current state" section below if the project's shape changed.
 4. Run `npm test` before declaring anything done. Tests must stay green.
 
-## Current state (updated 2026-07-13, session 01)
+## Current state (updated 2026-07-14, session 02)
 - Phase 1 (foundation) COMPLETE: schema (incl. `scope.agents`), validation chokepoint,
   secret scrubber, ULID ids, frontmatter, atomic writes, evidence records,
   `raph init|status|validate|doctor`.
@@ -76,9 +76,21 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   roster/spine change, commit output). Flagships: Planner, Architect, Reviewer, Debugger.
   src/lib/map.js + `raph map [--refresh] [--summary]` = the project map (deterministic scan
   + git-churn hot files, zero tokens by default; optional cheap-model summary). 172/172 tests.
-- Next: Phase 12 Academy (self-training) now has its two prerequisites (eval + agents) — but
-  it still needs the owner's explicit go + the two open decisions (autonomy boundary detail,
-  first project backlog). Otherwise: Phase 9 plugin packaging, Phase 7 `raph init --guard`.
+- Security starter pack (session 02, 2026-07-14) COMPLETE: distilled the owner's
+  `emergent-security-prompts` PDF (5 pro audit checklists — Gitleaks/Bearer/ECC/Trail of
+  Bits) into three additions. (a) src/lib/security-pack.js = 19 atomic security lessons +
+  `raph pack [list | add security [--dry-run]]` (src/commands/pack.js) — cold-start value:
+  seeds a fresh brain with the mistakes that cause most breaches. Every lesson enters via
+  writeCandidate() → validateLesson() (the ONE chokepoint), URL-free, declarative voice,
+  category security + tier curated + status candidate, so it lands as a REVIEWABLE candidate
+  on the heavyweight security-approve path (never machine-activates). (b) +3 eval scenarios
+  (S20 IDOR, S21 security-headers, S22 client-price) with pure checkers; all three defending
+  lessons verified to FIRE (no retrieval miss). (c) `security-audit` recipe (the 5 checks in
+  order) in agents.js; pre-deploy recipe runs it first — the deploy gate for Phase 12. 182/182.
+- Next: owner to pick the first project per genre (shortlist delivered in chat 2026-07-14 —
+  recommend Grasshopper/Vanish/Palpate) to lock the Phase 12 Academy backlog. Academy now has
+  every prerequisite (subscription provider + eval + agents + a security gate each build must
+  pass). Otherwise: Phase 9 plugin packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

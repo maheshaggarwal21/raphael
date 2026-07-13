@@ -4,7 +4,7 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-13 (session 01, second pass)
+Updated: 2026-07-14 (session 02 — security pack + audit recipe + scenarios)
 
 ## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
@@ -107,6 +107,27 @@ Updated: 2026-07-13 (session 01, second pass)
 - Note: injectFor() in eval mirrors inject.js's per-prompt branch (threshold 4.0, top-3,
   renderLine) rather than calling runInjection (which writes session state). Weights come
   from match.js (single source); only the threshold constant is duplicated. Fine for v1.
+- [x] +3 scenarios from the emergent-security-prompts resource: S20 IDOR (ownership on a
+      client id), S21 security-headers (helmet baseline), S22 client-price (recompute
+      server-side). Pure checkers + tests; all three defending lessons verified to FIRE
+      (no retrieval miss) via `raph eval run --dry-run`.
+
+## Security starter pack + audit recipe (from the emergent-security-prompts resource) ✅ COMPLETE
+Cold-start value (ARCHITECTURE §11): a fresh brain is empty, so ship a curated pack of the
+mistakes that cause most real-world breaches. Distilled from 5 pro audit checklists
+(Gitleaks secrets, Bearer PII-flow, ECC pre-deploy, Trail-of-Bits deep-logic, ECC attacker).
+- [x] `src/lib/security-pack.js` — 19 atomic security lessons, human-authored, URL-free,
+      declarative voice. Each expands to a schema-valid lesson (category security, tier
+      curated, source_kind imported, status candidate), routed to security/reviewer agents.
+- [x] `raph pack [list | add security [--dry-run]]` (src/commands/pack.js) — every lesson
+      enters through writeCandidate() → validateLesson() (the ONE chokepoint), lands as a
+      REVIEWABLE candidate (security never machine-activates), heavyweight approve path.
+- [x] `security-audit` recipe (the 5 checks in order) added to agents.js; pre-deploy recipe
+      now runs it first ("not deploy-ready until it passes"). Regenerated plugin/recipes/.
+- [x] 7 pack tests (chokepoint pass + unquarantined, all-security-candidates, no-URL,
+      declarative-voice, unique slugs, covers all 5 checklists, routed to security agent).
+      182/182 total. Smoke: `raph pack add security` seeded 19 candidates, 0 quarantined.
+- Ties into Phase 12: every Academy build must pass `security-audit` before the deploy boundary.
 
 ## Phase 7 — Project maps + secrets guard
 - [x] `raph map` generator — pulled forward (Phase 8 spine rule 3 needs it). DETERMINISTIC

@@ -47,7 +47,8 @@ test('the spine names all five rules', () => {
 });
 
 test('recipes render as numbered, brain-first procedures', () => {
-  assert.equal(RECIPES.length, 3);
+  assert.equal(RECIPES.length, 4);
+  assert.ok(RECIPES.some((r) => r.slug === 'security-audit'), 'the five-check security audit recipe should ship');
   for (const r of RECIPES) {
     const md = renderRecipe(r);
     assert.ok(md.startsWith(`# Recipe: ${r.title}`));

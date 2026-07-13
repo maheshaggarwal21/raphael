@@ -20,7 +20,8 @@ const COMMANDS = {
   on: () => import('./commands/on.js'),
   off: () => import('./commands/off.js'),
   eval: () => import('./commands/eval.js'),
-  map: () => import('./commands/map.js')
+  map: () => import('./commands/map.js'),
+  pack: () => import('./commands/pack.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -59,6 +60,8 @@ Commands:
               (raph eval run [--quick] [--dry-run] [--scenario id] [--trials N])
   map         Generate/refresh the cached project map agents read instead of the repo
               (raph map [--refresh] [--project path] [--summary])
+  pack        Seed a curated lesson pack into the brain as reviewable candidates
+              (raph pack list | raph pack add security [--dry-run]) — cold-start value
   help        Show this help
   version     Show version
 
