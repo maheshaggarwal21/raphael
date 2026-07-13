@@ -12,7 +12,8 @@ function withSandbox(fn) {
   try {
     return fn(dir);
   } finally {
-    process.env.RAPHAEL_HOME = prev;
+    if (prev === undefined) delete process.env.RAPHAEL_HOME;
+    else process.env.RAPHAEL_HOME = prev;
     rmSync(dir, { recursive: true, force: true });
   }
 }

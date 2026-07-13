@@ -6,7 +6,9 @@ const COMMANDS = {
   init: () => import('./commands/init.js'),
   status: () => import('./commands/status.js'),
   validate: () => import('./commands/validate.js'),
-  doctor: () => import('./commands/doctor.js')
+  doctor: () => import('./commands/doctor.js'),
+  mine: () => import('./commands/mine.js'),
+  note: () => import('./commands/note.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -19,6 +21,10 @@ Commands:
   validate    Run the safety chokepoint on lesson files
               (raph validate <file...> | raph validate --all)
   doctor      Check the environment and brain health, with fixes
+  mine        Read this project's session history and extract episodes
+              (raph mine [--dry-run] [--yes] [--project <path>])
+  note        Capture a lesson by hand, straight to the review queue
+              (raph note "<text>" [--title t] [--category c] [--severity s])
   help        Show this help
   version     Show version
 
