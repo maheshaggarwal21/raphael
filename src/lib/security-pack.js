@@ -231,6 +231,84 @@ export const PACK_SPECS = [
     lesson:
       'New code is new attack surface, and logic flaws — negative payments, stacked discounts, restarted free trials, self-referral, infinite promo codes — are invisible to unit tests because each step is individually valid. A deliberate attacker-perspective pass after major features catches abuse paths that normal testing misses.',
     headline: 'New features add attack surface — re-run an attacker-perspective pass to catch abuse.'
+  },
+  // ---- coverage gaps closed 2026-07-14 (full pass over all five checklists) ----
+  {
+    slug: 'encode-output-to-stop-xss',
+    title: 'Escape user input on output to stop cross-site scripting',
+    severity: 'high',
+    based_on: 'Trail of Bits',
+    agents: ['security', 'reviewer', 'developer'],
+    keywords: ['xss', 'sanitize', 'escape', 'html', 'output encoding', 'injection'],
+    lesson:
+      'Rendering user input into HTML, attributes, or the DOM without escaping lets an attacker run script in other users\' browsers — stored or reflected XSS that steals sessions and data. Untrusted values are escaped on output for their context, and rich text is sanitized against an allowlist before it renders.',
+    headline: 'Unescaped user input in HTML runs as script (XSS) — encode on output, sanitize rich text.'
+  },
+  {
+    slug: 'give-users-a-data-deletion-path',
+    title: 'Provide a way for users to delete or anonymize their data',
+    severity: 'medium',
+    based_on: 'Bearer',
+    agents: ['security', 'reviewer', 'developer'],
+    keywords: ['gdpr', 'ccpa', 'deletion', 'erasure', 'privacy', 'pii'],
+    lesson:
+      'An app that collects personal data but offers no deletion path strands that data forever and breaches privacy law (GDPR right-to-erasure, CCPA). An account-deletion flow that removes or anonymizes the user\'s records — including copies in logs, backups, and third-party services — closes the loop.',
+    headline: 'No deletion path strands PII and breaks privacy law — offer account deletion/anonymization.'
+  },
+  {
+    slug: 'strip-debug-code-and-test-endpoints',
+    title: 'Remove debug code and test-only endpoints before deploy',
+    severity: 'high',
+    based_on: 'ECC Production Audit',
+    agents: ['security', 'reviewer', 'deployer'],
+    keywords: ['debug', 'test endpoint', 'backdoor', 'seed-data', 'production', 'cleanup'],
+    lesson:
+      'Debug logging, commented-out blocks, hardcoded test credentials, and test-only routes (/debug, /seed-data, /admin-backdoor) shipped to production leak internals and hand attackers a shortcut. These are stripped before deploy and debug mode defaults to off.',
+    headline: 'Debug code and /seed-data routes in production are a backdoor — strip them before deploy.'
+  },
+  {
+    slug: 'validate-required-env-at-startup',
+    title: 'Validate required configuration at startup and refuse to boot without it',
+    severity: 'medium',
+    based_on: 'ECC Production Audit',
+    agents: ['security', 'reviewer', 'deployer'],
+    keywords: ['env', 'config', 'startup', 'validation', 'boot', 'fail-fast'],
+    lesson:
+      'An app that starts with a critical variable missing — database URL, auth signing secret, a required API key — fails later in confusing or insecure ways, sometimes falling back to an unsafe default. Required configuration is checked at startup, and the app refuses to boot with a clear error when any is absent.',
+    headline: 'Booting with a critical env var missing fails unsafely — validate config at startup, fail fast.'
+  },
+  {
+    slug: 'secure-the-production-database-connection',
+    title: 'Require TLS, unique credentials, and a closed port on the production database',
+    severity: 'high',
+    based_on: 'ECC Production Audit',
+    agents: ['security', 'reviewer', 'deployer'],
+    keywords: ['database', 'tls', 'ssl', 'credentials', 'network', 'production'],
+    lesson:
+      'A production database reachable without TLS, running on default or shared credentials, or listening on a port open to the whole internet is trivially compromised. The connection uses TLS in production, unique non-default credentials, and network rules that limit access to the app.',
+    headline: 'A plaintext or open-port database with default creds is trivially owned — require TLS + lock it down.'
+  },
+  {
+    slug: 'do-not-expose-internal-files-and-docs',
+    title: 'Keep .env, .git, and internal API docs off the public surface',
+    severity: 'high',
+    based_on: 'ECC Security Review',
+    agents: ['security', 'reviewer', 'deployer'],
+    keywords: ['exposure', 'dotenv', 'git', 'swagger', 'openapi', 'health'],
+    lesson:
+      'Serving the .env file, the .git directory, Swagger/OpenAPI docs, or a verbose health endpoint on the public surface hands an attacker secrets, source history, and a full map of the API. These paths are blocked at the server, and internal docs and health detail sit behind authentication.',
+    headline: 'A reachable .env/.git/Swagger leaks secrets and the API map — block them, gate internal docs.'
+  },
+  {
+    slug: 'supabase-anon-key-needs-row-level-security',
+    title: 'The Supabase anon key is only safe with Row Level Security on every table',
+    severity: 'critical',
+    based_on: 'Gitleaks',
+    agents: ['security', 'reviewer', 'developer'],
+    keywords: ['supabase', 'rls', 'row level security', 'anon key', 'service role'],
+    lesson:
+      'The Supabase anon key is designed for the browser, but only when Row Level Security is enabled on every table; without RLS it exposes the entire database to anyone who reads the page. The service_role key bypasses RLS and must never appear in client code under any circumstances.',
+    headline: 'A Supabase anon key without RLS exposes the whole database — enable RLS, keep service_role server-side.'
   }
 ];
 

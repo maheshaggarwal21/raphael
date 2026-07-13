@@ -116,9 +116,12 @@ Updated: 2026-07-14 (session 02 — security pack + audit recipe + scenarios)
 Cold-start value (ARCHITECTURE §11): a fresh brain is empty, so ship a curated pack of the
 mistakes that cause most real-world breaches. Distilled from 5 pro audit checklists
 (Gitleaks secrets, Bearer PII-flow, ECC pre-deploy, Trail-of-Bits deep-logic, ECC attacker).
-- [x] `src/lib/security-pack.js` — 19 atomic security lessons, human-authored, URL-free,
+- [x] `src/lib/security-pack.js` — 26 atomic security lessons, human-authored, URL-free,
       declarative voice. Each expands to a schema-valid lesson (category security, tier
       curated, source_kind imported, status candidate), routed to security/reviewer agents.
+      (19 core + 7 gap-closers added 2026-07-14: XSS/output-encoding, data-deletion,
+      debug/test-endpoint removal, env-var startup validation, DB TLS+creds, internal-file
+      exposure, Supabase-anon-key-needs-RLS — full coverage of all five checklists.)
 - [x] `raph pack [list | add security [--dry-run]]` (src/commands/pack.js) — every lesson
       enters through writeCandidate() → validateLesson() (the ONE chokepoint), lands as a
       REVIEWABLE candidate (security never machine-activates), heavyweight approve path.
