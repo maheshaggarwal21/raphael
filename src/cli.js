@@ -9,7 +9,11 @@ const COMMANDS = {
   doctor: () => import('./commands/doctor.js'),
   mine: () => import('./commands/mine.js'),
   note: () => import('./commands/note.js'),
-  distill: () => import('./commands/distill.js')
+  distill: () => import('./commands/distill.js'),
+  queue: () => import('./commands/queue.js'),
+  approve: () => import('./commands/approve.js'),
+  reject: () => import('./commands/reject.js'),
+  show: () => import('./commands/show.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -28,6 +32,12 @@ Commands:
               (raph note "<text>" [--title t] [--category c] [--severity s])
   distill     Turn mined episodes into gated candidate lessons (spends tokens)
               (raph distill [--dry-run] [--yes] [--max-episodes N] [--model m])
+  queue       List candidates awaiting review (numbered; --json for tooling)
+  show        Print a lesson or candidate in full (raph show <n|slug|id> [--provenance])
+  approve     Activate candidates (raph approve <n...>; security/quarantined
+              items require single approval with --confirmed)
+  reject      Remove candidates; similar ones auto-suppress for 180 days
+              (raph reject <n...> [--reason "..."])
   help        Show this help
   version     Show version
 
