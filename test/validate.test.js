@@ -83,6 +83,20 @@ test('empty scope.agents means all agents (valid)', () => {
   assert.equal(r.ok, true);
 });
 
+test('planner and architect are valid roster roles (10-agent roster)', () => {
+  const r = validateLesson(
+    makeLesson({
+      scope: {
+        stacks: ['node'],
+        task_kinds: [],
+        projects: [],
+        agents: ['manager', 'planner', 'architect', 'developer', 'reviewer', 'security', 'debugger', 'designer', 'deployer', 'critique']
+      }
+    })
+  );
+  assert.equal(r.ok, true);
+});
+
 test('unknown fields are rejected (strict schema)', () => {
   const content = makeLesson().replace('---\n', '---\nextra_field: sneaky\n');
   const r = validateLesson(content);

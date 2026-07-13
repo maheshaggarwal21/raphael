@@ -421,11 +421,13 @@ users install, demo, and talk about. Strategy: **agents bring users, users gener
 the session data the brain learns from, the brain makes the agents better than anyone
 else's.** That loop is the product. So the agent team ships in v1, not later.
 
-### The roster (8 agents, all thin lenses over the same brain)
+### The roster (10 agents, all thin lenses over the same brain)
 
 | Agent | Job | Main token-saving trick |
 |---|---|---|
 | **Raphael (Manager)** | Takes your request, routes it to the right specialists, merges their results into one answer | Routing runs on a cheap model; specialists only see their slice |
+| **Planner** | Idea improver / finaliser: turns a raw, vague idea into a sharp, finalized spec (scope, users, success criteria, non-goals) before anyone designs or builds | Iterative-inquiry refinement (one question at a time) means the spec is right before expensive work starts — kills the biggest waste, building the wrong thing |
+| **Architect** | Senior-dev premium architecture from the finalized spec: system design, component structure, data flow, API design, data model, caching, and the minimal scalable implementation plan | Brain's past architecture decisions for this stack become the starting point instead of re-deriving a design from zero |
 | **Developer** | Writes code with relevant lessons already in context | Lessons prevent the write→fail→rewrite loop |
 | **Code Reviewer** | Reviews diffs/code | Free tools first (linter, secret scan, diff stats — zero tokens); cheap model sweeps only changed/hot files; strong model verifies only the top findings |
 | **Security Engineer** | Audits for secrets, injection, auth mistakes | Free scanners first; brain's security lessons become a short targeted checklist instead of "think about everything" |
@@ -473,11 +475,26 @@ else's.** That loop is the product. So the agent team ships in v1, not later.
 
 ### Launch polish order
 
-All 8 ship as agent definitions in v1. Three get flagship-level polish and eval
-scenarios behind them first, because they demo best and generate the most data:
-**Code Reviewer, Security Engineer, Debugger.** Manager orchestration ships working
-but simple (route + merge); Design/Deploy/Critique deepen in v1.x as usage data
-arrives.
+All 10 ship as agent definitions in v1. The pipeline order for a from-scratch build is
+**Manager → Planner → Architect → Developer (+ Design) → Reviewer / Security / Debugger →
+Deployer → Critique** (output of one is the input of the next — "team prompting", see
+docs/prompt-library.md). Four get flagship-level polish and eval scenarios first, because
+they demo best and generate the most data: **Planner, Architect, Code Reviewer,
+Debugger** (Planner + Architect matter most for the self-training pipeline in §12, where
+they turn a project idea into a buildable plan). Security ships with the Reviewer's
+free-scanner spine; Manager orchestration ships working but simple (route + merge);
+Design/Deploy/Critique deepen in v1.x as usage data arrives.
+
+### Agent prompt construction (design input)
+
+Each agent's system prompt is built on the 9-trait spine from docs/prompt-library.md
+(Name · Definition · Knowledge · Traits · Analysis · Output · Format · English · Start)
+and borrows the senior-role framing + explicit-deliverable lists from the extracted
+role prompts — **with Raphael's addition that every "production-ready" claim is followed
+by a real verification step** (build/test/run), never asserted. The role prompts map:
+Architect ← "audit/rebuild architecture" + "architect a startup backend"; Debugger ←
+"production-level debugging"; Reviewer ← "performance engineer" + "audit codebase";
+Deployer ← "senior DevOps + deployment engineer".
 
 ---
 
