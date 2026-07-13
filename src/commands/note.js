@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { lessonId } from '../lib/ulid.js';
+import { slugify } from '../lib/slug.js';
 import { writeCandidate } from '../lib/candidates.js';
 
 const schemaPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'schemas', 'lesson.schema.json');
@@ -11,16 +12,6 @@ const SEVERITIES = ['critical', 'high', 'medium', 'low'];
 function flagValue(args, flag) {
   const i = args.indexOf(flag);
   return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
-}
-
-function slugify(title) {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
-    .replace(/-+$/g, '');
-  return slug || 'note';
 }
 
 function deriveTitle(text) {
