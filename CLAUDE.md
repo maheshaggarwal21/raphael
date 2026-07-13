@@ -29,10 +29,15 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   distill` with cost gate. 96/96 tests green. Live-API run still pending a key:
   first verification when ANTHROPIC_API_KEY exists is `RAPHAEL_HOME=<sandbox> raph
   distill --yes` over the 4 mined episodes.
-- Next: Phase 4 (review flow: queue/approve/reject/promote; reject writes
-  state/rejected.jsonl which distill already reads). Transcript format notes live in
-  src/lib/episodes.js comments; sandbox mining via fake USERPROFILE + RAPHAEL_HOME
-  (see .claude/logs/2026-07-13-01.md).
+- Phase 4 (review flow) CLI substrate COMPLETE: `raph queue|show|approve|reject`
+  (heavyweight confirm path for security/quarantined enforced in code; reject
+  tombstones feed distill's rejection memory — integration-tested; approve
+  auto-commits the brain repo). `promote` was folded into `approve`. 104/104 tests.
+- Next: Phase 5 (index + injection: compiled.json hash-verified, deterministic
+  scorer, SessionStart/UserPromptSubmit hooks, budgets, raph why). The
+  /brain-review batch-grammar skill waits for the plugin phase (wraps queue --json).
+  Transcript format notes live in src/lib/episodes.js comments; sandbox mining via
+  fake USERPROFILE + RAPHAEL_HOME (see .claude/logs/2026-07-13-01.md).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

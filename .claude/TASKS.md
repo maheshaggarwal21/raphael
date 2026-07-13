@@ -50,11 +50,17 @@ Updated: 2026-07-13 (session 01, second pass)
       chokepoint, model-error deferral; verified dry-run against real mined episodes
 - [ ] Live-API smoke run (needs ANTHROPIC_API_KEY; ~6.5k tokens on Haiku for the 4 pending episodes)
 
-## Phase 4 — Review flow
-- [ ] `/brain-review` skill: batch cards, `1y 2n 3e 4?` grammar
-- [ ] Heavyweight path: security-category + quarantined need full-body individual confirm
-- [ ] `raph queue / approve / reject / promote` (idempotent)
-- [ ] Rejected-candidate tombstones feed dedupe
+## Phase 4 — Review flow ✅ CLI SUBSTRATE COMPLETE
+- [x] `raph queue` (numbered, severity-sorted, quarantine/security flagged, --json for the future skill)
+- [x] `raph show <n|slug|id> [--provenance]` — full body + resolved evidence records
+- [x] Heavyweight path ENFORCED in CLI: security-category + quarantined candidates refuse
+      batch approval and refuse without --confirmed (threat-model finding, now code)
+- [x] `raph approve` (validate-on-write, slug-collision guard, already-active no-op,
+      auto-commits the brain repo) / `raph reject [--reason]` (idempotent-safe)
+- [x] Rejected-candidate tombstones feed distill's rejection memory — proven by an
+      end-to-end test (reject → distill proposes lookalike → auto-suppressed + event logged)
+- [x] Decision: `raph promote` folded into `approve` (fewer verbs, same power)
+- [ ] `/brain-review` skill with the `1y 2n 3e 4?` batch grammar (arrives with the plugin phase — wraps queue --json + approve/reject)
 
 ## Phase 5 — Index + injection
 - [ ] `index/compiled.json` builder, hash-verified against lesson files (not just mtime)
