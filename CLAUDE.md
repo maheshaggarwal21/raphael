@@ -70,9 +70,15 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   writes — deliberately unlike distill's zero-tool path). `raph eval run [--quick]
   [--dry-run] [--scenario id] [--trials N] [--model M]`. --dry-run spends nothing (canaries
   + retrieval check). 160/160 tests. Live smoke ran real agents both arms end to end.
-- Next: Phase 8 (agent layer) — the 10-agent roster as thin lenses over the brain (shared
-  spine, project map, task recipes), flagship Planner/Architect/Reviewer/Debugger first.
-  Then Phase 12 Academy (needs 6+8 and owner go).
+- Phase 8 (agent layer) COMPLETE + Phase 7 map pulled forward: src/lib/agents.js is the
+  single source (SPINE + 10-agent roster data + renderAgent + 3 recipes); scripts/
+  build-agents.mjs generates plugin/agents/*.md + plugin/recipes/*.md (regenerate on any
+  roster/spine change, commit output). Flagships: Planner, Architect, Reviewer, Debugger.
+  src/lib/map.js + `raph map [--refresh] [--summary]` = the project map (deterministic scan
+  + git-churn hot files, zero tokens by default; optional cheap-model summary). 172/172 tests.
+- Next: Phase 12 Academy (self-training) now has its two prerequisites (eval + agents) — but
+  it still needs the owner's explicit go + the two open decisions (autonomy boundary detail,
+  first project backlog). Otherwise: Phase 9 plugin packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

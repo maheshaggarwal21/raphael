@@ -19,7 +19,8 @@ const COMMANDS = {
   why: () => import('./commands/why.js'),
   on: () => import('./commands/on.js'),
   off: () => import('./commands/off.js'),
-  eval: () => import('./commands/eval.js')
+  eval: () => import('./commands/eval.js'),
+  map: () => import('./commands/map.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -56,6 +57,8 @@ Commands:
               (raph inject --event session-start|user-prompt; always exits 0)
   eval        Prove it with numbers: canary gate + brain ON/OFF lift table
               (raph eval run [--quick] [--dry-run] [--scenario id] [--trials N])
+  map         Generate/refresh the cached project map agents read instead of the repo
+              (raph map [--refresh] [--project path] [--summary])
   help        Show this help
   version     Show version
 

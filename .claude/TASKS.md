@@ -109,14 +109,29 @@ Updated: 2026-07-13 (session 01, second pass)
   from match.js (single source); only the threshold constant is duplicated. Fine for v1.
 
 ## Phase 7 — Project maps + secrets guard
-- [ ] `raph map` generator (one cheap-model pass, cached, `--refresh`)
+- [x] `raph map` generator — pulled forward (Phase 8 spine rule 3 needs it). DETERMINISTIC
+      by default (pure scan + `git log` churn = zero tokens): stack, entry points, top-level
+      structure, hottest files. Optional `--summary` = one cheap-model trouble-spots pass.
+      Cached to brain/maps/<project>.md, `--refresh`. src/lib/map.js + commands/map.js.
 - [ ] `raph init --guard`: deterministic pre-commit secret scanner for user projects
+      (the remaining Phase 7 item — independent of the agent layer)
 
-## Phase 8 — Agent layer
-- [ ] Shared spine prompt fragment (brain first, free checks first, map not repo, cheap→strong, write-back)
-- [ ] Flagship agents: Code Reviewer, Security Engineer, Debugger
-- [ ] Manager (route + merge), Developer, Design, Deploy, Critique (working, simpler)
-- [ ] Agent write-back: runs emit episodes into mining
+## Phase 8 — Agent layer ✅ COMPLETE
+- [x] Shared spine (brain-first, free-checks-first, map-not-repo, cheap→strong, write-back)
+      — ONE canonical copy in src/lib/agents.js (SPINE), embedded in every agent by the
+      renderer (no hand-duplication).
+- [x] All 10 agents as data-driven Claude Code subagent defs (src/lib/agents.js AGENTS +
+      renderAgent → plugin/agents/*.md via scripts/build-agents.mjs). Flagships (deepest
+      missions): Planner, Architect, Code Reviewer, Debugger. Working+simpler: Manager
+      (haiku, routes via Task), Developer, Security, Design, Deployer, Critique. Missions
+      adapted from docs/prompt-library.md.
+- [x] 3 task recipes (review, debug, pre-deploy) — brain-first, free-checks-first
+      procedures (plugin/recipes/*.md). Code+prompts, not learned content.
+- [x] Write-back: spine rule 5 has every agent capture durable lessons via `raph note
+      --keywords`, and agent runs are Claude Code sessions that the miner already reads.
+- [x] 22 new tests (map: scan/hotfiles/model-summary/sanitize; agents: roster/flagships/
+      spine-embedded/recipes). Fixed mapFileName('...') -> 'project'. 172/172. Live: `raph
+      map` on this repo produced a correct map (98 files, real git hot files).
 
 ## Phase 9 — Plugin packaging
 - [ ] Claude Code plugin manifest, hooks registration, skills: /brain, /brain-learn, /brain-review, /brain-eval
