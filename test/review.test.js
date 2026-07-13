@@ -208,6 +208,18 @@ test('reject writes a tombstone that distill then uses to auto-suppress', async 
   });
 });
 
+test('reject works WITHOUT --reason (regression: flag-index math ate the first ref)', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData());
+    const code = await reject(['1']);
+    assert.equal(code, 0);
+    assert.equal(listCandidates().length, 0);
+    const tomb = JSON.parse(readFileSync(p.rejectedMemory(), 'utf8').trim());
+    assert.equal(tomb.slug, 'webhook-idempotency');
+    assert.equal(tomb.reason, null);
+  });
+});
+
 test('approved lessons keep their body and survive a parse roundtrip', async () => {
   await withSandbox(async () => {
     writeCandidate(candidateData(), '## Notes\nHand-written context worth keeping.');

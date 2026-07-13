@@ -40,6 +40,16 @@ test('a valid note lands in candidates/ and re-passes the chokepoint', async () 
   });
 });
 
+test('--keywords become trigger keywords (lowercased, trimmed, capped at 8)', async () => {
+  await withSandbox(async () => {
+    const code = await note([GOOD, '--keywords', ' Webhook, STRIPE , dedup,,']);
+    assert.equal(code, 0);
+    const files = readdirSync(p.candidates()).filter((f) => f.endsWith('.md'));
+    const r = validateLesson(readFileSync(path.join(p.candidates(), files[0]), 'utf8'));
+    assert.deepEqual(r.data.triggers.keywords, ['webhook', 'stripe', 'dedup']);
+  });
+});
+
 test('an identical note is idempotent (content-addressed file name)', async () => {
   await withSandbox(async () => {
     assert.equal(await note([GOOD]), 0);

@@ -1,5 +1,8 @@
+import path from 'node:path';
 import { lessonId } from '../src/lib/ulid.js';
-import { serializeLessonFile } from '../src/lib/frontmatter.js';
+import { serializeLessonFile, parseLessonFile } from '../src/lib/frontmatter.js';
+import { atomicWrite } from '../src/lib/files.js';
+import { p } from '../src/lib/paths.js';
 
 export function makeLesson(overrides = {}) {
   const base = {
@@ -41,4 +44,14 @@ export function makeLesson(overrides = {}) {
   };
   const data = { ...base, ...overrides };
   return serializeLessonFile(data);
+}
+
+// Drop an ACTIVE lesson straight into the sandbox brain (bypassing the review
+// flow) at the same path approve would use. For index/injection tests only.
+export function writeActiveLesson(overrides = {}) {
+  const content = makeLesson({ status: 'active', ...overrides });
+  const { data } = parseLessonFile(content);
+  const file = path.join(p.lessons(), data.category, `${data.slug}.${data.id.slice(-8)}.md`);
+  atomicWrite(file, content);
+  return { file, data, content };
 }
