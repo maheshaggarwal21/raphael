@@ -87,10 +87,26 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   (S20 IDOR, S21 security-headers, S22 client-price) with pure checkers; all three defending
   lessons verified to FIRE (no retrieval miss). (c) `security-audit` recipe (the 5 checks in
   order) in agents.js; pre-deploy recipe runs it first — the deploy gate for Phase 12. 182/182.
-- Next: owner to pick the first project per genre (shortlist delivered in chat 2026-07-14 —
-  recommend Grasshopper/Vanish/Palpate) to lock the Phase 12 Academy backlog. Academy now has
-  every prerequisite (subscription provider + eval + agents + a security gate each build must
-  pass). Otherwise: Phase 9 plugin packaging, Phase 7 `raph init --guard`.
+- Security pack completed to 26 lessons (session 02): +7 gap-closers (XSS, data-deletion,
+  debug/test-endpoint removal, env-var startup validation, DB TLS+creds, internal-file
+  exposure, Supabase-anon-key-needs-RLS) — full coverage of all five checklists.
+- Phase 12 (Academy) STARTED (session 02, 2026-07-14). Owner rejected all suggested idea sets
+  and gave three of their own; decision = build "Repo Keeper" first (a GitHub repo-lifecycle
+  agent suite: freshness + doc-sync + security auditor). Expanded backlog in
+  docs/academy/backlog.md.
+  - Checkpoint/resume driver built: `raph academy start|status|resume|checkpoint|boundary|
+    limit|list` (src/lib/academy.js + commands/academy.js); state in
+    ~/.raphael/academy/<project>/state.json; RESUME.md + AUTORESUME.md + resume.ps1 + a
+    no-admin Startup-folder logon launcher. Survives limit resets AND reboots; Layer 1
+    (checkpoint) reliable, Layer 2 (auto-launch) best-effort. 189 -> 189+ tests green.
+  - Repo Keeper product at C:/Users/Mahesh/Desktop/Projects/repo-keeper (own git, LOCAL only,
+    never pushed). M1 (scaffold + scanner core, `keeper scan`) + M2 (freshness engine,
+    `keeper freshen`) DONE, 25 tests. Next: M3 Doc-Sync, M4 Security Auditor (reuses the
+    pack), M5 integration. Resume anytime: `node bin/raph.js academy status repo-keeper`.
+  - AUTONOMY BOUNDARY (enforced): builds are local + committed locally; STOP before deploy /
+    sign-in / spend / publish / public push — record via `raph academy boundary` and hand to owner.
+- Next: continue Repo Keeper M3->M5 autonomously (resumable). Then Phase 9 packaging, Phase 7
+  `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
