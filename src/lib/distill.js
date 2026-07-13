@@ -6,7 +6,7 @@
 // ids/status/tier, and its output must survive validateLesson() before disk.
 // callModel is injected so every gate is testable without an API key.
 
-import { existsSync, readdirSync, readFileSync, mkdirSync, appendFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import AjvModule from 'ajv';
@@ -16,6 +16,7 @@ import { writeEvidence } from './evidence.js';
 import { writeCandidate } from './candidates.js';
 import { similarity, trigrams, jaccard } from './similarity.js';
 import { parseLessonFile } from './frontmatter.js';
+import { logEvent } from './events.js';
 import { p } from './paths.js';
 
 const Ajv = AjvModule.default ?? AjvModule;
@@ -178,11 +179,6 @@ export function loadRejectionMemory({ now = Date.now(), expiryDays = 180 } = {})
   return out;
 }
 
-function logEvent(event) {
-  mkdirSync(path.dirname(p.events()), { recursive: true });
-  appendFileSync(p.events(), JSON.stringify(event) + '\n', 'utf8');
-}
-
 // ---------- cost ----------
 
 export function estimateTokens(episodes) {
@@ -341,7 +337,6 @@ export async function distillEpisodes(episodes, { callModel, config = {}, log = 
     if (suppressor) {
       // auditable, never silent: a mistaken rejection must be discoverable
       logEvent({
-        ts: new Date().toISOString(),
         event: 'suppressed-by-rejection-memory',
         episode_id: episode.episode_id,
         rejected_at: suppressor.rejected_at,

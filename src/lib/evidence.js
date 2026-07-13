@@ -3,7 +3,7 @@
 // are ALWAYS secret-scrubbed at write time, are never injected into any agent
 // context, and are never included in exports.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import AjvModule from 'ajv';
@@ -51,4 +51,25 @@ export function readEvidence(id, observedAt) {
   const filePath = evidencePath(id, observedAt);
   if (!existsSync(filePath)) throw new Error(`E-EVIDENCE: ${id} not found at ${filePath}`);
   return JSON.parse(readFileSync(filePath, 'utf8'));
+}
+
+// Locate an evidence record by id alone (lesson refs don't carry dates).
+// The yy/mm shard tree stays small at personal scale, so a walk is fine.
+export function findEvidence(id) {
+  const root = p.evidence();
+  if (!existsSync(root)) return null;
+  for (const year of readdirSync(root)) {
+    const yDir = path.join(root, year);
+    let months;
+    try {
+      months = readdirSync(yDir);
+    } catch {
+      continue;
+    }
+    for (const month of months) {
+      const file = path.join(yDir, month, `${id}.json`);
+      if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
+    }
+  }
+  return null;
 }
