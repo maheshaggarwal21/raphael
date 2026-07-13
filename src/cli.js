@@ -18,7 +18,8 @@ const COMMANDS = {
   search: () => import('./commands/search.js'),
   why: () => import('./commands/why.js'),
   on: () => import('./commands/on.js'),
-  off: () => import('./commands/off.js')
+  off: () => import('./commands/off.js'),
+  eval: () => import('./commands/eval.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -53,6 +54,8 @@ Commands:
   on / off    Enable / disable injection (mining and review keep working)
   inject      Hook plumbing: reads the hook JSON on stdin, prints context
               (raph inject --event session-start|user-prompt; always exits 0)
+  eval        Prove it with numbers: canary gate + brain ON/OFF lift table
+              (raph eval run [--quick] [--dry-run] [--scenario id] [--trials N])
   help        Show this help
   version     Show version
 

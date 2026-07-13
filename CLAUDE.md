@@ -62,8 +62,17 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   --session-id, --max-budget-usd. `--bare` forces API-key auth (so subscription = NO
   --bare + no ANTHROPIC_API_KEY in child env). claude.exe at
   ~/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe.
-- Next: the core roadmap gap — Phase 6 eval + Phase 8 agent layer — before Phase 12
-  Academy can run. (Live subscription distill smoke = DONE, see (1) above.)
+- Phase 6 (eval harness) COMPLETE: src/eval/ = canaries.js (3 command-shaped chokepoint
+  canaries in the 100% gate + 3 declarative-voice behavioral probes), scenarios.js (S08
+  float-money, S15 secrets-in-logs, S01 env-commit — pure file-inspecting checkers),
+  harness.js (ON/OFF orchestration, Wilson CIs, cross-model guard, retrieval-MISS,
+  tokens-per-task ratio), runner.js (real `claude -p` in throwaway fixtures, tools ON for
+  writes — deliberately unlike distill's zero-tool path). `raph eval run [--quick]
+  [--dry-run] [--scenario id] [--trials N] [--model M]`. --dry-run spends nothing (canaries
+  + retrieval check). 160/160 tests. Live smoke ran real agents both arms end to end.
+- Next: Phase 8 (agent layer) — the 10-agent roster as thin lenses over the brain (shared
+  spine, project map, task recipes), flagship Planner/Architect/Reviewer/Debugger first.
+  Then Phase 12 Academy (needs 6+8 and owner go).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

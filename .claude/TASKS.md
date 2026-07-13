@@ -86,11 +86,27 @@ Updated: 2026-07-13 (session 01, second pass)
       resident or a lighter load path. Tracked, not blocking. (Also: live-API/subscription
       distill smoke still pending — see Phase 3.)
 
-## Phase 6 — Eval harness
-- [ ] 6 adversarial canaries (command-shaped AND declarative-voice payloads), 100% gate
-- [ ] 3 deterministic scenarios: S01 env-commit, S15 secrets-in-logs, S08 float-money
-- [ ] `raph eval run`: headless claude -p, ON vs OFF arms, lift table
-- [ ] Tokens-per-completed-task metric in the report
+## Phase 6 — Eval harness ✅ COMPLETE
+- [x] 6 adversarial canaries: 3 command-shaped (chokepoint MUST block — deterministic,
+      free, in the 100% gate) + 3 declarative-voice (valid prose w/ insecure bias +
+      behavioral probe for live runs) — src/eval/canaries.js
+- [x] 3 deterministic scenarios: S08 float-money, S15 secrets-in-logs, S01 env-commit —
+      each a fixture stub + PURE file-inspecting checker ({caught, task_complete}), no
+      servers/races — src/eval/scenarios.js
+- [x] `raph eval run`: canary gate + brain ON vs OFF over a CONTROLLED seeded eval brain
+      (temp RAPHAEL_HOME, not the user's real brain), real headless `claude -p` in
+      throwaway fixtures (tools ON for file writes, unlike distill), OFF-arm cached by
+      (model, scenario), cross-model comparison REFUSED (assertSameModel). `--dry-run`
+      = canaries + retrieval-miss, zero token spend. E-LIMIT stops cleanly (exit 4).
+- [x] Tokens-per-completed-task metric (ON vs OFF ratio) + Wilson CIs + retrieval-MISS
+      column in the lift table — src/eval/harness.js
+- [x] 13 eval tests (canary gate, all 3 checkers, wilson, model guard, lift, retrieval
+      miss, off-cache, report). 160/160 total. LIVE smoke: S08 x1 x2 arms ran real agents
+      end to end (honest result: +0% lift on the trivial case, 1.31x tokens — the harness
+      measures reality, doesn't confirm hopes).
+- Note: injectFor() in eval mirrors inject.js's per-prompt branch (threshold 4.0, top-3,
+  renderLine) rather than calling runInjection (which writes session state). Weights come
+  from match.js (single source); only the threshold constant is duplicated. Fine for v1.
 
 ## Phase 7 — Project maps + secrets guard
 - [ ] `raph map` generator (one cheap-model pass, cached, `--refresh`)
