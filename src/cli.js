@@ -13,7 +13,12 @@ const COMMANDS = {
   queue: () => import('./commands/queue.js'),
   approve: () => import('./commands/approve.js'),
   reject: () => import('./commands/reject.js'),
-  show: () => import('./commands/show.js')
+  show: () => import('./commands/show.js'),
+  inject: () => import('./commands/inject.js'),
+  search: () => import('./commands/search.js'),
+  why: () => import('./commands/why.js'),
+  on: () => import('./commands/on.js'),
+  off: () => import('./commands/off.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -29,7 +34,8 @@ Commands:
   mine        Read this project's session history and extract episodes
               (raph mine [--dry-run] [--yes] [--project <path>])
   note        Capture a lesson by hand, straight to the review queue
-              (raph note "<text>" [--title t] [--category c] [--severity s])
+              (raph note "<text>" [--title t] [--category c] [--severity s]
+               [--keywords a,b,c] — keywords let the hooks find it per-prompt)
   distill     Turn mined episodes into gated candidate lessons (spends tokens)
               (raph distill [--dry-run] [--yes] [--max-episodes N] [--model m])
   queue       List candidates awaiting review (numbered; --json for tooling)
@@ -38,6 +44,13 @@ Commands:
               items require single approval with --confirmed)
   reject      Remove candidates; similar ones auto-suppress for 180 days
               (raph reject <n...> [--reason "..."])
+  search      Find lessons the way the hooks would rank them
+              (raph search <terms> [--audience <agent>] [--json])
+  why         Show what got injected, matched on what, and the token cost
+              (raph why [--last N])
+  on / off    Enable / disable injection (mining and review keep working)
+  inject      Hook plumbing: reads the hook JSON on stdin, prints context
+              (raph inject --event session-start|user-prompt; always exits 0)
   help        Show this help
   version     Show version
 

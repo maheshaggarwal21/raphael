@@ -22,7 +22,7 @@ function deriveTitle(text) {
 
 export default async function note(args) {
   const flagIdxs = new Set();
-  for (const f of ['--title', '--category', '--severity']) {
+  for (const f of ['--title', '--category', '--severity', '--keywords']) {
     const i = args.indexOf(f);
     if (i >= 0) {
       flagIdxs.add(i);
@@ -32,7 +32,7 @@ export default async function note(args) {
   const text = args.find((a, i) => !a.startsWith('--') && !flagIdxs.has(i))?.trim();
 
   if (!text) {
-    console.error('raph: usage: raph note "<lesson text>" [--title t] [--category c] [--severity s]');
+    console.error('raph: usage: raph note "<lesson text>" [--title t] [--category c] [--severity s] [--keywords a,b,c]');
     return 1;
   }
   if (text.length < 20) {
@@ -55,6 +55,14 @@ export default async function note(args) {
     return 1;
   }
 
+  // keywords make a note findable by the per-prompt hook and raph search —
+  // without them a note only ever surfaces in the session-start digest
+  const keywords = (flagValue(args, '--keywords') ?? '')
+    .split(',')
+    .map((k) => k.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 8);
+
   const title = (flagValue(args, '--title') ?? deriveTitle(text)).slice(0, 80);
   const today = new Date().toISOString().slice(0, 10);
   const headline = text.replace(/\s+/g, ' ').trim().slice(0, 180);
@@ -68,7 +76,7 @@ export default async function note(args) {
     category,
     severity,
     scope: { stacks: [], task_kinds: [], projects: [], agents: [] },
-    triggers: { keywords: [], paths: [] },
+    triggers: { keywords, paths: [] },
     lesson: text,
     evidence: {
       refs: [],

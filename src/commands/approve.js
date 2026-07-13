@@ -6,6 +6,7 @@ import { validateLesson } from '../lib/validate.js';
 import { atomicWrite } from '../lib/files.js';
 import { logEvent } from '../lib/events.js';
 import { commitBrain } from '../lib/braingit.js';
+import { buildIndex } from '../lib/compile.js';
 import { p } from '../lib/paths.js';
 
 function activeSlugExists(slug) {
@@ -120,6 +121,11 @@ export default async function approve(args) {
     console.log(`APPROVED  ${data.slug} -> ${target}`);
   }
 
-  if (approvedCount > 0) commitBrain(`approve: ${approvedCount} lesson(s)`);
+  if (approvedCount > 0) {
+    commitBrain(`approve: ${approvedCount} lesson(s)`);
+    // silent index rebuild (§6): hash verification would catch it lazily
+    // anyway, this just saves the first hook the rebuild cost
+    try { buildIndex(); } catch { /* next loadIndex() rebuilds */ }
+  }
   return failed > 0 ? 1 : 0;
 }

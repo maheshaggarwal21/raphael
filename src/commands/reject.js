@@ -8,7 +8,8 @@ import { p } from '../lib/paths.js';
 export default async function reject(args) {
   const reasonIdx = args.indexOf('--reason');
   const reason = reasonIdx >= 0 ? args[reasonIdx + 1] : undefined;
-  const refs = args.filter((a, i) => !a.startsWith('--') && i !== reasonIdx + 1);
+  const valueIdx = reasonIdx >= 0 ? reasonIdx + 1 : -1; // -1, never 0: indexOf misses must not eat args[0]
+  const refs = args.filter((a, i) => !a.startsWith('--') && i !== valueIdx);
   if (refs.length === 0) {
     console.error('raph: usage: raph reject <n|slug|id...> [--reason "..."]');
     return 1;
