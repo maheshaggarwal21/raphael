@@ -48,6 +48,22 @@ export function getProjectConsent(cfg, projectPath) {
   return undefined;
 }
 
+// Injection kill switch (`raph on` / `raph off`). Absent = enabled: the hooks
+// are already a no-op until the first lesson is approved, so the default is safe.
+export function isInjectionEnabled(cfg) {
+  return (cfg?.injection?.enabled) !== false;
+}
+
+export function setInjectionEnabled(enabled) {
+  if (typeof enabled !== 'boolean') {
+    throw new Error(`E-CONFIG: injection.enabled must be boolean, got ${typeof enabled}`);
+  }
+  const cfg = loadConfig();
+  cfg.injection = { ...(cfg.injection ?? {}), enabled };
+  saveConfig(cfg);
+  return cfg;
+}
+
 export function setProjectConsent(projectPath, consent) {
   if (typeof consent !== 'boolean') {
     throw new Error(`E-CONFIG: consent must be boolean, got ${typeof consent}`);
