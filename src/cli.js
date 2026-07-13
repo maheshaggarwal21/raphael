@@ -21,7 +21,8 @@ const COMMANDS = {
   off: () => import('./commands/off.js'),
   eval: () => import('./commands/eval.js'),
   map: () => import('./commands/map.js'),
-  pack: () => import('./commands/pack.js')
+  pack: () => import('./commands/pack.js'),
+  academy: () => import('./commands/academy.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -62,6 +63,8 @@ Commands:
               (raph map [--refresh] [--project path] [--summary])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
+  academy     Drive/resume an autonomous Academy build across limits + restarts
+              (raph academy start|status|resume|checkpoint|boundary|limit|list)
   help        Show this help
   version     Show version
 

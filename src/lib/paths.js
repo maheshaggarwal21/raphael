@@ -26,5 +26,7 @@ export const p = {
   index: () => path.join(raphaelHome(), 'index'),
   compiledIndex: () => path.join(raphaelHome(), 'index', 'compiled.json'),
   evals: () => path.join(raphaelHome(), 'evals'),
-  logs: () => path.join(raphaelHome(), 'logs')
+  logs: () => path.join(raphaelHome(), 'logs'),
+  academy: () => path.join(raphaelHome(), 'academy'),
+  academyProject: (name) => path.join(raphaelHome(), 'academy', name)
 };

@@ -175,8 +175,17 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
 
 ## Phase 12 — Self-training pipeline ("Raphael Academy") — ARCHITECTURE §12
 Depends on: subscription provider (done), agent layer (Phase 8), eval (Phase 6).
-- [ ] Checkpoint store: per-project state (project, milestone, step, per-stage Claude
-      Code session ids) with atomic writes; resume-from-exact-step on restart
+STARTED 2026-07-14 (session 02): first Academy project = "Repo Keeper" (owner idea 3).
+Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
+~/.raphael/academy/repo-keeper/state.json; resume runbook in .claude/academy/RESUME.md.
+- [x] Checkpoint store: per-project state (milestones, current step, next_action, status,
+      boundary, limit) with atomic writes; resume-from-exact-step. `raph academy
+      start|status|resume|checkpoint|boundary|limit|list` (src/lib/academy.js +
+      commands/academy.js). 7 tests. Idempotent start; clears limit-block on resume.
+- [x] Autonomy boundary recorded + enforced by convention: recordBoundary() stops the build
+      and names the owner action (deploy/sign-in/spend/publish/public-push). RESUME.md codifies it.
+- [ ] OS-level auto-resume: .claude/academy/resume.ps1 + a guarded logon/scheduled task
+      (survives reboot; only fires while status is in-progress). [in progress this session]
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
       -> prep-deploy) stage by stage, output-of-one -> input-of-next
 - [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time
