@@ -184,8 +184,13 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
       commands/academy.js). 7 tests. Idempotent start; clears limit-block on resume.
 - [x] Autonomy boundary recorded + enforced by convention: recordBoundary() stops the build
       and names the owner action (deploy/sign-in/spend/publish/public-push). RESUME.md codifies it.
-- [ ] OS-level auto-resume: .claude/academy/resume.ps1 + a guarded logon/scheduled task
-      (survives reboot; only fires while status is in-progress). [in progress this session]
+- [x] OS-level auto-resume: .claude/academy/resume.ps1 (guarded: only fires while status is
+      in-progress/blocked-limit; 30-min throttle; visible window; logs to resume.log) +
+      Startup-folder launcher (no-admin logon run) + register-resume-task.ps1 (schtasks
+      alternative for elevated shells) + AUTORESUME.md. Layer 1 (checkpoint) is the reliable
+      resume; Layer 2 (logon launch) is best-effort. schtasks needs admin (not available here).
+- First Academy project build: repo-keeper M1 DONE (scaffold + scanner core, 7 tests,
+  committed b304a91 local). M2 (Keeper freshness) next. Workspace: Desktop/Projects/repo-keeper.
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
       -> prep-deploy) stage by stage, output-of-one -> input-of-next
 - [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time
