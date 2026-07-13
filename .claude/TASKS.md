@@ -62,14 +62,27 @@ Updated: 2026-07-13 (session 01, second pass)
 - [x] Decision: `raph promote` folded into `approve` (fewer verbs, same power)
 - [ ] `/brain-review` skill with the `1y 2n 3e 4?` batch grammar (arrives with the plugin phase — wraps queue --json + approve/reject)
 
-## Phase 5 — Index + injection
-- [ ] `index/compiled.json` builder, hash-verified against lesson files (not just mtime)
-- [ ] Deterministic matcher + scorer (stack, triggers, paths, recency; explainable)
-- [ ] SessionStart hook: advisory preamble + stack digest (≤340 tokens)
-- [ ] UserPromptSubmit hook: ≤3 headlines, typical 0, p95 < 150ms, fail-open
-- [ ] Session token cap (1,200) + per-lesson session dedupe
-- [ ] `brain-recall` pull skill + `raph search` / `raph show`
-- [ ] `state/events.jsonl` telemetry (one line per injection) + `raph why` + `raph on/off`
+## Phase 5 — Index + injection ✅ COMPLETE (latency follow-up noted)
+- [x] `index/compiled.json` builder, hash-verified against lesson files (content sha256,
+      not mtime); rebuilds on any add/edit/delete/tamper; every lesson re-passes the
+      chokepoint on the way in (compile.js)
+- [x] Deterministic matcher + scorer (stack, triggers, paths, recency; explainable) —
+      every point carries a reason string (match.js); `raph why` prints the breakdown
+- [x] SessionStart hook: advisory preamble (≤90 tok) + stack digest (≤250 tok, ≤10),
+      re-fires on compaction with seen-headlines suppressed (inject.js runInjection)
+- [x] UserPromptSubmit hook: ≤3 headlines, typical 0 (fires only on a trigger hit,
+      threshold 4.0), fail-open (safeInject swallows everything, always exits 0)
+- [x] Session token cap (1,200) + per-lesson session dedupe (state/sessions/<id>.json)
+- [x] `brain-recall` pull skill substrate (plugin/skills/) + `raph search` (same scorer
+      as the hooks) — `raph show` already existed from Phase 4
+- [x] `state/events.jsonl` telemetry (one line per injection, with score+reasons) +
+      `raph why [--last N]` + `raph on/off` (config kill switch)
+- [x] `raph inject --event session-start|user-prompt` hook command; docs/hooks.md wiring
+- [ ] LATENCY follow-up: cold `raph inject` is ~300ms on Windows (node startup ~80ms +
+      module load/work ~230ms), above the p95<150ms target. Fine for SessionStart
+      (once/session) and rare UserPromptSubmit fires, but for a hot path we need a warm
+      resident or a lighter load path. Tracked, not blocking. (Also: live-API/subscription
+      distill smoke still pending — see Phase 3.)
 
 ## Phase 6 — Eval harness
 - [ ] 6 adversarial canaries (command-shaped AND declarative-voice payloads), 100% gate

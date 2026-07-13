@@ -33,11 +33,20 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
   (heavyweight confirm path for security/quarantined enforced in code; reject
   tombstones feed distill's rejection memory — integration-tested; approve
   auto-commits the brain repo). `promote` was folded into `approve`. 104/104 tests.
-- Next: Phase 5 (index + injection: compiled.json hash-verified, deterministic
-  scorer, SessionStart/UserPromptSubmit hooks, budgets, raph why). The
-  /brain-review batch-grammar skill waits for the plugin phase (wraps queue --json).
-  Transcript format notes live in src/lib/episodes.js comments; sandbox mining via
-  fake USERPROFILE + RAPHAEL_HOME (see .claude/logs/2026-07-13-01.md).
+- Phase 5 (index + injection) COMPLETE: compile.js (compiled.json, sha256 hash-verified
+  + rebuild-on-change, re-validates every lesson), match.js (deterministic explainable
+  scorer), inject.js (recall engine: budgets ≤1,200/session, data-envelope framing,
+  session dedupe, fail-open), stacks.js. Commands: `raph inject|search|why|on|off`.
+  `raph note --keywords` added. docs/hooks.md = manual hook wiring; brain-recall skill
+  substrate in plugin/skills/. 133/133 tests. Known follow-up: cold hook ~300ms on
+  Windows > 150ms target (fine for the rare fires; warm-resident later).
+- Next: owner's four new directions (see log "Owner's four new directions"):
+  (1) subscription model provider — shell out to local `claude -p` instead of an API key
+  (fixed price); API key becomes fallback. (2) Add Planner + Architect agents (roster
+  8 -> 10). (3) docs/prompt-library.md extracted from screenshots feeds agent design.
+  (4) self-training pipeline — Raphael autonomously builds real projects to generate
+  mining data, self-managing session limits / model switching / thinking. Design as a
+  new ARCHITECTURE section + phase. Live-API/subscription distill smoke still pending.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
