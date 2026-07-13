@@ -22,8 +22,15 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
 - Phase 2 (mining) COMPLETE: transcript locator + consent registry (config.js),
   episode detectors (error-fix, user-correction), mined.jsonl ledger (write-last),
   candidates writer (chokepoint-enforced), `raph mine|note`. Verified against this
-  project's real session history. 80/80 tests green.
-- Next: Phase 3 (extraction + gates). Transcript format notes live in
+  project's real session history.
+- Phase 3 (extraction + gates) COMPLETE: model.js (only network surface, zero-tool
+  containment via forced single tool), distill.js (ephemera/rubric/dedupe/rejection-
+  memory gates, structural G1 — pipeline writes evidence, model can't), `raph
+  distill` with cost gate. 96/96 tests green. Live-API run still pending a key:
+  first verification when ANTHROPIC_API_KEY exists is `RAPHAEL_HOME=<sandbox> raph
+  distill --yes` over the 4 mined episodes.
+- Next: Phase 4 (review flow: queue/approve/reject/promote; reject writes
+  state/rejected.jsonl which distill already reads). Transcript format notes live in
   src/lib/episodes.js comments; sandbox mining via fake USERPROFILE + RAPHAEL_HOME
   (see .claude/logs/2026-07-13-01.md).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

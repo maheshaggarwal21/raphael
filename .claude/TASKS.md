@@ -33,14 +33,22 @@ Updated: 2026-07-13 (session 01, second pass)
 - [x] Skip live sessions (mtime < 10 min)
 - [x] Verified on real data: mined this project's own build session → 4 real error-fix episodes; re-run no-op; secrets scrubbed in real excerpts
 
-## Phase 3 — Extraction + gates
-- [ ] Contained extraction: zero-tool structured-output call (cheap model) per episode
-- [ ] Gate G1: every evidence ref must resolve to a real mined episode
-- [ ] Gate G4: ephemera kill (ports, local paths, machine names)
-- [ ] Gate G5/G7: common-knowledge counterfactual + actionability (cheap model rubric)
-- [ ] Dedupe: content hash + trigram similarity vs existing lessons and rejected fingerprints
-- [ ] Candidate cap (10/run) + cost estimate + confirm threshold
-- [ ] Rejection memory with expiry + audit surface
+## Phase 3 — Extraction + gates ✅ COMPLETE (live-API run pending an ANTHROPIC_API_KEY)
+- [x] Contained extraction: direct Messages-API call (fetch, no SDK dep), ONE forced tool,
+      zero other tools defined — the model physically cannot execute anything
+- [x] Gate G1 made structural: the model never sets evidence — the pipeline writes the
+      evidence record from the real episode it fed in (fabricated provenance impossible)
+- [x] Gate G4 ephemera: ports/abs-paths/pinned-versions → one generalization retry → kill
+- [x] Gates G5/G7 rubric: counterfactual ≥2 AND actionable ≥2 (stricter than avg — a 3/1
+      split is vivid-but-vague noise)
+- [x] Dedupe: trigram Jaccard (similarity.js) vs lessons+candidates+quarantine AND in-run
+- [x] Candidate cap (10/run, config), token estimate + confirm threshold, --dry-run/--yes
+- [x] Rejection memory: reads state/rejected.jsonl, 180-day expiry, suppressions logged to
+      events.jsonl (auditable, never silent) — write side arrives with Phase 4 reject
+- [x] Distilled ledger (write-last; deferred/cap-deferred episodes retry next run)
+- [x] Injectable model provider → 96/96 tests incl. every gate, URL-smuggling stopped by
+      chokepoint, model-error deferral; verified dry-run against real mined episodes
+- [ ] Live-API smoke run (needs ANTHROPIC_API_KEY; ~6.5k tokens on Haiku for the 4 pending episodes)
 
 ## Phase 4 — Review flow
 - [ ] `/brain-review` skill: batch cards, `1y 2n 3e 4?` grammar
