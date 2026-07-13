@@ -22,15 +22,16 @@ Updated: 2026-07-13 (session 01, second pass)
 - [x] `scope.agents` audience field (owner suggestion, partially adopted: retrieval filter, not primary category; empty = all agents)
 - [x] First commits + GitHub repo created
 
-## Phase 2 — Mining (`raph mine`)
-- [ ] Transcript locator: map cwd → `~/.claude/projects/<sanitized>` + per-project consent registry in config
-- [ ] Episode detector: error→fix arcs (tool_result error followed by edits then success)
-- [ ] Episode detector: user corrections ("no,", "that's wrong", "revert", "undo")
-- [ ] Secret scrub applied to every episode BEFORE storage (already built — wire it in)
-- [ ] `state/mined.jsonl` ledger: content-hash keyed, written only at end of successful run
-- [ ] `raph mine` command with funnel report (sessions → episodes) + `--dry-run`
-- [ ] `raph note "<text>"` — manual capture straight to candidates
-- [ ] Skip live sessions (file modified < 10 min ago)
+## Phase 2 — Mining (`raph mine`) ✅ COMPLETE
+- [x] Transcript locator: cwd → `~/.claude/projects/<sanitized>` (case-drift fallback) + per-project consent registry
+- [x] Episode detector: error→fix arcs (tool_result error → eventual success, 12-event window, no overlaps)
+- [x] Episode detector: user corrections (markers incl. "no problem" false-positive guard, <400 char rule)
+- [x] Secret scrub on every episode BEFORE storage (scrub-then-truncate, content-addressed ids AFTER scrub)
+- [x] `state/mined.jsonl` ledger: content-hash keyed, write-last semantics
+- [x] `raph mine` with funnel report + `--dry-run` + `--yes` + per-session failure isolation (exit 3 partial)
+- [x] `raph note "<text>"` — validated through the chokepoint, quarantine-aware
+- [x] Skip live sessions (mtime < 10 min)
+- [x] Verified on real data: mined this project's own build session → 4 real error-fix episodes; re-run no-op; secrets scrubbed in real excerpts
 
 ## Phase 3 — Extraction + gates
 - [ ] Contained extraction: zero-tool structured-output call (cheap model) per episode

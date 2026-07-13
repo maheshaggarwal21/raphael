@@ -16,10 +16,16 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
 4. Run `npm test` before declaring anything done. Tests must stay green.
 
 ## Current state (updated 2026-07-13, session 01)
-- Phase 1 (foundation) is COMPLETE: schema (incl. `scope.agents` audience filter),
-  validation chokepoint, secret scrubber, ULID ids, frontmatter, atomic writes,
-  evidence records (auto-scrubbed), `raph init|status|validate|doctor`. 30/30 tests green.
-- Committed to git; GitHub repo exists (private until launch). Next: Phase 2 (`raph mine`).
+- Phase 1 (foundation) COMPLETE: schema (incl. `scope.agents`), validation chokepoint,
+  secret scrubber, ULID ids, frontmatter, atomic writes, evidence records,
+  `raph init|status|validate|doctor`.
+- Phase 2 (mining) COMPLETE: transcript locator + consent registry (config.js),
+  episode detectors (error-fix, user-correction), mined.jsonl ledger (write-last),
+  candidates writer (chokepoint-enforced), `raph mine|note`. Verified against this
+  project's real session history. 80/80 tests green.
+- Next: Phase 3 (extraction + gates). Transcript format notes live in
+  src/lib/episodes.js comments; sandbox mining via fake USERPROFILE + RAPHAEL_HOME
+  (see .claude/logs/2026-07-13-01.md).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
