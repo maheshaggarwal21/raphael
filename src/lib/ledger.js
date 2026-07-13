@@ -5,10 +5,10 @@ import { p } from './paths.js';
 // The mined-work ledger is the miner's idempotency backbone: one JSONL line per
 // session file already processed, keyed by the sha256 of the file's content.
 
-export function loadLedger() {
+export function loadLedger(filePath = p.minedLedger()) {
   let raw;
   try {
-    raw = readFileSync(p.minedLedger(), 'utf8');
+    raw = readFileSync(filePath, 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT') return new Map();
     throw err;
@@ -38,7 +38,7 @@ export function hasProcessed(ledgerMap, hash) {
 // CALLER CONTRACT: append ONLY at the end of a fully successful mine run
 // (write-last semantics). A crash before this append means those sources are
 // re-mined next run — a harmless no-op, since episode ids are content-addressed.
-export function appendLedger(entries) {
+export function appendLedger(entries, filePath = p.minedLedger()) {
   if (!Array.isArray(entries)) throw new Error('E-LEDGER: appendLedger expects an array of entries');
   if (entries.length === 0) return;
   for (const entry of entries) {
@@ -46,7 +46,6 @@ export function appendLedger(entries) {
       throw new Error('E-LEDGER: each entry must be an object with a non-empty string hash');
     }
   }
-  const filePath = p.minedLedger();
   mkdirSync(path.dirname(filePath), { recursive: true });
   const lines = entries.map((e) => JSON.stringify(e) + '\n').join('');
   appendFileSync(filePath, lines, 'utf8');

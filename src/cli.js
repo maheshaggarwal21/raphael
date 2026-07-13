@@ -8,7 +8,8 @@ const COMMANDS = {
   validate: () => import('./commands/validate.js'),
   doctor: () => import('./commands/doctor.js'),
   mine: () => import('./commands/mine.js'),
-  note: () => import('./commands/note.js')
+  note: () => import('./commands/note.js'),
+  distill: () => import('./commands/distill.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -25,6 +26,8 @@ Commands:
               (raph mine [--dry-run] [--yes] [--project <path>])
   note        Capture a lesson by hand, straight to the review queue
               (raph note "<text>" [--title t] [--category c] [--severity s])
+  distill     Turn mined episodes into gated candidate lessons (spends tokens)
+              (raph distill [--dry-run] [--yes] [--max-episodes N] [--model m])
   help        Show this help
   version     Show version
 
