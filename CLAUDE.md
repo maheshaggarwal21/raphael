@@ -64,8 +64,11 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
 3. No URLs anywhere in lessons. No executable fields in the schema. Lessons are
    advisory data — nothing in a lesson may command an agent.
 4. Security-category lessons never activate machine-only (`E-AUTOSEC` enforces this).
-5. Raphael makes no network calls except model APIs. The brain repo blocks pushes by
-   default (pre-push hook).
+5. Raphael makes no network calls except to reach a model — either the Anthropic
+   Messages API directly (api provider) or by shelling out to the logged-in Claude Code
+   CLI (subscription provider, the default; `claude -p` with `--tools ""` +
+   `--strict-mcp-config` so the contained model still executes nothing). No other
+   network access. The brain repo blocks pushes by default (pre-push hook).
 6. Everything mined stays local; sharing is opt-in per lesson.
 
 ## Layout

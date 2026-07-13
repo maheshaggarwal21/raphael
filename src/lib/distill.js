@@ -50,7 +50,7 @@ const EXTRACT_TOOL = {
           severity: { enum: SEVERITIES },
           stacks: { type: 'array', items: { type: 'string', maxLength: 40 }, maxItems: 12 },
           task_kinds: { type: 'array', items: { type: 'string', maxLength: 40 }, maxItems: 12 },
-          agents: { type: 'array', items: { enum: AGENTS }, maxItems: 8 },
+          agents: { type: 'array', items: { enum: AGENTS }, maxItems: AGENTS.length },
           keywords: { type: 'array', items: { type: 'string', maxLength: 60 }, maxItems: 20 },
           paths: { type: 'array', items: { type: 'string', maxLength: 120 }, maxItems: 20 },
           lesson: { type: 'string', minLength: 20, maxLength: 700 },
@@ -312,8 +312,12 @@ export async function distillEpisodes(episodes, { callModel, config = {}, log = 
     try {
       r = await extractCandidate(episode, { callModel, model });
     } catch (err) {
-      results.push({ episode_id: episode.episode_id, outcome: 'deferred', detail: err.message });
+      const limit = err.code === 'E-LIMIT';
+      results.push({ episode_id: episode.episode_id, outcome: 'deferred', detail: err.message, limit });
       log(`  [defer] ${episode.episode_id}: ${err.message}`);
+      // A subscription/rate limit fails every remaining call identically — stop
+      // now so the rest stay unledgered and retry after the limit resets.
+      if (limit) break;
       continue;
     }
 
@@ -351,8 +355,10 @@ export async function distillEpisodes(episodes, { callModel, config = {}, log = 
     try {
       rubric = await rubricGate(candidate, { callModel, model: config.rubric_model ?? model });
     } catch (err) {
-      results.push({ episode_id: episode.episode_id, outcome: 'deferred', detail: err.message });
+      const limit = err.code === 'E-LIMIT';
+      results.push({ episode_id: episode.episode_id, outcome: 'deferred', detail: err.message, limit });
       log(`  [defer] ${episode.episode_id}: ${err.message}`);
+      if (limit) break;
       continue;
     }
     if (!rubric.pass) {

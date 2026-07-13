@@ -7,7 +7,15 @@ import yaml from 'js-yaml';
 import { atomicWrite } from './files.js';
 import { p } from './paths.js';
 
-const DEFAULT_CONFIG = () => ({ schema: 'raphael/config/v1', mode: 'curator', projects: {} });
+// model.provider: 'auto' (default) prefers the fixed-price Claude Code subscription
+// (shell out to `claude -p`) and falls back to a metered ANTHROPIC_API_KEY only if the
+// CLI is not logged in. Force one with 'subscription' or 'api'.
+const DEFAULT_CONFIG = () => ({
+  schema: 'raphael/config/v1',
+  mode: 'curator',
+  model: { provider: 'auto' },
+  projects: {}
+});
 
 export function loadConfig() {
   const file = p.config();

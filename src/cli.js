@@ -36,7 +36,9 @@ Commands:
   note        Capture a lesson by hand, straight to the review queue
               (raph note "<text>" [--title t] [--category c] [--severity s]
                [--keywords a,b,c] — keywords let the hooks find it per-prompt)
-  distill     Turn mined episodes into gated candidate lessons (spends tokens)
+  distill     Turn mined episodes into gated candidate lessons. Uses your
+              Claude Code SUBSCRIPTION by default (fixed price, no API key);
+              falls back to ANTHROPIC_API_KEY only if the CLI isn't logged in.
               (raph distill [--dry-run] [--yes] [--max-episodes N] [--model m])
   queue       List candidates awaiting review (numbered; --json for tooling)
   show        Print a lesson or candidate in full (raph show <n|slug|id> [--provenance])

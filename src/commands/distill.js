@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { distillEpisodes, estimateTokens, DISTILLER } from '../lib/distill.js';
-import { callModel, apiKey } from '../lib/model.js';
+import { getModelCaller } from '../lib/provider.js';
 import { loadLedger, hasProcessed, appendLedger } from '../lib/ledger.js';
 import { loadConfig } from '../lib/config.js';
 import { p } from '../lib/paths.js';
@@ -69,13 +69,16 @@ export default async function distill(args) {
     console.error(`raph: estimated ${(estimate / 1000).toFixed(0)}k tokens exceeds the confirm threshold (${confirmAbove / 1000}k) — re-run with --yes to proceed`);
     return 1;
   }
-  if (!apiKey()) {
-    console.error('raph: E-APIKEY: set ANTHROPIC_API_KEY to run distillation');
-    console.error('      (the /brain-learn skill flow inside Claude Code arrives with the plugin phase)');
+  let provider;
+  try {
+    provider = getModelCaller(cfg);
+  } catch (err) {
+    console.error(`raph: ${err.message}`);
     return 1;
   }
+  console.log(`MODEL  provider=${provider.provider} (${provider.reason})${provider.provider === 'subscription' ? ' — fixed-price, no API metering' : ''}`);
 
-  const results = await distillEpisodes(episodes, { callModel, config, log: (s) => console.log(s) });
+  const results = await distillEpisodes(episodes, { callModel: provider.callModel, config, log: (s) => console.log(s) });
 
   const counts = {};
   for (const r of results) counts[r.outcome] = (counts[r.outcome] || 0) + 1;
@@ -91,6 +94,14 @@ export default async function distill(args) {
   );
   console.log(`LEDGER +${done.length} episodes distilled`);
   if (staged > 0) console.log(`STAGED ${staged} candidate(s) await review — nothing activates without approval`);
+
+  // A subscription/rate limit stops the run; the rest stay unledgered and retry.
+  const limited = results.find((r) => r.limit);
+  if (limited) {
+    console.error(`raph: STOPPED — ${limited.detail}`);
+    console.error('      undistilled episodes were left untouched; just run "raph distill" again after it resets');
+    return 4;
+  }
 
   const deferred = (counts['deferred'] ?? 0);
   if (deferred > 0) {

@@ -35,7 +35,7 @@ test('loadConfig returns defaults when file is missing', () => {
 test('loadConfig returns defaults for an empty file', () => {
   withSandbox((dir) => {
     writeFileSync(p.config(), '', 'utf8');
-    assert.deepEqual(loadConfig(), { schema: 'raphael/config/v1', mode: 'curator', projects: {} });
+    assert.deepEqual(loadConfig(), { schema: 'raphael/config/v1', mode: 'curator', model: { provider: 'auto' }, projects: {} });
   });
 });
 
