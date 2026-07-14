@@ -211,10 +211,23 @@ compaction (manual or automatic) can never lose progress.
   (3) Phase 12 Academy AUTOMATION items (autopilot driver, model-policy table, etc.) = the ongoing
   self-training track, which I drive manually as the autopilot. Money-review Workflow still
   inconclusive (optional re-run). VERDICT: development part complete; proceed to Academy project #3.
-- Next (autonomous, this session): Academy project #3 — pick per the criteria (unique + complex +
-  sellable + head-lessly verifiable, same shape that made repo-keeper + onedesk work), scaffold,
-  ship milestone by milestone with the ritual each time, publish green milestones, feed lessons back.
-  Takeaway: run autonomous builds INLINE; heavy parallel Workflows hit the limit fast.
+- ACADEMY PROJECT #3 = "Assay" STARTED (session 04): a data-vetting CLI (schema + PII + quality +
+  data contract) for any CSV/JSON/JSONL file. Chosen by Claude under the full-autonomy mandate
+  (backlog's 3 ideas consumed; photo grouper parked as not head-lessly verifiable). Head-lessly
+  verifiable (pure file-in -> report-out), dogfoods scrub.js (its PII detector will extend the
+  exported SECRET_RULES/isHighEntropyToken), sellable (data governance/privacy/quality), distinct
+  from money/repos. Spec: docs/academy/backlog.md (project #3 section). Workspace:
+  Desktop/Projects/assay (own git). Memory: [[academy-project-3-assay]]. `raph academy status assay`.
+  - M1 SHIPPED + PUBLISHED (commit in assay repo; 19 tests): zero-dep Node ESM CLI; src/lib/ingest.js
+    normalizes CSV/TSV/JSON/JSONL into one column table (RFC-4180-ish CSV tokenizer w/ quotes,
+    embedded commas/newlines, escaped quotes, CRLF; delimiter sniff , ; tab |; BOM strip;
+    unquoted-empty=null vs quoted-""=empty; ragged-row warnings; JSON array/object + JSONL,
+    key-union columns) + `assay profile`. Public: github.com/maheshaggarwal21/assay (topics added).
+    Pre-publish gate: vetted with raphael's OWN new `raph guard scan --all` = clean (nice dogfood).
+    academy status=in-progress 1/5, M2 next.
+- Next (autonomous, this session): Assay M2 (schema inference) -> M3 (PII, extends scrub.js) ->
+  M4 (quality) -> M5 (contract). Ritual each milestone; publish green ones. Run INLINE (heavy
+  parallel Workflows hit the session limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
