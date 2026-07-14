@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, readdirSync, accessSync, constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { p } from '../lib/paths.js';
 import { validateLesson } from '../lib/validate.js';
+import { isInjectionEnabled } from '../lib/config.js';
 
 function listLessonFiles(dir) {
   if (!existsSync(dir)) return [];
@@ -66,6 +68,30 @@ export default async function doctor() {
     transcriptsOk = true;
   } catch { /* not present or unreadable */ }
   add('claude session transcripts readable', transcriptsOk, `expected at ${transcripts} — mining will have nothing to read`, true);
+
+  // --- plugin / injection health (Phase 9) ---
+  if (initialized) {
+    let injectionOn = true;
+    try {
+      const cfg = yaml.load(readFileSync(p.config(), 'utf8'), { schema: yaml.JSON_SCHEMA });
+      injectionOn = isInjectionEnabled(cfg);
+    } catch { /* default: enabled */ }
+    add('injection enabled', injectionOn, 'run "raph on" so the hooks add lessons (mining/review still work while off)', true);
+  }
+
+  // `raph` on PATH — the plugin's hooks call the bare `raph` command, so it must resolve
+  // globally (npm install -g) even though `node bin/raph.js` works in this repo.
+  const raphOnPath = spawnSync('raph', ['version'], { encoding: 'utf8', shell: true });
+  add('raph on PATH (plugin hooks call it)', raphOnPath.status === 0, 'install globally: npm install -g raphael-brain', true);
+
+  // Plugin packaging present (relative to this CLI). WARN-only: the CLI runs fine without it,
+  // but the Claude Code plugin needs the manifest + hooks to auto-wire recall.
+  const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const pluginDir = path.join(repoRoot, 'plugin');
+  if (existsSync(pluginDir)) {
+    add('plugin manifest present', existsSync(path.join(pluginDir, '.claude-plugin', 'plugin.json')), 'Phase 9 packaging: add plugin/.claude-plugin/plugin.json', true);
+    add('plugin hooks.json present', existsSync(path.join(pluginDir, 'hooks', 'hooks.json')), 'add plugin/hooks/hooks.json so SessionStart/UserPromptSubmit auto-inject', true);
+  }
 
   let failed = 0;
   for (const c of checks) {

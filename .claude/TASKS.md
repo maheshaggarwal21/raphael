@@ -4,7 +4,7 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-14 (session 03 — repo-keeper + One Desk v1 (M1-M5) published, 33 lessons active)
+Updated: 2026-07-14 (session 03 — repo-keeper + One Desk v1 published; Phase 9 plugin packaging COMPLETE; 33 lessons active)
 
 ## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
@@ -62,7 +62,7 @@ Updated: 2026-07-14 (session 03 — repo-keeper + One Desk v1 (M1-M5) published,
 - [x] Rejected-candidate tombstones feed distill's rejection memory — proven by an
       end-to-end test (reject → distill proposes lookalike → auto-suppressed + event logged)
 - [x] Decision: `raph promote` folded into `approve` (fewer verbs, same power)
-- [ ] `/brain-review` skill with the `1y 2n 3e 4?` batch grammar (arrives with the plugin phase — wraps queue --json + approve/reject)
+- [x] `/brain-review` skill with the `1y 2n 3e 4?` batch grammar (Phase 9: plugin/commands/brain-review.md — wraps queue + approve/reject, enforces one-at-a-time --confirmed for security)
 
 ## Phase 5 — Index + injection ✅ COMPLETE (latency follow-up noted)
 - [x] `index/compiled.json` builder, hash-verified against lesson files (content sha256,
@@ -157,10 +157,20 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
       spine-embedded/recipes). Fixed mapFileName('...') -> 'project'. 172/172. Live: `raph
       map` on this repo produced a correct map (98 files, real git hot files).
 
-## Phase 9 — Plugin packaging
-- [ ] Claude Code plugin manifest, hooks registration, skills: /brain, /brain-learn, /brain-review, /brain-eval
-- [ ] First-five-minutes onboarding flow in /brain
-- [ ] `raph doctor` extended for plugin health
+## Phase 9 — Plugin packaging — COMPLETE (2026-07-14, session 03)
+- [x] Claude Code plugin manifest (plugin/.claude-plugin/plugin.json) + repo-root marketplace
+      (.claude-plugin/marketplace.json -> ./plugin) + auto hooks (plugin/hooks/hooks.json:
+      SessionStart + UserPromptSubmit -> `raph inject`) + 4 slash commands
+      (plugin/commands/{brain,brain-learn,brain-review,brain-eval}.md).
+- [x] First-five-minutes onboarding flow in /brain (state-aware: install -> init -> seed/mine ->
+      review -> injection on). brain-review implements the `1y 2n 3e 4?` batch grammar.
+- [x] `raph doctor` extended for plugin health: injection enabled, `raph` on PATH (hooks call it),
+      plugin manifest + hooks.json present.
+- Distribution note: hooks call bare `raph`, so the CLI installs via `npm i -g raphael-brain`; the
+  plugin is the thin integration (manifest/commands/hooks/agents/skills). docs/hooks.md + README
+  install section updated. test/plugin.test.js (5) validates manifest/marketplace/hooks/commands.
+  194/194 tests. Doctor also surfaced 2 PRE-EXISTING brain-health FAILs on ~/.raphael (config.yaml
+  schema mismatch + brain not a git repo) — unrelated to Phase 9, flagged for follow-up.
 
 ## Phase 10 — Self-use period (2–4 weeks)
 - [ ] Run on Mahesh's own projects; collect retrieval-miss, false-fire, token-cost data

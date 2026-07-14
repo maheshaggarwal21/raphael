@@ -1,8 +1,18 @@
-# Wiring the injection hooks (manual, until the plugin ships)
+# Wiring the injection hooks
 
-The plugin (Phase 9) will register these automatically. For self-use now, add
-this to `.claude/settings.json` in a project (or `~/.claude/settings.json` for
-everywhere), with the real path to this repo:
+**Preferred: install the plugin.** The Raphael plugin (`plugin/`) registers these hooks
+automatically via `plugin/hooks/hooks.json` — install the CLI (`npm install -g
+raphael-brain`) so `raph` is on PATH, then add the plugin in Claude Code:
+
+```
+/plugin marketplace add maheshaggarwal21/raphael
+/plugin install raphael-brain@raphael
+```
+
+Then run `/brain` for the first-five-minutes setup. Nothing else to wire.
+
+**Manual fallback** (no plugin): add this to `.claude/settings.json` in a project (or
+`~/.claude/settings.json` for everywhere), with the real path to this repo:
 
 ```json
 {

@@ -167,10 +167,20 @@ compaction (manual or automatic) can never lose progress.
   own build); no server/deploy so it stays in the boundary. All 5 milestones shipped + published;
   academy onedesk=done. Both Academy products (repo-keeper, onedesk) are now DONE + public. The
   One Desk build wrote back 4 approved lessons -> brain 33 active.
-- Next (autonomous): the M2/M3 money-review Workflow is still INCONCLUSIVE (agents died on the
-  session limit) — re-run it or rely on the inline review + 64 tests. Then either Academy project
-  #3 (owner criteria: unique + complex + sellable) or raphael Phase 9 (packaging) / Phase 7
-  (`raph init --guard`). Takeaway from this session: run autonomous builds INLINE; heavy parallel
+- PHASE 9 (plugin packaging) COMPLETE (session 03): plugin/.claude-plugin/plugin.json manifest +
+  repo-root .claude-plugin/marketplace.json (-> ./plugin) + auto hooks (plugin/hooks/hooks.json:
+  SessionStart + UserPromptSubmit -> `raph inject`) + 4 slash commands (/brain hub+onboarding,
+  /brain-learn, /brain-review with the 1y2n3e batch grammar, /brain-eval) + doctor plugin-health
+  checks. Install = `npm i -g raphael-brain` then `/plugin marketplace add maheshaggarwal21/raphael`
+  + `/plugin install`. README + docs/hooks.md updated. test/plugin.test.js. 194 tests.
+- Doctor surfaced 2 PRE-EXISTING brain-health FAILs on the real ~/.raphael: config.yaml schema
+  mismatch + brain is NOT a git repo (likely populated by pack/note/approve without a full `raph
+  init`; commitBrain fails soft, so lessons wrote but were never versioned). Unrelated to Phase 9.
+  Likely repairable with `raph init` (idempotent) but UNVERIFIED against the 33 live lessons — check
+  before touching so nothing clobbers them.
+- Next (autonomous): verify/repair the ~/.raphael brain (git + config) safely, then Phase 10
+  (self-use data) or Phase 7 (`raph init --guard`), or Academy project #3. Money-review Workflow
+  still inconclusive (optional re-run). Takeaway: run autonomous builds INLINE; heavy parallel
   Workflows hit the session limit fast.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
