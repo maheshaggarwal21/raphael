@@ -4,7 +4,7 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-14 (session 02 — security pack + audit recipe + scenarios)
+Updated: 2026-07-14 (session 03 — repo-keeper published, 29 lessons approved/active, One Desk started)
 
 ## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
@@ -197,10 +197,26 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
     (fake secrets in eval/test fixtures flagged CRITICAL) -> fixed (test-path downgrade to
     low "verify"). Fixed its own missing lockfile too. 3 lessons written back to the brain.
   - status=done in the academy checkpoint; Startup auto-resume launcher removed (build
-    finished in-session). OWNER HANDOFF: publishing repo-keeper (git push / GitHub repo) is
-    the autonomy boundary — owner does it; the tool already runs on any local repo today.
+    finished in-session).
+  - [x] PUBLISHED (session 03): github.com/maheshaggarwal21/repo-keeper (public). Self-audited
+    clean first; repo created via GitHub API with the cached Git Credential Manager token
+    (never printed), pushed, discovery topics added. The earlier "owner handoff" is resolved —
+    per the owner, publishing is now Claude's job.
 - Academy driver proven end to end: start -> checkpoint per milestone -> resume runbook ->
-  boundary/limit handling -> done. Ready to run the next project (owner's web/app ideas).
+  boundary/limit handling -> done.
+- FLYWHEEL STARTED (session 03): `raph pack add security` staged the 26-lesson pack, then all
+  29 candidates approved (26 security one-at-a-time via `--confirmed`; 3 tooling batched).
+  Brain 0 -> 29 ACTIVE lessons — recall now injects real content, feeding future builds.
+- PROJECT #2 STARTED (session 03): "One Desk" — personal+business money engine & advisor
+  (owner idea 1). Claude chose it over the photo grouper (that one needs on-device face ML + a
+  GUI, neither verifiable head-lessly). Spec: docs/academy/onedesk-plan.md. Scaffolded at
+  Desktop/Projects/onedesk (own git, commit 5a8e44f, M0 runnable CLI); in-progress, 0/5.
+  - [ ] M1 money core + advisor: transaction model, personal/business split, rules engine,
+        advisor (safe-to-pay-yourself + tax set-aside owed + runway); node:test + `onedesk report`.
+  - [ ] M2 categorization + recurring + anomalies
+  - [ ] M3 advisor narrative + monthly report
+  - [ ] M4 bank-CSV import adapters + local file store
+  - [ ] M5 thin UI (deferred behind the autonomy boundary)
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
       -> prep-deploy) stage by stage, output-of-one -> input-of-next
 - [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time

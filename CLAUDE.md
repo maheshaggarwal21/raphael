@@ -10,12 +10,29 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
 - `.claude/logs/` — one log file per working session.
 
 ## Working ritual (mandatory, after every completed task)
-1. Tick the task in `.claude/TASKS.md` (and add any newly discovered tasks under the right phase).
-2. Append to the current session's log in `.claude/logs/YYYY-MM-DD-NN.md`: what was done, bugs found + fixes, decisions made, what's next.
-3. Update the "Current state" section below if the project's shape changed.
-4. Run `npm test` before declaring anything done. Tests must stay green.
+Run these IN ORDER at every task boundary — a "task" is any unit you'd report as done.
+The point: never carry undocumented or uncommitted work across a context boundary, so a
+compaction (manual or automatic) can never lose progress.
+1. Run `npm test` before declaring anything done. Tests must stay green.
+2. **Update docs** — tick the task in `.claude/TASKS.md` (add newly discovered tasks under
+   the right phase); append to the current session's log in `.claude/logs/YYYY-MM-DD-NN.md`
+   (what was done, bugs + fixes, decisions, what's next); update "Current state" below if the
+   project's shape changed; refresh any product README/reports the task touched.
+3. **Commit + push properly** — commit the raphael repo with a clear message and push to its
+   remote. Academy products commit to their OWN repo; publishing them is now in scope (do it)
+   UNLESS the task itself is still mid-build — push a product only when its milestone is green.
+4. **Then compact** — once 1–3 leave a clean, committed, documented state, compact the
+   context (`/compact`) so the next task starts lean.
+   - Honest mechanics: `/compact` is a terminal keystroke the *user* (or Claude Code's
+     auto-compact on a full context) triggers — Claude cannot press it from a tool call. So
+     steps 1–3 are the real guarantee: they are done EVERY time first, which is what makes a
+     compact safe. At each task boundary, state plainly "task complete, clean + pushed — safe
+     to /compact" so the compaction has a clean checkpoint to fold to.
+   - During an autonomous Academy build, the durable `raph academy checkpoint` (written after
+     each milestone, alongside the commit) is the belt-and-suspenders: even a mid-task
+     compaction or a limit/reboot resumes from it.
 
-## Current state (updated 2026-07-14, session 02)
+## Current state (updated 2026-07-14, session 03)
 - Phase 1 (foundation) COMPLETE: schema (incl. `scope.agents`), validation chokepoint,
   secret scrubber, ULID ids, frontmatter, atomic writes, evidence records,
   `raph init|status|validate|doctor`.
@@ -107,9 +124,26 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
     Wrote 3 lessons back to the brain (candidates). academy status=done.
   - AUTONOMY BOUNDARY (enforced + honored): the whole build stayed local + committed locally;
     publishing repo-keeper (git push / GitHub repo) was NOT done — it's the owner's action.
-- Next: owner picks the next Academy project (their web/app ideas); the driver is proven end
-  to end (start->checkpoint->resume->boundary->done). Then Phase 9 packaging, Phase 7
-  `raph init --guard`. Optional: approve the security pack + 3 new candidates to start the flywheel.
+- Session 03 (2026-07-14) — owner corrections applied:
+  (a) Repo Keeper PUBLISHED to GitHub (public: github.com/maheshaggarwal21/repo-keeper).
+  Self-audited clean first (`keeper audit` = no secrets); repo created via the GitHub API using
+  the cached Git Credential Manager token (never printed), then `git push`. Topics added for
+  discovery. repo-keeper is no longer local-only.
+  (b) Flywheel STARTED: `raph pack add security` then approved ALL 29 candidates — 26 security
+  (each via the heavyweight one-at-a-time `--confirmed` review path the code enforces) + 3
+  tooling. Brain went from 0 -> 29 ACTIVE lessons. `raph status` = active=29, 0 pending.
+  (c) Working ritual updated (see above): every task boundary = npm test -> update docs ->
+  commit/push -> compact. Honest caveat recorded: Claude cannot press `/compact` from a tool, so
+  steps 1-3 are done every time as the real guarantee against losing work to a compaction.
+  (d) Academy project #2 = "One Desk" chosen by Claude (owner said "decide yourself"): a
+  personal+business money engine & advisor (spec: docs/academy/onedesk-plan.md). The photo
+  grouper was parked with a blunt reason — its value is on-device face ML + a GUI, neither
+  verifiable head-lessly, so it is the wrong FIRST autonomous build. One Desk's core is pure
+  deterministic money logic = fully testable, same shape that made Repo Keeper work. Scaffolded
+  at Desktop/Projects/onedesk (own git, commit 5a8e44f, M0 runnable CLI). `raph academy status
+  onedesk` = in-progress, 0/5, M1 next.
+- Next: build One Desk M1 (money core + advisor) — the next task; resume with `raph academy
+  resume onedesk`. Then Phase 9 packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
