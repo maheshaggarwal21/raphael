@@ -80,11 +80,14 @@ Updated: 2026-07-14 (session 03 — repo-keeper + One Desk v1 published; Phase 9
 - [x] `state/events.jsonl` telemetry (one line per injection, with score+reasons) +
       `raph why [--last N]` + `raph on/off` (config kill switch)
 - [x] `raph inject --event session-start|user-prompt` hook command; docs/hooks.md wiring
-- [ ] LATENCY follow-up: cold `raph inject` is ~300ms on Windows (node startup ~80ms +
-      module load/work ~230ms), above the p95<150ms target. Fine for SessionStart
-      (once/session) and rare UserPromptSubmit fires, but for a hot path we need a warm
-      resident or a lighter load path. Tracked, not blocking. (Also: live-API/subscription
-      distill smoke still pending — see Phase 3.)
+- [ ] LATENCY follow-up (DEFERRED to post-v1, deliberate): re-measured 2026-07-14 session 04 =
+      ~390ms cold on Windows over the real 33-lesson brain (5 runs 375-404ms), dominated by node
+      process startup + ESM module-graph load, NOT the index work (warm sha256 verify of 33 files
+      is cheap). Above the p95<150ms target, but SessionStart fires once/session and per-prompt
+      injection fires only on a trigger hit, so the one-time cost is imperceptible. Closing it
+      needs a warm-resident daemon (or a bundled/lighter load path) — a real architectural
+      addition, correctly parked post-v1. Decision: NOT a blocker for "development complete".
+      (Also: live-API/subscription distill smoke still pending — see Phase 3.)
 
 ## Phase 6 — Eval harness ✅ COMPLETE
 - [x] 6 adversarial canaries: 3 command-shaped (chokepoint MUST block — deterministic,

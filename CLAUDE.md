@@ -201,8 +201,19 @@ compaction (manual or automatic) can never lose progress.
   labeled a proxy; a true "unhelpful" channel is unbuilt). Review funnel always shown. 213/213
   (+7). Dogfooded on the real brain (33 approved, 0 live injections yet, shown honestly) + sandbox
   smoke of the populated inject->events->stats path. The 2-4 week RUN itself is calendar, not code.
-- Next (autonomous, this session): confirm the development part (Phases 1-10) is complete via a
-  quick audit -> then Academy project #3. Money-review Workflow still inconclusive (optional).
+- DEVELOPMENT-COMPLETENESS AUDIT (session 04): the core engine is COMPLETE. Phases 1-9 done
+  (Phase 7 closed this session with the guard); Phase 10 tooling done (raph stats), its 2-4 week
+  RUN is calendar. `raph doctor` = healthy (only WARN = global `raph` not installed in the dev
+  repo, expected). 213/213 tests. Full CLI surface verified (22 verbs incl. new guard + stats).
+  Deliberately OUT of "development complete": (1) Phase 5 inject latency ~390ms cold — a tracked
+  post-v1 optimization needing a warm-resident daemon, non-blocking (fires once/session); (2)
+  Phase 11 distribution (npm publish, CI gates, contribute, launch) = launch prep, not the engine;
+  (3) Phase 12 Academy AUTOMATION items (autopilot driver, model-policy table, etc.) = the ongoing
+  self-training track, which I drive manually as the autopilot. Money-review Workflow still
+  inconclusive (optional re-run). VERDICT: development part complete; proceed to Academy project #3.
+- Next (autonomous, this session): Academy project #3 — pick per the criteria (unique + complex +
+  sellable + head-lessly verifiable, same shape that made repo-keeper + onedesk work), scaffold,
+  ship milestone by milestone with the ritual each time, publish green milestones, feed lessons back.
   Takeaway: run autonomous builds INLINE; heavy parallel Workflows hit the limit fast.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
