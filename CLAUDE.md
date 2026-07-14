@@ -173,15 +173,18 @@ compaction (manual or automatic) can never lose progress.
   /brain-learn, /brain-review with the 1y2n3e batch grammar, /brain-eval) + doctor plugin-health
   checks. Install = `npm i -g raphael-brain` then `/plugin marketplace add maheshaggarwal21/raphael`
   + `/plugin install`. README + docs/hooks.md updated. test/plugin.test.js. 194 tests.
-- Doctor surfaced 2 PRE-EXISTING brain-health FAILs on the real ~/.raphael: config.yaml schema
-  mismatch + brain is NOT a git repo (likely populated by pack/note/approve without a full `raph
-  init`; commitBrain fails soft, so lessons wrote but were never versioned). Unrelated to Phase 9.
-  Likely repairable with `raph init` (idempotent) but UNVERIFIED against the 33 live lessons — check
-  before touching so nothing clobbers them.
-- Next (autonomous): verify/repair the ~/.raphael brain (git + config) safely, then Phase 10
-  (self-use data) or Phase 7 (`raph init --guard`), or Academy project #3. Money-review Workflow
-  still inconclusive (optional re-run). Takeaway: run autonomous builds INLINE; heavy parallel
-  Workflows hit the session limit fast.
+- Doctor surfaced + I FIXED 2 pre-existing brain-health issues on the real ~/.raphael: config.yaml
+  was MISSING and the brain was NOT a git repo (it had been populated by pack/note/approve while
+  commitBrain fails soft — so the 33 lessons wrote to disk but were never versioned and the pre-push
+  guard was absent). Ran `raph init` (verified non-destructive in init.js: only creates what is
+  missing, never touches lessons) -> created config.yaml (v1 schema) + git-init'd the brain +
+  installed the pre-push guard; committed the 33 lessons as the initial snapshot (brain 034fe9f).
+  `raph doctor` now reports healthy. The brain finally has history + the accidental-push guard
+  (invariant #5). Note for future: a bare `raph status`/`pack`/`note`/`approve` on a fresh HOME does
+  NOT auto-init — run `raph init` first (Phase 7 `raph init --guard` should also cover this).
+- Next (autonomous): Phase 10 (self-use data) or Phase 7 (`raph init --guard`), or Academy project
+  #3. Money-review Workflow still inconclusive (optional re-run). Takeaway: run autonomous builds
+  INLINE; heavy parallel Workflows hit the session limit fast.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

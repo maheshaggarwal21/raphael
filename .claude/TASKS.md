@@ -169,8 +169,9 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
 - Distribution note: hooks call bare `raph`, so the CLI installs via `npm i -g raphael-brain`; the
   plugin is the thin integration (manifest/commands/hooks/agents/skills). docs/hooks.md + README
   install section updated. test/plugin.test.js (5) validates manifest/marketplace/hooks/commands.
-  194/194 tests. Doctor also surfaced 2 PRE-EXISTING brain-health FAILs on ~/.raphael (config.yaml
-  schema mismatch + brain not a git repo) — unrelated to Phase 9, flagged for follow-up.
+  194/194 tests. Doctor also surfaced + I FIXED 2 pre-existing ~/.raphael issues (missing config.yaml
+  + brain not a git repo): ran `raph init` (non-destructive) -> config + git repo + pre-push guard;
+  committed the 33 lessons (brain 034fe9f). doctor now healthy; invariant #5 (push guard) restored.
 
 ## Phase 10 — Self-use period (2–4 weeks)
 - [ ] Run on Mahesh's own projects; collect retrieval-miss, false-fire, token-cost data
