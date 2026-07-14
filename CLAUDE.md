@@ -162,9 +162,16 @@ compaction (manual or automatic) can never lose progress.
 - M4 shipped (commit 357f383, 61 tests): bank-CSV import adapters + atomic local ledger with
   fingerprint dedupe (the ledger IS a dataset, so report/monthly read it directly); published;
   brain -> 33 (dedupe lesson). academy 4/5.
-- Next: build One Desk M5 — reframed as a LOCAL static single-file HTML dashboard (`onedesk html`),
-  no server/deploy, so it stays inside the boundary and is head-lessly verifiable. Then Phase 9
-  packaging, Phase 7 `raph init --guard`.
+- ONE DESK v1 COMPLETE (commit 15749ce, 64 tests): M5 = self-contained, theme-aware static HTML
+  dashboard (`onedesk html`) with all user text HTML-escaped (the brain's XSS lesson applied to its
+  own build); no server/deploy so it stays in the boundary. All 5 milestones shipped + published;
+  academy onedesk=done. Both Academy products (repo-keeper, onedesk) are now DONE + public. The
+  One Desk build wrote back 4 approved lessons -> brain 33 active.
+- Next (autonomous): the M2/M3 money-review Workflow is still INCONCLUSIVE (agents died on the
+  session limit) — re-run it or rely on the inline review + 64 tests. Then either Academy project
+  #3 (owner criteria: unique + complex + sellable) or raphael Phase 9 (packaging) / Phase 7
+  (`raph init --guard`). Takeaway from this session: run autonomous builds INLINE; heavy parallel
+  Workflows hit the session limit fast.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
