@@ -4,7 +4,7 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-14 (session 03 — repo-keeper published, 29 lessons approved/active, One Desk started)
+Updated: 2026-07-14 (session 03 — repo-keeper + One Desk M1 published, 30 lessons active)
 
 ## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
@@ -211,8 +211,11 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
   (owner idea 1). Claude chose it over the photo grouper (that one needs on-device face ML + a
   GUI, neither verifiable head-lessly). Spec: docs/academy/onedesk-plan.md. Scaffolded at
   Desktop/Projects/onedesk (own git, commit 5a8e44f, M0 runnable CLI); in-progress, 0/5.
-  - [ ] M1 money core + advisor: transaction model, personal/business split, rules engine,
-        advisor (safe-to-pay-yourself + tax set-aside owed + runway); node:test + `onedesk report`.
+  - [x] M1 money core + advisor (commit 3a41f4e, 28 tests): transaction model (integer cents at
+        the edge), personal/business split with an honest 'unclassified' fallback, advisor
+        (safe-to-pay-yourself + tax set-aside on profit + runway), JSON/CSV ingest, `onedesk
+        report`. PUBLISHED public: github.com/maheshaggarwal21/onedesk (keeper-audited clean).
+        Wrote + approved the money-cents lesson -> brain 30 active.
   - [ ] M2 categorization + recurring + anomalies
   - [ ] M3 advisor narrative + monthly report
   - [ ] M4 bank-CSV import adapters + local file store

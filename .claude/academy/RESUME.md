@@ -4,48 +4,55 @@ If you are a new Claude Code session starting in the `raphael` project (because 
 usage limit reset, or the PC restarted mid-build), **read this first, then continue with no
 input from the owner.**
 
-## The one command that tells you where you are
+## Find the active project, then read its checkpoint
 ```
-node bin/raph.js academy status repo-keeper
+node bin/raph.js academy list                 # which projects exist and their status
+node bin/raph.js academy status <project>     # the live checkpoint for one
 ```
-Trust its `NEXT:` line and the milestone checkboxes. That is the live checkpoint, stored in
-`~/.raphael/academy/repo-keeper/state.json` (survives reboots; outside the project repos).
+Trust its `NEXT:` line and the milestone checkboxes. State lives in
+`~/.raphael/academy/<project>/state.json` (survives reboots; outside the project repos).
+The active project is whichever is `in-progress` (currently: **onedesk**; repo-keeper is done).
 
 ## Then
-1. Read the build plan: `docs/academy/backlog.md` (Idea 3 → Repo Keeper → milestones).
-2. Open the workspace listed in the status (`C:\Users\Mahesh\Desktop\Projects\repo-keeper`).
+1. Read the build plan for that project (e.g. `docs/academy/onedesk-plan.md`,
+   `docs/academy/backlog.md`).
+2. Open the workspace listed in the status.
 3. Continue from `NEXT`. Work in small, tested steps. Run the project's tests after each.
 4. **Checkpoint after every meaningful step** so the next resume is clean:
    ```
-   node bin/raph.js academy checkpoint repo-keeper --step "<what you just did>" --next "<the very next action>" --note "<durable note>"
+   node bin/raph.js academy checkpoint <project> --step "<what you just did>" --next "<the very next action>" --note "<durable note>"
    ```
    Mark a milestone done with `--done M2`.
-5. **Use Raphael as you build** (the whole point):
+5. **Use Raphael as you build** (the whole point — the brain now has 30 active lessons):
    - `node bin/raph.js search "<keywords>"` before writing code — pull past lessons.
    - `node bin/raph.js map --refresh` to read the project instead of re-exploring it.
-   - When you learn something durable: `node bin/raph.js note "<one sentence>" --keywords a,b,c`.
-   - The Security Auditor agent reuses the 26-lesson security pack (`raph pack add security`).
+   - When you learn something durable: `node bin/raph.js note "<one sentence>" --keywords a,b,c`,
+     then approve it (`raph approve <id>`; security lessons need `--confirmed`, one at a time).
+
+## Working ritual at each task boundary (see CLAUDE.md)
+`npm test` -> update docs -> commit **and push** -> then it is safe to compact. Do all three
+before declaring anything done, so a compaction never loses work.
 
 ## The autonomy boundary — STOP and hand to the owner (never do these autonomously)
-- deploy / go live
-- sign in or create an account
+- deploy / go live / host a running service
+- sign in or create an account on a third-party service
 - spend money
-- publish (npm publish, app store, etc.)
-- push to a public remote (`git push` to GitHub)
+- anything that mutates production data or real user data
 
-When you reach one:
+**Publishing is NOT a boundary anymore.** Per the owner (session 03), creating the product's
+GitHub repo and pushing it once a milestone is green is Claude's job — do it (create the repo
+via the GitHub API with the cached Git Credential Manager token, self-audit clean first, push,
+add topics). Local-only was the old rule; it no longer applies.
+
+When you reach a real boundary:
 ```
-node bin/raph.js academy boundary repo-keeper --reason "<exactly what the owner must do>"
+node bin/raph.js academy boundary <project> --reason "<exactly what the owner must do>"
 ```
 Then stop and surface it. Do not try to route around the boundary.
 
 ## If a Claude limit stops you mid-step
 ```
-node bin/raph.js academy limit repo-keeper --reset "<when it resets, if shown>"
+node bin/raph.js academy limit <project> --reset "<when it resets, if shown>"
 ```
 Then stop. The next session (or the scheduled auto-resume in
 `.claude/academy/resume.ps1`) picks up from `NEXT`.
-
-## Local commits are fine; pushes are not
-Commit progress locally in the workspace repo after each milestone. Do NOT push. The owner
-does the first push and any deploy.

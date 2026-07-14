@@ -140,10 +140,13 @@ compaction (manual or automatic) can never lose progress.
   grouper was parked with a blunt reason — its value is on-device face ML + a GUI, neither
   verifiable head-lessly, so it is the wrong FIRST autonomous build. One Desk's core is pure
   deterministic money logic = fully testable, same shape that made Repo Keeper work. Scaffolded
-  at Desktop/Projects/onedesk (own git, commit 5a8e44f, M0 runnable CLI). `raph academy status
-  onedesk` = in-progress, 0/5, M1 next.
-- Next: build One Desk M1 (money core + advisor) — the next task; resume with `raph academy
-  resume onedesk`. Then Phase 9 packaging, Phase 7 `raph init --guard`.
+  at Desktop/Projects/onedesk (own git). M1 SHIPPED (commit 3a41f4e, 28 tests): money core +
+  advisor — `onedesk report` answers safe-to-pay-yourself / tax set-aside / runway over a JSON or
+  CSV file; verified on the sample; PUBLISHED public (github.com/maheshaggarwal21/onedesk),
+  keeper-audited clean. The build wrote back + approved a money-cents lesson, so the brain is now
+  30 active. `raph academy status onedesk` = in-progress, 1/5, M2 next.
+- Next: build One Desk M2 (categorization + recurring detection + anomaly flags); resume with
+  `raph academy resume onedesk`. Then Phase 9 packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
