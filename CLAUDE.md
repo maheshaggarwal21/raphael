@@ -194,9 +194,16 @@ compaction (manual or automatic) can never lose progress.
   hook prefers global `raph`, falls back to a baked `node <bin>` path. 206/206 tests (+12). Live
   smoke: staged AWS key BLOCKED, env-var version committed clean. Closes the "used before init" gap
   (guard is git-repo-scoped, independent of ~/.raphael). Memory: [[full-autonomy-academy-mandate]].
-- Next (autonomous, this session): Phase 10 (self-use data collection) -> confirm the development
-  part (Phases 1-10) is complete -> Academy project #3. Money-review Workflow still inconclusive
-  (optional). Takeaway: run autonomous builds INLINE; heavy parallel Workflows hit the limit fast.
+- PHASE 10 TOOLING COMPLETE (session 04): `raph stats [--json]` (src/lib/stats.js pure
+  aggregation + src/commands/stats.js) = the self-use report. Reads state/events.jsonl + the
+  compiled index; surfaces TOKEN COST (per injection/session, cap hits), RETRIEVAL MISS (active
+  lessons that never fire), and a FALSE-FIRE PROXY (prompt fires barely over the 4.0 threshold —
+  labeled a proxy; a true "unhelpful" channel is unbuilt). Review funnel always shown. 213/213
+  (+7). Dogfooded on the real brain (33 approved, 0 live injections yet, shown honestly) + sandbox
+  smoke of the populated inject->events->stats path. The 2-4 week RUN itself is calendar, not code.
+- Next (autonomous, this session): confirm the development part (Phases 1-10) is complete via a
+  quick audit -> then Academy project #3. Money-review Workflow still inconclusive (optional).
+  Takeaway: run autonomous builds INLINE; heavy parallel Workflows hit the limit fast.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

@@ -185,9 +185,23 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
   + brain not a git repo): ran `raph init` (non-destructive) -> config + git repo + pre-push guard;
   committed the 33 lessons (brain 034fe9f). doctor now healthy; invariant #5 (push guard) restored.
 
-## Phase 10 — Self-use period (2–4 weeks)
-- [ ] Run on Mahesh's own projects; collect retrieval-miss, false-fire, token-cost data
-- [ ] Fix what the data says; curate the first real lesson set
+## Phase 10 — Self-use period (2–4 weeks) — TOOLING COMPLETE, runtime is calendar
+- [x] Self-use analytics substrate (COMPLETE 2026-07-14, session 04): `raph stats [--json]`
+      (src/lib/stats.js pure aggregation + src/commands/stats.js) turns the append-only
+      audit log (state/events.jsonl) + the compiled index into the three signals this phase
+      exists to surface — TOKEN COST (per injection / per session, cap hits), RETRIEVAL MISS
+      (active lessons that never fire = dead weight or triggers too narrow), and a FALSE-FIRE
+      PROXY (lessons firing on prompts barely over the 4.0 threshold; honestly labeled a proxy
+      since a true "unhelpful" signal needs a user feedback channel not yet built). Review
+      funnel (approved/rejected/suppressed) always shown. 7 tests; 213/213. Dogfooded on the
+      real brain (33 approved, 0 live injections yet — shown honestly) AND smoke-verified the
+      populated path in a sandbox (inject -> events -> stats end to end).
+- [ ] Run on Mahesh's own projects for real (calendar activity): with the plugin installed and
+      injection ON, use hooked agent sessions; `raph stats` accumulates the real data. NOT a
+      code task — needs live usage over time.
+- [ ] Fix what the data says; curate the first real lesson set (follows the run above)
+- Note: a genuine false-fire feedback channel ("mark this injection unhelpful") is the one
+  missing datum stats can only proxy — candidate follow-up if the proxy proves insufficient.
 
 ## Phase 11 — Distribution (v0.2, pre-launch)
 - [ ] `raphael-arise` one-command setup + auto mode + restricted `auto` tier enforcement

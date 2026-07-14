@@ -23,7 +23,8 @@ const COMMANDS = {
   map: () => import('./commands/map.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
-  guard: () => import('./commands/guard.js')
+  guard: () => import('./commands/guard.js'),
+  stats: () => import('./commands/stats.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -57,6 +58,8 @@ Commands:
               (raph search <terms> [--audience <agent>] [--json])
   why         Show what got injected, matched on what, and the token cost
               (raph why [--last N])
+  stats       Self-use report: token cost, which lessons earn their keep, and
+              which never fire (retrieval miss) (raph stats [--json])
   on / off    Enable / disable injection (mining and review keep working)
   inject      Hook plumbing: reads the hook JSON on stdin, prints context
               (raph inject --event session-start|user-prompt; always exits 0)
