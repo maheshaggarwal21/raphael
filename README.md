@@ -11,13 +11,16 @@ back into your agent's context at the right moment, so known mistakes stop recur
 Two steps: install the CLI, then add the plugin.
 
 ```
-# 1. the raph CLI (the engine — the plugin's hooks call it)
-npm install -g raphael-brain
+# 1. the raph CLI (the engine — the plugin's hooks call it), from GitHub
+npm install -g maheshaggarwal21/raphael
 
 # 2. the Claude Code plugin (auto-wires recall + adds the /brain commands)
 /plugin marketplace add maheshaggarwal21/raphael
 /plugin install raphael-brain@raphael
 ```
+
+(A published `raphael-brain` on the npm registry is a later convenience — the GitHub install
+above works today and gives you the same `raph` CLI.)
 
 Then run **`/brain`** — it walks you through the first five minutes (init, seed a lesson
 pack or mine your own history, review, and turn injection on). The plugin ships:

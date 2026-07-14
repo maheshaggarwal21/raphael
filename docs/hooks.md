@@ -2,7 +2,7 @@
 
 **Preferred: install the plugin.** The Raphael plugin (`plugin/`) registers these hooks
 automatically via `plugin/hooks/hooks.json` — install the CLI (`npm install -g
-raphael-brain`) so `raph` is on PATH, then add the plugin in Claude Code:
+maheshaggarwal21/raphael`) so `raph` is on PATH, then add the plugin in Claude Code:
 
 ```
 /plugin marketplace add maheshaggarwal21/raphael

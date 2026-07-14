@@ -82,7 +82,7 @@ export default async function doctor() {
   // `raph` on PATH — the plugin's hooks call the bare `raph` command, so it must resolve
   // globally (npm install -g) even though `node bin/raph.js` works in this repo.
   const raphOnPath = spawnSync('raph', ['version'], { encoding: 'utf8', shell: true });
-  add('raph on PATH (plugin hooks call it)', raphOnPath.status === 0, 'install globally: npm install -g raphael-brain', true);
+  add('raph on PATH (plugin hooks call it)', raphOnPath.status === 0, 'install globally: npm install -g maheshaggarwal21/raphael', true);
 
   // Plugin packaging present (relative to this CLI). WARN-only: the CLI runs fine without it,
   // but the Claude Code plugin needs the manifest + hooks to auto-wire recall.

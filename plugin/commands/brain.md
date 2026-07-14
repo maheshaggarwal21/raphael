@@ -9,7 +9,7 @@ moment. Guide them through the **first five minutes** based on the real state.
 
 First run `raph doctor` and `raph status`. Read the output, then act on whichever case applies:
 
-1. **`raph` not found** — tell them to run `npm install -g raphael-brain`, then re-run `/brain`.
+1. **`raph` not found** — tell them to run `npm install -g maheshaggarwal21/raphael`, then re-run `/brain`.
 2. **Brain not initialized** (doctor says run `raph init`) — run `raph init` for them, then continue.
 3. **Empty brain** (0 lessons, 0 candidates) — offer the two fastest paths to value:
    - `raph pack add security` — seed 26 curated security lessons as reviewable candidates, then `/brain-review`.
