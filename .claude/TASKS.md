@@ -189,8 +189,18 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
       Startup-folder launcher (no-admin logon run) + register-resume-task.ps1 (schtasks
       alternative for elevated shells) + AUTORESUME.md. Layer 1 (checkpoint) is the reliable
       resume; Layer 2 (logon launch) is best-effort. schtasks needs admin (not available here).
-- First Academy project build: repo-keeper M1 DONE (scaffold + scanner core, 7 tests,
-  committed b304a91 local). M2 (Keeper freshness) next. Workspace: Desktop/Projects/repo-keeper.
+- FIRST ACADEMY PROJECT COMPLETE: "Repo Keeper" v1 (Desktop/Projects/repo-keeper, own git,
+  LOCAL only). All 5 milestones, 41 tests, commits b304a91..0296267:
+  - M1 scanner core (`keeper scan`), M2 freshness (`keeper freshen`), M3 doc-sync
+    (`keeper docs`), M4 security auditor (`keeper audit`), M5 integration (`keeper report`).
+  - Dogfooded on the raphael repo itself: `keeper report` found a real false-positive class
+    (fake secrets in eval/test fixtures flagged CRITICAL) -> fixed (test-path downgrade to
+    low "verify"). Fixed its own missing lockfile too. 3 lessons written back to the brain.
+  - status=done in the academy checkpoint; Startup auto-resume launcher removed (build
+    finished in-session). OWNER HANDOFF: publishing repo-keeper (git push / GitHub repo) is
+    the autonomy boundary — owner does it; the tool already runs on any local repo today.
+- Academy driver proven end to end: start -> checkpoint per milestone -> resume runbook ->
+  boundary/limit handling -> done. Ready to run the next project (owner's web/app ideas).
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
       -> prep-deploy) stage by stage, output-of-one -> input-of-next
 - [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time

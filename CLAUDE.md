@@ -100,13 +100,16 @@ the right moment. Ships as a Claude Code plugin with a Node CLI (`raph`).
     no-admin Startup-folder logon launcher. Survives limit resets AND reboots; Layer 1
     (checkpoint) reliable, Layer 2 (auto-launch) best-effort. 189 -> 189+ tests green.
   - Repo Keeper product at C:/Users/Mahesh/Desktop/Projects/repo-keeper (own git, LOCAL only,
-    never pushed). M1 (scaffold + scanner core, `keeper scan`) + M2 (freshness engine,
-    `keeper freshen`) DONE, 25 tests. Next: M3 Doc-Sync, M4 Security Auditor (reuses the
-    pack), M5 integration. Resume anytime: `node bin/raph.js academy status repo-keeper`.
-  - AUTONOMY BOUNDARY (enforced): builds are local + committed locally; STOP before deploy /
-    sign-in / spend / publish / public push — record via `raph academy boundary` and hand to owner.
-- Next: continue Repo Keeper M3->M5 autonomously (resumable). Then Phase 9 packaging, Phase 7
-  `raph init --guard`.
+    never pushed) — v1 COMPLETE, all 5 milestones, 41 tests, commits b304a91..0296267:
+    `keeper scan|freshen|docs|audit|report`. Three agents (freshness, doc-sync, security
+    auditor) over one scanner, folded into one vitality verdict. Dogfooded on the raphael repo
+    (`keeper report`) which caught a real false-positive class (fixture secrets) -> fixed.
+    Wrote 3 lessons back to the brain (candidates). academy status=done.
+  - AUTONOMY BOUNDARY (enforced + honored): the whole build stayed local + committed locally;
+    publishing repo-keeper (git push / GitHub repo) was NOT done — it's the owner's action.
+- Next: owner picks the next Academy project (their web/app ideas); the driver is proven end
+  to end (start->checkpoint->resume->boundary->done). Then Phase 9 packaging, Phase 7
+  `raph init --guard`. Optional: approve the security pack + 3 new candidates to start the flywheel.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
