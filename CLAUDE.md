@@ -144,9 +144,17 @@ compaction (manual or automatic) can never lose progress.
   advisor — `onedesk report` answers safe-to-pay-yourself / tax set-aside / runway over a JSON or
   CSV file; verified on the sample; PUBLISHED public (github.com/maheshaggarwal21/onedesk),
   keeper-audited clean. The build wrote back + approved a money-cents lesson, so the brain is now
-  30 active. `raph academy status onedesk` = in-progress, 1/5, M2 next.
-- Next: build One Desk M2 (categorization + recurring detection + anomaly flags); resume with
-  `raph academy resume onedesk`. Then Phase 9 packaging, Phase 7 `raph init --guard`.
+  30 active. `raph academy status onedesk` = in-progress, 2/5, M3 next (M1+M2 shipped + pushed).
+- Session 03 (later) — owner set a STANDING FULL-AUTONOMY mandate: "you have to be autonomous,
+  i should not say resume again and again you are on your own from now on." So: build milestone
+  by milestone without asking, run the ritual each time (test -> docs -> commit+push -> publish
+  green milestone -> checkpoint -> continue). Auto-resume RE-ARMED and made project-agnostic
+  (.claude/academy/resume.ps1 finds any in-progress project; Startup launcher back in place) so a
+  reboot or limit-reset continues the build with no owner input. Memory: [[full-autonomy-academy-mandate]].
+  One Desk M2 shipped (commit 794e7cf, 44 tests): categorization + recurring detection + anomaly
+  flags; published; brain -> 31 active (anomaly-threshold lesson).
+- Next: build One Desk M3 (advisor narrative + monthly report). Then M4 (import + local store),
+  M5 (thin UI, behind boundary). Then Phase 9 packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
