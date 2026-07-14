@@ -32,7 +32,7 @@ compaction (manual or automatic) can never lose progress.
      each milestone, alongside the commit) is the belt-and-suspenders: even a mid-task
      compaction or a limit/reboot resumes from it.
 
-## Current state (updated 2026-07-14, session 03)
+## Current state (updated 2026-07-14, session 04)
 - Phase 1 (foundation) COMPLETE: schema (incl. `scope.agents`), validation chokepoint,
   secret scrubber, ULID ids, frontmatter, atomic writes, evidence records,
   `raph init|status|validate|doctor`.
@@ -181,10 +181,22 @@ compaction (manual or automatic) can never lose progress.
   installed the pre-push guard; committed the 33 lessons as the initial snapshot (brain 034fe9f).
   `raph doctor` now reports healthy. The brain finally has history + the accidental-push guard
   (invariant #5). Note for future: a bare `raph status`/`pack`/`note`/`approve` on a fresh HOME does
-  NOT auto-init — run `raph init` first (Phase 7 `raph init --guard` should also cover this).
-- Next (autonomous): Phase 10 (self-use data) or Phase 7 (`raph init --guard`), or Academy project
-  #3. Money-review Workflow still inconclusive (optional re-run). Takeaway: run autonomous builds
-  INLINE; heavy parallel Workflows hit the session limit fast.
+  NOT auto-init the brain — run `raph init` first. (Phase 7's `--guard` is project-scoped and does
+  NOT auto-init the brain; a small `raph init` auto-run-on-first-write guard is still open, Phase 7-ish.)
+- Session 04 (2026-07-14) — owner directive: STOP asking each step; decide what's best for
+  Raphael and just do it. Sequence set = Phase 7 -> Phase 10 -> confirm dev complete -> Academy #3.
+  PHASE 7 COMPLETE: `raph init --guard` (+ `raph guard install|uninstall|scan`) = a deterministic
+  pre-commit secret scanner for the OWNER's own repos (distinct from the brain's pre-push guard).
+  src/lib/guard.js reuses the chokepoint's exact patterns (scrub.js now exports SECRET_RULES +
+  isHighEntropyToken — one definition of "secret"); named rules block by default, entropy pass is
+  opt-in (--entropy) so it won't false-fire on lockfiles; scans STAGED blob content; fails-open on
+  binary/oversized/unreadable; refuses to clobber a foreign pre-commit hook (--force overrides);
+  hook prefers global `raph`, falls back to a baked `node <bin>` path. 206/206 tests (+12). Live
+  smoke: staged AWS key BLOCKED, env-var version committed clean. Closes the "used before init" gap
+  (guard is git-repo-scoped, independent of ~/.raphael). Memory: [[full-autonomy-academy-mandate]].
+- Next (autonomous, this session): Phase 10 (self-use data collection) -> confirm the development
+  part (Phases 1-10) is complete -> Academy project #3. Money-review Workflow still inconclusive
+  (optional). Takeaway: run autonomous builds INLINE; heavy parallel Workflows hit the limit fast.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

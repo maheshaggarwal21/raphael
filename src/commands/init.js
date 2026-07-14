@@ -27,7 +27,7 @@ echo "raphael: to allow a remote on purpose, delete .git/hooks/pre-push in the b
 exit 1
 `;
 
-export default async function init() {
+export default async function init(args = []) {
   const created = [];
   const dirs = [
     p.lessons(), p.retired(), p.quarantine(), p.evidence(), p.maps(),
@@ -65,5 +65,21 @@ export default async function init() {
     console.log(`raph: initialized brain at ${p.home()}`);
     for (const c of created) console.log(`  created ${c}`);
   }
+
+  // --guard also installs the project secret guard (a pre-commit hook that
+  // blocks secrets) in the CURRENT git repo — distinct from the brain's own
+  // pre-push guard above. Never fatal: a missing/foreign hook just warns.
+  if (args.includes('--guard')) {
+    const { installPreCommitHook } = await import('../lib/guard.js');
+    const res = installPreCommitHook(process.cwd());
+    if (res.ok) {
+      console.log(`raph: project secret guard installed -> ${res.hookPath}`);
+    } else if (res.reason === 'not-a-git-repo') {
+      console.warn('raph: --guard skipped — this directory is not a git repository (run "raph guard install" inside one).');
+    } else if (res.reason === 'foreign-hook') {
+      console.warn(`raph: --guard skipped — a non-raphael pre-commit hook already exists (${res.hookPath}). Use "raph guard install --force" to replace it.`);
+    }
+  }
+
   return 0;
 }

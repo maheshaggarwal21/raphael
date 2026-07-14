@@ -1,6 +1,9 @@
 // Secret scrubber. Runs BEFORE any model ever sees mined text, and again on
 // pipeline output. Replacements are typed placeholders, never partial masks.
 
+// The named secret patterns. Exported (as SECRET_RULES) so the project secret
+// guard (src/lib/guard.js) scans with the EXACT same rules the chokepoint uses —
+// one source of truth for what counts as a secret.
 const RULES = [
   ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g],
   ['aws-key', /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
@@ -34,15 +37,22 @@ function shannon(s) {
 // exempting them is safe.
 const RAPHAEL_ID_RE = /^(?:les_|ev_|prj_|mch_)[0-9A-HJKMNP-TV-Z]{26}$/;
 
+// True when a single token looks like a high-entropy secret. Shared by the
+// scrubber (below) and the guard's opt-in --entropy pass, so both agree.
+export function isHighEntropyToken(tok) {
+  if (tok.length < ENTROPY_MIN_LEN) return false;
+  if (tok.includes('<SECRET:')) return false;
+  const bare = tok.replace(/^[[('"]+|[\])>,'"]+$/g, '');
+  if (RAPHAEL_ID_RE.test(bare)) return false;
+  // require a mixed charset so long ordinary words never trip the scan
+  if (!/[0-9]/.test(tok) || !/[A-Za-z]/.test(tok)) return false;
+  if (shannon(tok) < ENTROPY_THRESHOLD) return false;
+  return true;
+}
+
 function scrubEntropy(text, found) {
   return text.replace(/[^\s"'`]+/g, (tok) => {
-    if (tok.length < ENTROPY_MIN_LEN) return tok;
-    if (tok.includes('<SECRET:')) return tok;
-    const bare = tok.replace(/^[[('"]+|[\])>,'"]+$/g, '');
-    if (RAPHAEL_ID_RE.test(bare)) return tok;
-    // require a mixed charset so long ordinary words never trip the scan
-    if (!/[0-9]/.test(tok) || !/[A-Za-z]/.test(tok)) return tok;
-    if (shannon(tok) < ENTROPY_THRESHOLD) return tok;
+    if (!isHighEntropyToken(tok)) return tok;
     found.push('high-entropy');
     return '<SECRET:high-entropy>';
   });
@@ -60,3 +70,8 @@ export function scrubSecrets(text) {
   out = scrubEntropy(out, found);
   return { text: out, found };
 }
+
+// The named rules, exposed for the project secret guard. Kept read-only in
+// spirit: consumers build fresh RegExps from these so shared lastIndex state
+// never leaks between scans.
+export const SECRET_RULES = RULES;

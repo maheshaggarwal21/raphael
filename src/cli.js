@@ -22,7 +22,8 @@ const COMMANDS = {
   eval: () => import('./commands/eval.js'),
   map: () => import('./commands/map.js'),
   pack: () => import('./commands/pack.js'),
-  academy: () => import('./commands/academy.js')
+  academy: () => import('./commands/academy.js'),
+  guard: () => import('./commands/guard.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -31,6 +32,8 @@ Usage: raph <command> [options]
 
 Commands:
   init        Create ~/.raphael, the brain git repo, and default config
+              (raph init [--guard] — --guard also installs the project secret
+               guard in the current git repo)
   status      Show brain health: lesson counts, pending candidates, mode
   validate    Run the safety chokepoint on lesson files
               (raph validate <file...> | raph validate --all)
@@ -65,6 +68,8 @@ Commands:
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts
               (raph academy start|status|resume|checkpoint|boundary|limit|list)
+  guard       Block commits that would leak secrets in YOUR projects
+              (raph guard install|uninstall|scan [--staged|--all|<path...>])
   help        Show this help
   version     Show version
 

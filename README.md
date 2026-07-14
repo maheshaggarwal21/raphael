@@ -34,6 +34,22 @@ pack or mine your own history, review, and turn injection on). The plugin ships:
 
 Run `raph doctor` any time to check the CLI, brain, and plugin wiring.
 
+## Secret guard (for your own repos)
+
+`raph guard` installs a pre-commit hook that blocks a commit if it would leak a secret —
+API keys, tokens, private keys, `key=secret` assignments — using the same patterns as the
+brain's safety chokepoint.
+
+```
+raph guard install          # in any git repo (or: raph init --guard)
+raph guard scan --all       # audit every tracked file now
+raph guard uninstall
+```
+
+High-precision by default; add `--entropy` for the noisier high-entropy pass. It scans the
+staged content, never touches history, and fails open (a broken scan can't wedge a commit).
+Bypass a single commit with `git commit --no-verify`.
+
 ## Development
 
 ```

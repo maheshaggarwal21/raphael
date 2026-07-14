@@ -132,13 +132,25 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
       182/182 total. Smoke: `raph pack add security` seeded 19 candidates, 0 quarantined.
 - Ties into Phase 12: every Academy build must pass `security-audit` before the deploy boundary.
 
-## Phase 7 — Project maps + secrets guard
+## Phase 7 — Project maps + secrets guard ✅ COMPLETE
 - [x] `raph map` generator — pulled forward (Phase 8 spine rule 3 needs it). DETERMINISTIC
       by default (pure scan + `git log` churn = zero tokens): stack, entry points, top-level
       structure, hottest files. Optional `--summary` = one cheap-model trouble-spots pass.
       Cached to brain/maps/<project>.md, `--refresh`. src/lib/map.js + commands/map.js.
-- [ ] `raph init --guard`: deterministic pre-commit secret scanner for user projects
-      (the remaining Phase 7 item — independent of the agent layer)
+- [x] `raph init --guard`: deterministic pre-commit secret scanner for user projects
+      (COMPLETE 2026-07-14, session 04). src/lib/guard.js reuses the chokepoint's EXACT
+      secret patterns (scrub.js SECRET_RULES + isHighEntropyToken, now exported — one
+      definition of "secret"). Named high-precision rules block by default; the noisy
+      entropy pass is opt-in (--entropy) so the gate doesn't false-fire on lockfiles.
+      `raph guard install|uninstall|scan [--staged|--all|<path...>]` (src/commands/guard.js);
+      `raph init --guard` also installs it in the current repo. Hook scans STAGED blob
+      content, fails-open on binary/oversized/unreadable files, never wedges a commit;
+      refuses to clobber a foreign pre-commit hook (--force overrides); prefers global
+      `raph`, falls back to a baked `node <bin>` path. Bypass one commit: git commit
+      --no-verify. 12 tests (test/guard.test.js). Live-smoke verified end to end: a staged
+      AWS key was blocked, moving it to an env var let the commit through. 206/206.
+      (This also closes the "used before init" gap: guard install is git-repo-scoped and
+      independent of brain init.)
 
 ## Phase 8 — Agent layer ✅ COMPLETE
 - [x] Shared spine (brain-first, free-checks-first, map-not-repo, cheap→strong, write-back)
