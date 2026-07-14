@@ -4,7 +4,7 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-14 (session 03 — repo-keeper + One Desk M1/M2/M3 published, 32 lessons active)
+Updated: 2026-07-14 (session 03 — repo-keeper + One Desk M1-M4 published, 33 lessons active)
 
 ## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
@@ -210,7 +210,7 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - PROJECT #2 STARTED (session 03): "One Desk" — personal+business money engine & advisor
   (owner idea 1). Claude chose it over the photo grouper (that one needs on-device face ML + a
   GUI, neither verifiable head-lessly). Spec: docs/academy/onedesk-plan.md. Scaffolded at
-  Desktop/Projects/onedesk (own git); in-progress, 3/5 (M1+M2+M3 shipped + published).
+  Desktop/Projects/onedesk (own git); in-progress, 4/5 (M1-M4 shipped + published).
   - [x] M1 money core + advisor (commit 3a41f4e, 28 tests): transaction model (integer cents at
         the edge), personal/business split with an honest 'unclassified' fallback, advisor
         (safe-to-pay-yourself + tax set-aside on profit + runway), JSON/CSV ingest, `onedesk
@@ -225,8 +225,12 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
         deterministic plain-language GUIDANCE/WATCH from the numbers (no LLM, testable, offline,
         never fabricates); `onedesk monthly` = per-month business/personal breakdown + top
         categories. Pushed. Wrote + approved the deterministic-narrative lesson -> brain 32 active.
-  - [ ] M4 bank-CSV import adapters + local file store
-  - [ ] M5 thin UI (deferred behind the autonomy boundary)
+  - [x] M4 bank-CSV import adapters + local file store (commit 357f383, 61 tests): importers.js
+        (aliased headers, debit/credit or signed amount, accounting negatives, mdy/dmy/ymd) +
+        store.js/files.js (atomic JSON ledger, fingerprint dedupe; ledger IS a dataset so
+        report/monthly read it directly). Verified end-to-end. Pushed. brain 33 (dedupe lesson).
+  - [ ] M5 thin UI — reframed: a LOCAL static single-file HTML dashboard generator (`onedesk
+        html`), no server/host/deploy, so it stays inside the boundary and is buildable.
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
       -> prep-deploy) stage by stage, output-of-one -> input-of-next
 - [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time

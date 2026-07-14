@@ -159,8 +159,12 @@ compaction (manual or automatic) can never lose progress.
   INLINE after the 3:30pm IST reset. Takeaway: run autonomous Academy builds inline; heavy parallel
   workflows hit the limit fast. That money-review is still INCONCLUSIVE (agents errored before
   running) — re-run it, or an inline review, before claiming the money logic is externally audited.
-- Next: build One Desk M4 (bank-CSV import adapters + local file store). Then M5 (thin UI, behind
-  the boundary). Then Phase 9 packaging, Phase 7 `raph init --guard`.
+- M4 shipped (commit 357f383, 61 tests): bank-CSV import adapters + atomic local ledger with
+  fingerprint dedupe (the ledger IS a dataset, so report/monthly read it directly); published;
+  brain -> 33 (dedupe lesson). academy 4/5.
+- Next: build One Desk M5 — reframed as a LOCAL static single-file HTML dashboard (`onedesk html`),
+  no server/deploy, so it stays inside the boundary and is head-lessly verifiable. Then Phase 9
+  packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
