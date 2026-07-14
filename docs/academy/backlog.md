@@ -102,3 +102,49 @@ repos they're afraid to touch. The owner has exactly this pain.
 - **M5** Integration (`keeper report` = all three) + docs + a self-run on Repo Keeper itself.
 
 Each milestone: tests green, checkpoint written, local commit. No push/deploy without the owner.
+
+---
+
+## Project #3 (data) — "Assay": vet a dataset before you trust it  ← **BUILDING (session 04)**
+
+The backlog's original three ideas are consumed: Repo Keeper (DONE + public), One Desk (DONE +
+public), and the photo grouper "Rolls" (parked — its value is on-device face ML + a GUI, neither
+head-lessly verifiable, so it is the wrong shape for an autonomous test-driven loop). Project #3
+is a NEW pick chosen by Claude under the full-autonomy mandate.
+
+**Idea.** A deterministic CLI (`assay`) that points at a dataset (CSV / JSON / JSONL) and tells
+you what's in it and whether it's safe to ship, share, or load — the "vet before you trust it"
+step every data handoff skips:
+- **Schema inference:** per-column type (integer/number/boolean/date/datetime/email/uuid/url/
+  string), format, nullability, cardinality, min/max/sample.
+- **PII / sensitive-data report:** column-level classification (email, phone, SSN, credit card
+  w/ Luhn, IP, secrets/keys, name/address heuristics) with a confidence + severity — reuses and
+  extends Raphael's own scrubber patterns (scrub.js SECRET_RULES / isHighEntropyToken).
+- **Data-quality report:** completeness (nulls), uniqueness (dup rows + candidate keys), validity
+  (values matching the inferred type/format), consistency (type drift), numeric outliers (IQR).
+- **Data contract + redaction plan:** emit a declarative, enforceable contract (JSON) and a
+  redaction plan (drop/mask/hash which columns); `assay check <file> --contract c.json` validates
+  a dataset against it in CI.
+
+**Who it's for:** anyone who receives, ships, or loads a data file and needs to know its shape,
+its risks (PII leaking into logs/exports/training data), and its quality — data engineers,
+analysts, privacy/compliance, and any dev wiring a CSV import.
+
+**Why it qualifies** (unique + complex + sellable + head-lessly verifiable):
+- Pure file-in → report-out: deterministic, no UI/ML/network/deploy — perfect for the autonomous
+  test-driven loop, same shape that made Repo Keeper + One Desk work.
+- Dogfoods Raphael: the PII engine extends scrub.js; it can run the security pack + feed mining.
+- Real market: data governance / GDPR-CCPA / data quality. Distinct from #1 (money) and #2 (repos).
+- Entirely local + reversible → inside the autonomy boundary; publish green milestones.
+
+### Assay v1 — build plan (milestones)
+- **M1** Scaffold (own repo, zero-dep package.json, `assay` CLI entry, node:test, README, LICENSE)
+  + **ingest core**: CSV (delimiter/quote/newline-safe) + JSON array + JSONL → a normalized
+  column table; `assay profile <file>` (row/col counts, column names).
+- **M2** **Schema inference**: per-column type + format + nullability + cardinality; `assay schema`.
+- **M3** **PII classifier**: column-level sensitive-data detection (extends scrub.js); `assay pii`.
+- **M4** **Data quality**: completeness / uniqueness / validity / consistency / outliers; `assay quality`.
+- **M5** **Contract + integration**: emit a data contract + redaction plan; `assay check --contract`;
+  `assay report` = all of it; self-run on a sample dataset + docs.
+
+Workspace: C:/Users/Mahesh/Desktop/Projects/assay (own git). Checkpoint: `raph academy status assay`.
