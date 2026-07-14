@@ -151,10 +151,16 @@ compaction (manual or automatic) can never lose progress.
   green milestone -> checkpoint -> continue). Auto-resume RE-ARMED and made project-agnostic
   (.claude/academy/resume.ps1 finds any in-progress project; Startup launcher back in place) so a
   reboot or limit-reset continues the build with no owner input. Memory: [[full-autonomy-academy-mandate]].
-  One Desk M2 shipped (commit 794e7cf, 44 tests): categorization + recurring detection + anomaly
-  flags; published; brain -> 31 active (anomaly-threshold lesson).
-- Next: build One Desk M3 (advisor narrative + monthly report). Then M4 (import + local store),
-  M5 (thin UI, behind boundary). Then Phase 9 packaging, Phase 7 `raph init --guard`.
+  One Desk M2 shipped (commit 794e7cf, 44 tests): categorization + recurring + anomaly flags;
+  published; brain -> 31. M3 shipped (commit b9e78eb, 50 tests): deterministic advisor narrative
+  (GUIDANCE/WATCH, no LLM) + `onedesk monthly`; published; brain -> 32.
+- LIMIT EVENT self-handled (session 03): an adversarial money-review Workflow (3 parallel agents)
+  burned the session limit; recorded `raph academy limit`, stayed clean + pushed, and resumed M3
+  INLINE after the 3:30pm IST reset. Takeaway: run autonomous Academy builds inline; heavy parallel
+  workflows hit the limit fast. That money-review is still INCONCLUSIVE (agents errored before
+  running) — re-run it, or an inline review, before claiming the money logic is externally audited.
+- Next: build One Desk M4 (bank-CSV import adapters + local file store). Then M5 (thin UI, behind
+  the boundary). Then Phase 9 packaging, Phase 7 `raph init --guard`.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

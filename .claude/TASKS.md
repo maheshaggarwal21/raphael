@@ -4,7 +4,7 @@
 > phase, and log every session in `.claude/logs/`. Keep this file honest — it is the
 > single source of truth for build progress. Phases follow ARCHITECTURE.md §10.
 
-Updated: 2026-07-14 (session 03 — repo-keeper + One Desk M1/M2 published, 31 lessons active)
+Updated: 2026-07-14 (session 03 — repo-keeper + One Desk M1/M2/M3 published, 32 lessons active)
 
 ## Phase 1 — Foundation (schema + chokepoint) ✅ COMPLETE
 - [x] Project scaffold: package.json (Node ESM, deps: js-yaml + ajv only), bin/raph.js, src/ layout, git init
@@ -210,7 +210,7 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - PROJECT #2 STARTED (session 03): "One Desk" — personal+business money engine & advisor
   (owner idea 1). Claude chose it over the photo grouper (that one needs on-device face ML + a
   GUI, neither verifiable head-lessly). Spec: docs/academy/onedesk-plan.md. Scaffolded at
-  Desktop/Projects/onedesk (own git); in-progress, 2/5 (M1+M2 shipped + published).
+  Desktop/Projects/onedesk (own git); in-progress, 3/5 (M1+M2+M3 shipped + published).
   - [x] M1 money core + advisor (commit 3a41f4e, 28 tests): transaction model (integer cents at
         the edge), personal/business split with an honest 'unclassified' fallback, advisor
         (safe-to-pay-yourself + tax set-aside on profit + runway), JSON/CSV ingest, `onedesk
@@ -221,7 +221,10 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
         gate, monthly vs irregular), and 3 anomaly checks (scope-mismatch / category-spike /
         large-expense) tuned low-false-positive; examples/sample-messy.json demos them. Pushed.
         Wrote + approved the anomaly-threshold lesson -> brain 31 active.
-  - [ ] M3 advisor narrative + monthly report
+  - [x] M3 advisor narrative + monthly report (commit b9e78eb, 50 tests): narrative.js =
+        deterministic plain-language GUIDANCE/WATCH from the numbers (no LLM, testable, offline,
+        never fabricates); `onedesk monthly` = per-month business/personal breakdown + top
+        categories. Pushed. Wrote + approved the deterministic-narrative lesson -> brain 32 active.
   - [ ] M4 bank-CSV import adapters + local file store
   - [ ] M5 thin UI (deferred behind the autonomy boundary)
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
