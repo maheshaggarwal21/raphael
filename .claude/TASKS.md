@@ -276,6 +276,32 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
   - ONE DESK v1 COMPLETE (5/5), published at github.com/maheshaggarwal21/onedesk. academy=done.
     Wrote back 4 lessons this build (money-cents, anomaly-threshold, deterministic-narrative,
     import-dedupe) — all approved -> brain 33 active.
+- PROJECT #3 COMPLETE (sessions 04-05): "Assay" — data-vetting CLI (schema + PII + quality +
+  data contract) for any CSV/JSON/JSONL. Chosen by Claude (backlog #3 section); zero-dep,
+  head-lessly verifiable, dogfoods scrub.js. Desktop/Projects/assay (own git), PUBLISHED
+  public: github.com/maheshaggarwal21/assay. 5/5 milestones, 59 tests, academy=done.
+  - [x] M1 ingest core (b536617, 19 tests): CSV/TSV/JSON/JSONL -> one normalized table;
+        RFC-4180-ish tokenizer; unquoted-empty=null vs quoted-""; `assay profile`.
+  - [x] M2 schema inference (0e24def, 30 tests): classifyValue most-specific-type ->
+        resolveType (integer collapses into number; genuinely mixed -> string + MIXED drift
+        flag); leading-zero numerics stay strings (codes); nullability/cardinality/ranges;
+        `assay schema [--json]`. Live: planted not-a-date correctly flagged MIXED.
+  - [x] M3 PII report (2ff9c3d, 42 tests): content detectors (email, phone, SSN w/ SSA rules,
+        card w/ Luhn, IPv4) that search INSIDE free text; secret shapes ported 1:1 from
+        scrub.js SECRET_RULES (verified vs canonical examples); column-name hints (dob, name,
+        password...); samples masked, secrets never sampled; exit 1 on critical -> pipeline
+        gate. `assay pii [--json]`. Fixed SSN/phone double-fire.
+  - [x] M4 quality report (3cec9bd, 51 tests): completeness/validity(vs dominant type)/
+        uniqueness(+candidate keys)/consistency scored 0-100 + itemized issues; IQR outliers
+        deliberately WATCH-only, not scored. `assay quality [--min N]` gates. Live: people.csv
+        94/100. Guard fixture false-positive class hit + hand-vetted + lesson written.
+  - [x] M5 data contract (522a8f3, 59 tests): emitContract locks types/required/unique +
+        DECLARES PII (redaction plan: drop/mask/review) + quality floor; checkContract fails
+        on missing columns, type drift, broken keys, quality regression, and UNDECLARED
+        critical PII even in new columns (integer satisfies number; ranges recorded, not
+        enforced). `assay contract|check|report`. Live e2e: drifted file failed all 4 classes.
+  - Wrote back 4 approved lessons this build (scanner-fixture false positives, leading-zero
+    codes, outliers-are-WATCH, contract-enforce-vs-record) -> brain 37 active.
 - [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
       -> prep-deploy) stage by stage, output-of-one -> input-of-next
 - [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time

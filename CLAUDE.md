@@ -32,7 +32,7 @@ compaction (manual or automatic) can never lose progress.
      each milestone, alongside the commit) is the belt-and-suspenders: even a mid-task
      compaction or a limit/reboot resumes from it.
 
-## Current state (updated 2026-07-14, session 04)
+## Current state (updated 2026-07-16, session 05)
 - Phase 1 (foundation) COMPLETE: schema (incl. `scope.agents`), validation chokepoint,
   secret scrubber, ULID ids, frontmatter, atomic writes, evidence records,
   `raph init|status|validate|doctor`.
@@ -225,9 +225,26 @@ compaction (manual or automatic) can never lose progress.
     key-union columns) + `assay profile`. Public: github.com/maheshaggarwal21/assay (topics added).
     Pre-publish gate: vetted with raphael's OWN new `raph guard scan --all` = clean (nice dogfood).
     academy status=in-progress 1/5, M2 next.
-- Next (autonomous, this session): Assay M2 (schema inference) -> M3 (PII, extends scrub.js) ->
-  M4 (quality) -> M5 (contract). Ritual each milestone; publish green ones. Run INLINE (heavy
-  parallel Workflows hit the session limit fast).
+- Session 05 (2026-07-16): ASSAY v1 COMPLETE — resumed from the limit checkpoint and shipped
+  M2 -> M5 inline, all pushed to github.com/maheshaggarwal21/assay; academy assay=done 5/5,
+  59 tests. M2 schema inference (0e24def: most-specific-type classify -> resolve, integer
+  collapses into number, MIXED drift flag, leading-zero numerics stay strings). M3 PII report
+  (2ff9c3d: email/phone/SSN-SSA/card-Luhn/IPv4 searching inside free text; secret shapes
+  ported 1:1 from scrub.js SECRET_RULES w/ sync test; column-name hints; masked samples,
+  secrets never sampled; exit 1 on critical). M4 quality report (3cec9bd: completeness/
+  validity-vs-dominant-type/uniqueness+candidate-keys/consistency scored + itemized; IQR
+  outliers WATCH-only; --min gates). M5 data contract (522a8f3: emit locks types/required/
+  unique + DECLARED PII w/ redaction plan + quality floor; check fails on drift, broken keys,
+  quality regression, UNDECLARED critical PII even in new columns; ranges recorded not
+  enforced; assay contract|check|report). GUARD DOGFOOD: `raph guard scan --all` blocked
+  M4's commit on assay's own detector patterns + fixtures (20 findings, all hand-vetted
+  benign — the Repo Keeper fixture class); bypassed consciously + lesson written. Learned:
+  scan --all reads TRACKED files — use scan --staged after git add for new files. Brain
+  writebacks: 4 approved lessons -> 37 active. Follow-up: guard allowlist for detector
+  sources/fixtures.
+- Next: Academy #4 (backlog ideas consumed — choose + justify a new one) or formally start
+  the Phase 10 self-use RUN window; Phase 12 automation items open (autopilot driver, limit
+  scheduler, model policy). Run builds INLINE (heavy parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
