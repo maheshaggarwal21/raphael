@@ -328,6 +328,36 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - [ ] LIVE prerequisite: verify `claude -p` structured extraction once the subscription
       limit resets (also unblocks the pending Phase 3 live smoke)
 
+## Phase 13 — Scout: the adopt pipeline (PROPOSED 2026-07-16, docs/company-vision.md)
+Owner's expanded vision (session 06): drop a repo/PDF/text/skill-file -> Raphael adopts
+what's useful. v1 = LOCAL sources only (no invariant #5 change); network fetch is v2 and
+needs owner sign-off.
+- [ ] `raph adopt <path>` — source adapters: PDF-extracted text, plain text, cloned repo
+      (README + docs + key sources), skill file
+- [ ] Typed outputs: lessons (existing distill -> chokepoint -> queue), skill DRAFTS
+      (staged, never auto-installed), worth-installing verdicts, vendored-code PROPOSALS
+      (license check + owner approval required)
+- [ ] Provenance ledger: source, date, license detected, what was taken (URLs live here,
+      never in lessons — same pattern as evidence records)
+- [ ] Injection defenses documented + tested: fetched content is data; zero-tool distill;
+      chokepoint validation; never execute fetched code
+- [ ] Dogfood #1: adopt the gstack toolchain docs (`/setup-gbrain`, `/sync-gbrain`,
+      `/learn`) — adjacent prior art already on this machine
+
+## Phase 14 — Company ops (PROPOSED 2026-07-16, docs/company-vision.md)
+The "self-running software studio" layer on top of Phase 12 automation.
+- [ ] Skills factory: skill drafts from adopt + self-observation ("this lesson fires
+      everywhere -> package it as a skill"); one source of truth + generator, like agents.js
+- [ ] `raph report weekly` — the board report: shipped, tokens, lessons, misses, next
+- [ ] Portfolio registry: all projects, status, tests, tokens, lessons written
+      (seed: `raph academy list`)
+- [ ] Token budgets per project/day + the Phase 12 limit-aware scheduler
+- [ ] Agent-maker (meta-agent): drafts roster entries as PROPOSALS, regenerates
+      plugin/agents; demand-driven only. Agent-manager = the Phase 12 autopilot driver.
+- [ ] Optimizer loop: stats -> retire never-firing lessons / unused agents (pruning)
+- [ ] Self-upgrade rule enforced: changes to raphael's own code/agents go branch + tests
+      + eval run before merge (no measurement, no mutation)
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.

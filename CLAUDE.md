@@ -244,9 +244,18 @@ compaction (manual or automatic) can never lose progress.
   guard allowlist (glob patterns at repo top; visible "allowlist active" announcement, never
   silent; explicit paths always scanned; brain chokepoint unaffected) — 216/216 tests,
   live-verified on assay (its 20-finding block now runs clean via a committed .raphallow).
-- Next: Academy #4 (backlog ideas consumed — choose + justify a new one) or formally start
-  the Phase 10 self-use RUN window; Phase 12 automation items open (autopilot driver, limit
-  scheduler, model policy). Run builds INLINE (heavy parallel Workflows hit the limit fast).
+- Session 06 (2026-07-16): owner delivered an EXPANDED VISION — Raphael as a self-running
+  "company" (specialist agent employees, agent-maker + agent-manager, self-upgrading,
+  self-record-keeping, reusable self-made skills) + a knowledge inlet (drop a repo/PDF/
+  text/skill file -> Raphael adopts what's useful) + simple install for others. Brainstormed
+  + reality-checked version: docs/company-vision.md (org chart role-by-role with honest
+  limits; adopt pipeline design with license/injection/network analysis; build order
+  A=adopt v1 local-only, B=skills factory, C=company ops, D=Phase 11 publish). TASKS.md
+  Phase 13 (Scout/adopt) + Phase 14 (Company ops) added as PROPOSED. Boundary items for the
+  owner: invariant #5 amendment for CLI network fetch (v2), npm publish timing.
+- Next: owner reads the vision report; recommended first build = Track A (`raph adopt` v1,
+  local sources). Fallbacks: Academy #4 or the Phase 10 self-use RUN window. Phase 12
+  automation items open. Run builds INLINE (heavy parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
