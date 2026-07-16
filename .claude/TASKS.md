@@ -366,8 +366,15 @@ admins their OWN data; owner's instance = his "global admin" view) + a THIN host
 later (docs/pack registry/contribution face — the only truly global parts; static-first).
 Principle: one engine, three faces — the console calls the same lib functions as the CLI;
 zero business logic in the web layer; no verb, no button.
-- [ ] Server: Node http, 127.0.0.1 only, random port + session token, Origin checks
-      (CSRF/DNS-rebinding defense); zero new runtime deps; static vanilla HTML/JS
+- [x] 15.1 Server skeleton (2026-07-16 session 07, +4 tests -> 255/255): src/lib/web.js
+      + `raph web [--port N] [--no-open]`. 127.0.0.1 bind only; per-launch random token
+      (query on first load, x-raphael-token header after); EVERY request checks Host
+      (DNS-rebinding) + Origin (CSRF) — hostile refused 403 even WITH the token; bare /
+      gets a no-data guard page (401). Headers: strict CSP (default-src 'none',
+      inline-only, connect-src 'self'), nosniff, no-referrer, no-store. /api/health +
+      /api/status (thin aggregation over the same lib fns as the CLI — no web-only
+      logic, asserted by test). escapeHtml exported = the 15.2+ render rule. Zero new
+      deps (node:http). Real-brain smoke: API reported 43 active / dial off correctly.
 - [ ] Pages: dashboard (doctor/stats/limits), review queue (cards, batch, provenance,
       heavyweight security modal), lessons browser (+why/on/off), adopt inbox (paste URL/
       drop file -> cards; revoke-by-source), activity feed (events.jsonl), projects

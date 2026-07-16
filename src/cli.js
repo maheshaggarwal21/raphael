@@ -26,7 +26,8 @@ const COMMANDS = {
   guard: () => import('./commands/guard.js'),
   stats: () => import('./commands/stats.js'),
   adopt: () => import('./commands/adopt.js'),
-  auto: () => import('./commands/auto.js')
+  auto: () => import('./commands/auto.js'),
+  web: () => import('./commands/web.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -81,6 +82,8 @@ Commands:
   auto        The auto-approve dial: off | standard (own mined lessons) |
               wide (+ adopted). Security always waits for a human.
               (raph auto [off|standard|wide] [--cap N] [--daily-cap N])
+  web         Start the local console: your brain in the browser, localhost
+              only, token-guarded (raph web [--port N] [--no-open])
   help        Show this help
   version     Show version
 
