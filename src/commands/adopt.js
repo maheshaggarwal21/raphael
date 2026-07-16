@@ -7,6 +7,7 @@ import { adoptSource, revokeAdoption } from '../lib/adopt.js';
 import { loadSource } from '../lib/adopt.js';
 import { listAdoptions } from '../lib/provenance.js';
 import { getModelCaller } from '../lib/provider.js';
+import { autoApproveStaged } from '../lib/autoapprove.js';
 import { loadConfig } from '../lib/config.js';
 
 const HELP = `raph adopt — digest external material into reviewable knowledge
@@ -134,7 +135,17 @@ export default async function adopt(args) {
   console.log(`ADOPTED ${result.adoption}${result.truncated ? ' (material truncated at the adopt cap)' : ''}`);
   console.log(`FUNNEL  ${result.staged.length} lesson candidate(s) staged, ${result.skills.length} skill draft(s), ${result.dropped.length} dropped by gates`);
   for (const d of result.dropped) console.log(`  [dropped] ${d.title} — ${d.why}`);
-  if (result.staged.length > 0) console.log('NEXT    review with "raph queue" — nothing activates without approval');
+
+  // the dial at 'wide' may activate reviewer-passed, non-security adoptions
+  let autoActivated = 0;
+  const eligible = result.staged.filter((s) => !s.quarantined);
+  if (eligible.length > 0) {
+    const auto = autoApproveStaged(eligible, { origin: 'adopted', config: cfg, adoption: result.adoption, log: (s) => console.log(s) });
+    autoActivated = auto.activated.length;
+    for (const sk of auto.skipped) console.log(`  [held] ${sk.slug} — ${sk.why}`);
+  }
+  if (autoActivated > 0) console.log(`AUTO    ${autoActivated} lesson(s) activated into the auto tier — undo all with "raph adopt revoke ${result.adoption}"`);
+  if (result.staged.length - autoActivated > 0) console.log('NEXT    review with "raph queue" — nothing else activates without approval');
   if (result.skills.length > 0) console.log(`DRAFTS  staged/skills/ — a skill instructs agents; review before installing`);
   return 0;
 }

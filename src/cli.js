@@ -25,7 +25,8 @@ const COMMANDS = {
   academy: () => import('./commands/academy.js'),
   guard: () => import('./commands/guard.js'),
   stats: () => import('./commands/stats.js'),
-  adopt: () => import('./commands/adopt.js')
+  adopt: () => import('./commands/adopt.js'),
+  auto: () => import('./commands/auto.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -77,6 +78,9 @@ Commands:
   adopt       Digest external material (URL, file, repo, skill file) into
               reviewable lessons + skill drafts, with provenance and undo
               (raph adopt <url|path> [--dry-run] | adopt list | adopt revoke <id>)
+  auto        The auto-approve dial: off | standard (own mined lessons) |
+              wide (+ adopted). Security always waits for a human.
+              (raph auto [off|standard|wide] [--cap N] [--daily-cap N])
   help        Show this help
   version     Show version
 

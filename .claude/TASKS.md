@@ -372,10 +372,17 @@ zero business logic in the web layer; no verb, no button.
       heavyweight security modal), lessons browser (+why/on/off), adopt inbox (paste URL/
       drop file -> cards; revoke-by-source), activity feed (events.jsonl), projects
       portfolio + weekly report, agents/skills gallery, settings, guard page
-- [ ] Auto-approve DIAL in settings (OFF / STANDARD auto-tier / WIDE incl. adopted):
-      per-category; security + self-patches stay human (one click) unless the owner
-      explicitly amends invariant #4/§11.9; poisoning defenses: machine-approved tags,
-      bulk revoke by source, daily cap, optional quarantine delay
+- [x] Auto-approve DIAL ENGINE (2026-07-16 session 07, +6 tests -> 251/251):
+      src/lib/autoapprove.js + `raph auto [off|standard|wide] [--cap N] [--daily-cap N]`
+      (the verb the console's settings page will call). off=default (fails closed on
+      unknown config); standard=own mined lessons -> auto tier (tier:auto tag,
+      this-project scope, cap 30 visible-stop); wide=+reviewer-passed adopted (daily
+      cap 10, adoption id in every event, revoke-by-source via adopt revoke). FLOOR:
+      security + quarantined skipped at every level AND structurally backstopped by
+      E-AUTOSEC (tested both ways). Wired into distill + adopt ([held] lines make
+      every non-activation visible).
+- [ ] Console settings page exposes the dial (calls `raph auto` — no verb, no button);
+      optional quarantine delay still open
 - [ ] XSS hard line: all lesson/adopted text escaped, strict CSP, self-contained assets;
       adopted raw views pass the scrubber first
 - [ ] Onboarding wizard (consent, starter pack, guard, auto-mode) — arise's face

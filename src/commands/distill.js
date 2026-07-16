@@ -3,6 +3,7 @@ import path from 'node:path';
 import { distillEpisodes, estimateTokens, DISTILLER } from '../lib/distill.js';
 import { getModelCaller } from '../lib/provider.js';
 import { loadLedger, hasProcessed, appendLedger } from '../lib/ledger.js';
+import { autoApproveStaged } from '../lib/autoapprove.js';
 import { loadConfig } from '../lib/config.js';
 import { p } from '../lib/paths.js';
 
@@ -93,7 +94,29 @@ export default async function distill(args) {
     p.distilledLedger()
   );
   console.log(`LEDGER +${done.length} episodes distilled`);
-  if (staged > 0) console.log(`STAGED ${staged} candidate(s) await review — nothing activates without approval`);
+
+  // the auto-approve dial (§9/§13): 'standard'+ may activate freshly staged,
+  // NON-quarantined, non-security candidates into the restricted auto tier
+  const freshlyStaged = results
+    .filter((r) => r.outcome === 'staged')
+    .map((r) => ({ path: r.path, project: episodes.find((e) => e.episode_id === r.episode_id)?.project }));
+  let autoActivated = 0;
+  if (freshlyStaged.length > 0) {
+    const byProject = new Map();
+    for (const s of freshlyStaged) {
+      const key = s.project ?? 'unknown';
+      if (!byProject.has(key)) byProject.set(key, []);
+      byProject.get(key).push(s);
+    }
+    for (const [project, items] of byProject) {
+      const auto = autoApproveStaged(items, { origin: 'mined', config: cfg, project, log: (s) => console.log(s) });
+      autoActivated += auto.activated.length;
+      for (const sk of auto.skipped) console.log(`  [held] ${sk.slug} — ${sk.why}`);
+    }
+  }
+  const held = staged - autoActivated;
+  if (autoActivated > 0) console.log(`AUTO   ${autoActivated} lesson(s) activated into the auto tier (raph auto)`);
+  if (held > 0) console.log(`STAGED ${held} candidate(s) await review — nothing else activates without approval`);
 
   // A subscription/rate limit stops the run; the rest stay unledgered and retry.
   const limited = results.find((r) => r.limit);
