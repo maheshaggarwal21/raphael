@@ -328,28 +328,30 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - [ ] LIVE prerequisite: verify `claude -p` structured extraction once the subscription
       limit resets (also unblocks the pending Phase 3 live smoke)
 
-## Phase 13 — Scout: the adopt pipeline (PROPOSED 2026-07-16, docs/company-vision.md
-## + docs/web-console-vision.md)
-Owner's expanded vision (session 06): drop a repo/PDF/text/skill-file/URL -> Raphael
-adopts what's useful. OWNER APPROVED CLI fetch (invariant #5 amendment: user-initiated,
-read-only, https GET, no auth, bounded — to be written into ARCHITECTURE.md).
-- [ ] `raph adopt <path|url>` — source adapters: URL fetch (bounded read-only), PDF text,
-      plain text, cloned/local repo (README + docs + key sources), skill file
-- [ ] Provenance ledger: source, date, license detected, content hash, what was taken
-      (URLs live here, never in lessons — same pattern as evidence records)
-- [ ] REVIEWER AGENT stage (owner's design): zero-tool contained screen for prompt
-      injection / malicious instructions / license flags / junk BEFORE candidates exist;
-      deterministic gates run BEFORE and AFTER it (defense in depth)
-- [ ] Typed outputs: lessons (existing distill -> chokepoint -> queue), skill DRAFTS
-      (staged, never auto-installed), worth-installing verdicts, PATCH PROPOSALS to
-      raphael itself (read-understand-rewrite; branch + tests + eval + human merge;
-      chokepoint files = heavyweight confirm; copyleft near-verbatim ports blocked)
-- [ ] Injection defenses documented + tested; never execute fetched code
-- [ ] Dogfood #1: adopt the gstack toolchain docs (`/setup-gbrain`, `/sync-gbrain`,
-      `/learn`) — adjacent prior art already on this machine
+## Phase 13 — Scout: the adopt pipeline (PLANNED 2026-07-16; ARCHITECTURE §13 is the
+## design; owner approved fetch + recommendations)
+- [ ] 13.1 Provenance ledger: src/lib/provenance.js -> state/adoptions.jsonl
+      {id, source, kind, date, license, contentHash, verdict, status, taken[]};
+      license detection (LICENSE files / SPDX markers); tests
+- [ ] 13.2 Bounded fetcher: src/lib/fetch.js — https GET only, no credentials, ≤3
+      redirects, 2MB cap, 20s timeout, content-type allowlist, basic html->text,
+      node:https only (zero new deps); tests (local server fixture)
+- [ ] 13.3 Adopt pipeline: src/lib/adopt.js — adapters (url, text/md/code file, repo
+      dir, skill file) -> snapshot -> scrub -> license -> REVIEWER AGENT (zero-tool via
+      provider, structured verdict) -> extraction to typed outputs (lessons via
+      chokepoint; skill DRAFTS staged, never auto-installed) -> ledger updated; tests
+      with provider mock (distill-test pattern)
+- [ ] 13.4 Command: src/commands/adopt.js — `raph adopt <src> [--yes|--dry-run]`,
+      `adopt list`, `adopt revoke <id>` (tombstones everything in taken[]); router +
+      help + docs; tests
+- [ ] 13.5 Dogfood: adopt the gstack prior art on this machine (`/setup-gbrain`,
+      `/sync-gbrain`, `/learn`); verify candidates + provenance + revoke live; README
+- [ ] 13b (DEFERRED until Phase 12 driver exists): read-understand-patch — patches to
+      raphael's own code; branch + tests + eval green BEFORE presentation; copyleft
+      near-verbatim ports blocked; chokepoint files heavyweight; never auto (§11.11)
 
-## Phase 15 — Local web console `raph web` (PROPOSED 2026-07-16,
-## docs/web-console-vision.md)
+## Phase 15 — Local web console `raph web` (PLANNED 2026-07-16; ARCHITECTURE §14 is
+## the design; builds AFTER Phase 13 — the adopt inbox needs 13's engine)
 Two-face resolution of the owner's website vision: LOCAL console per install (each user
 admins their OWN data; owner's instance = his "global admin" view) + a THIN hosted hub
 later (docs/pack registry/contribution face — the only truly global parts; static-first).
@@ -370,10 +372,13 @@ zero business logic in the web layer; no verb, no button.
 - [ ] Onboarding wizard (consent, starter pack, guard, auto-mode) — arise's face
 - [ ] Graceful no-model degradation; CLI/console write concurrency via atomic writes
 
-## Owner decisions pending (from docs/web-console-vision.md)
-- [ ] Security floor: keep human-always for security lessons + self-patches (recommended)
-      or amend invariant #4/§11.9 for full auto
-- [ ] Hub scope at launch: static-only (recommended) vs hosted app with accounts
+## Owner decisions — RESOLVED 2026-07-16 ("go with your recommendation")
+- [x] Security floor KEPT: security lessons + self-patches always pass a human (one
+      click on the console); recorded as ARCHITECTURE §11.11
+- [x] Hub = static-first (docs + registry + PR-flow face, no accounts); §11.12
+- [x] CLI fetch allowed; §0.6 amended + CLAUDE.md invariant #5 amended; scope in §13
+Build order: Phase 13 (adopt) -> Phase 15 (console MVP) -> company ops interleaved ->
+distribution + hub at launch. One by one, ritual at every milestone.
 
 ## Phase 14 — Company ops (PROPOSED 2026-07-16, docs/company-vision.md)
 The "self-running software studio" layer on top of Phase 12 automation.

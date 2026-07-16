@@ -32,7 +32,11 @@
    (c) free non-AI checks running before any model call, and (d) cheap models doing
    the broad sweep with the strong model only judging what survives. This is a
    measured eval metric (tokens-per-completed-task, ON vs OFF), not a slogan.
-6. **Local-first.** The user owns all brain data. No network calls except model API.
+6. **Local-first.** The user owns all brain data. No network calls except (a) reaching
+   a model and (b) user-initiated, read-only `raph adopt` fetches — amended 2026-07-16
+   with the owner's explicit approval, see §13. An adopt fetch is bounded (https GET
+   only, no credentials ever sent, size/time capped), happens only because the user
+   asked for that specific source, and its content is data — scanned, never executed.
 7. **Measurable.** An eval harness must show lift vs a naked agent, or we are failing
    silently.
 
@@ -629,6 +633,18 @@ baselines + ablation, checkpoint/resume machinery, TUI review, trusted co-review
    machine automatically. Sharing is opt-in, per lesson, through the export scrubber.
 9. **Security-category lessons always pass a human** — the local user in curator
    mode, or the maintainer via the community pack. Never machine-only approval.
+10. **CLI fetch: ALLOWED (owner, 2026-07-16).** §0.6 amended; scope defined in §13.
+    Fetching is a user action, never a background behavior.
+11. **The security floor stays (owner accepted recommendation, 2026-07-16).**
+    Auto-approve exists as a per-category dial (§13), but security-category lessons
+    and patches to Raphael's own code ALWAYS pass a human — reduced to one click on
+    the console (§14), never removed. Reason: the reviewer agent is a model and can
+    be fooled by the content it reviews; the human gate is the backstop for exactly
+    the two places where a bad approval is unrecoverable.
+12. **Hosted hub: static-first (owner accepted recommendation, 2026-07-16).** Docs +
+    community pack registry + the §9 GitHub-PR contribution flow, served statically
+    (no accounts, no server-side user data). A full hosted app is a later, separate
+    decision.
 
 ---
 
@@ -748,3 +764,132 @@ the model/effort policy table, and the sandbox workspace. See `.claude/TASKS.md`
 Phase 12 for the checklist. Nothing here weakens any security invariant — the human
 approval gate on lessons, the zero-tool extraction containment, and the stop-list on
 irreversible actions all still hold.
+
+---
+
+## 13. The adopt pipeline ("Scout") — external knowledge in, safely
+
+Origin: the owner's 2026-07-16 directive (docs/company-vision.md +
+docs/web-console-vision.md). The owner finds good repos/skills/articles faster than
+anyone can absorb them; Raphael becomes the digestion system. The owner stays the scout
+— Raphael never browses social media on its own (accounts, ToS, junk ratio).
+
+### The verb
+
+`raph adopt <url | path>` — accepts an https URL, a text/markdown/code file, a cloned
+repo directory, or a skill file. Also: `raph adopt list` (the ledger) and
+`raph adopt revoke <id>` (bulk-undo everything an adoption produced).
+
+### The gauntlet (six layers, in order)
+
+1. **FETCH / READ** — bounded and read-only. URLs: https GET only, no auth headers or
+   cookies ever, ≤3 redirects, size cap, timeout, content-type allowlist, basic
+   HTML→text. Local paths: read directly. Fetched bytes are a snapshot: hashed,
+   recorded, never executed.
+2. **DETERMINISTIC PRE-GATES** — secret scrub (the §3 scrubber), size/type sanity,
+   license detection (LICENSE files / SPDX markers).
+3. **REVIEWER AGENT** (the owner's design) — a zero-tool contained model call (§3
+   containment, same provider) screens the material for: prompt-injection aimed at
+   agents, malicious install instructions, license red flags, junk quality. Structured
+   verdict with reasons, attached to everything downstream. It REDUCES what reaches
+   the human; it never REPLACES the deterministic gates — a model reviewer can be
+   socially engineered by the text it reviews; regexes cannot.
+4. **EXTRACT** — the existing contained distillation shapes the material into typed
+   outputs: candidate lessons (incl. "worth installing" verdicts as tooling lessons)
+   and skill DRAFTS. Patch proposals to Raphael's own code are Phase 13b (below).
+5. **DETERMINISTIC POST-GATES** — the one chokepoint, unchanged: validateLesson(),
+   no URLs, no executable fields, dedupe, rejection memory.
+6. **HUMAN or AUTO** — per the auto-approve dial. Security-category: human always
+   (§11.11).
+
+### Provenance ledger
+
+Every adoption writes `state/adoptions.jsonl`: id, source, kind, date, license,
+content hash, reviewer verdict, and the ids of everything produced (`taken`).
+Lessons stay URL-free (§0 rule) — the URL lives in the ledger, like evidence records.
+`raph adopt revoke` walks `taken` and tombstones the lot — the one-click undo for a
+source that turned out bad.
+
+### The auto-approve dial (applies brain-wide, surfaced in §14's console)
+
+| Level | Activates without a human | Blast-radius controls |
+|---|---|---|
+| OFF (curator default) | nothing | — |
+| STANDARD (arise default) | own mined lessons passing every gate | §9 auto tier: project scope, cap, never shared |
+| WIDE | + adopted lessons passing reviewer + gates | + machine-approved tag, revoke-by-source, daily cap, optional quarantine delay |
+
+Security-category lessons and self-patches are outside the dial at every level
+(§11.11). Deterministic gates never turn off at any level — they are chokepoints,
+not preferences.
+
+### Phase 13b — read-understand-patch (self-improvement from external code)
+
+Deferred until the autopilot driver (§12) exists, because it needs branch + eval
+machinery. Rules already decided: idea-level adoption (understand, then write fresh
+code in Raphael's style); a patch lands as a branch with full tests + eval run green
+BEFORE it is presented; near-verbatim ports of copyleft code are blocked (ideas are
+free; close translation is a derivative work); patches touching chokepoint files
+(validate.js, scrub.js, guard.js, provider.js) take the heavyweight confirm path;
+every applied patch records its revert target. Never auto-approved (§11.11).
+
+---
+
+## 14. The web console — one engine, three faces
+
+Origin: the owner's 2026-07-16 directive. The CLI stays the power path; the console is
+convenience — for the owner and for every user who finds CLIs annoying.
+
+### The resolution that protects §11.8
+
+"Global admin sees everything" cannot mean a central server holding users' brains —
+that would break the privacy hard rule that makes Raphael trustable. So the website is
+two things:
+
+- **The local console (`raph web`)** — ships with every install. A localhost web app
+  over that user's OWN `~/.raphael`. Each user is full admin of their own data:
+  approvals, permissions, logs, reports, settings. The owner's instance is his
+  "global admin" view — of his Raphael. No accounts, no server, no privacy change.
+- **The thin hosted hub** — only the genuinely global parts: docs, the community pack
+  registry, the §9 contribution flow's face, download stats, and OPT-IN anonymous
+  aggregate telemetry. Static-first (§11.12). The owner is admin HERE — of community
+  data, never of users' machines.
+
+### The law of the console
+
+**Zero business logic in the web layer.** Every button calls the same `src/lib`
+functions the CLI calls — same chokepoint, same heavyweight paths, same events. If a
+feature has no `raph` verb, the console may not do it: build the verb first. This
+keeps two faces from ever drifting and keeps the security review surface at one place.
+
+### Pages (v1 console)
+
+Onboarding wizard (consent per project, starter pack, guard, auto-approve choice) ·
+Dashboard (doctor, counts, tokens, limits) · Review queue (cards with provenance +
+reasons, batch ops, keyboard-first, heavyweight modal for security) · Adopt inbox
+(paste URL / drop file → cards; history; revoke-by-source) · Lessons browser
+(search/filter/why/on-off/retirement hints) · Activity feed (events.jsonl live) ·
+Projects portfolio + weekly report · Agents & skills gallery · Settings (budgets,
+model policy, the dial, guard allowlist) · Guard page.
+
+### Console security (non-negotiable)
+
+- Binds **127.0.0.1 only**; random port; per-launch session token; `Origin` checked on
+  every request. Defends against CSRF/DNS-rebinding — ordinary websites CAN send
+  requests at localhost daemons; this is a real attack class, not paranoia. LAN
+  exposure only via an explicit flag that prints a warning.
+- **Everything rendered is untrusted text** — lessons come from mined transcripts and
+  adopted internet content. Escape all output; strict CSP; fully self-contained assets
+  (no CDN — same rule as the artifacts Raphael builds); adopted raw views pass the
+  scrubber before display; adopted content is never rendered as HTML.
+- State changes go through the same atomic tmp+rename writes as the CLI; the server
+  re-reads before write. Mutating requests require the session token.
+- Zero new runtime dependencies: node:http + static vanilla HTML/JS (the One Desk
+  dashboard proved the shape). A framework is a deliberate later decision, not a
+  default.
+
+### Degradation honesty
+
+No model configured → adopt still snapshots + runs deterministic gates and says
+"queued for extraction"; all deterministic pages work. No git → doctor says so.
+The console never pretends a layer ran when it didn't.
+

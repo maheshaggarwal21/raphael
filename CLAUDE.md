@@ -285,11 +285,15 @@ compaction (manual or automatic) can never lose progress.
 3. No URLs anywhere in lessons. No executable fields in the schema. Lessons are
    advisory data — nothing in a lesson may command an agent.
 4. Security-category lessons never activate machine-only (`E-AUTOSEC` enforces this).
-5. Raphael makes no network calls except to reach a model — either the Anthropic
+5. Raphael makes no network calls except (a) to reach a model — either the Anthropic
    Messages API directly (api provider) or by shelling out to the logged-in Claude Code
    CLI (subscription provider, the default; `claude -p` with `--tools ""` +
-   `--strict-mcp-config` so the contained model still executes nothing). No other
-   network access. The brain repo blocks pushes by default (pre-push hook).
+   `--strict-mcp-config` so the contained model still executes nothing) — and (b)
+   user-initiated, read-only `raph adopt` fetches (AMENDED 2026-07-16 with the owner's
+   explicit approval, ARCHITECTURE §0.6 + §13): https GET only, no credentials ever
+   sent, ≤3 redirects, size/time capped, content treated as data — scanned, never
+   executed; never a background behavior. No other network access. The brain repo
+   blocks pushes by default (pre-push hook).
 6. Everything mined stays local; sharing is opt-in per lesson.
 
 ## Layout
