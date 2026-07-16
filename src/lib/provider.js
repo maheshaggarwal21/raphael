@@ -195,11 +195,15 @@ export function getModelCaller(config = {}, deps = {}) {
 
   const pref = config?.model?.provider ?? 'auto';
 
+  // A call may carry its own timeoutMs (adopt's extraction over large material
+  // legitimately needs more than distill's small episodes).
+  const cliOpts = (o) => (o.timeoutMs ? { timeout: o.timeoutMs } : {});
+
   if (pref === 'subscription') {
     if (!has()) {
       throw new Error('E-NOPROVIDER: provider is "subscription" but the Claude Code CLI was not found — log in with `claude` or set RAPHAEL_CLAUDE_BIN');
     }
-    return { callModel: (o) => cli(o), provider: 'subscription', reason: 'configured' };
+    return { callModel: (o) => cli(o, cliOpts(o)), provider: 'subscription', reason: 'configured' };
   }
 
   if (pref === 'api') {
@@ -208,7 +212,7 @@ export function getModelCaller(config = {}, deps = {}) {
   }
 
   // auto: prefer the fixed-price subscription; fall back to a metered API key.
-  if (has()) return { callModel: (o) => cli(o), provider: 'subscription', reason: 'auto: CLI available' };
+  if (has()) return { callModel: (o) => cli(o, cliOpts(o)), provider: 'subscription', reason: 'auto: CLI available' };
   if (key()) return { callModel: (o) => api(o), provider: 'api', reason: 'auto: no CLI, API key present' };
   throw new Error('E-NOPROVIDER: no model provider available — log in with the Claude Code CLI (`claude`) for fixed-price subscription use, or set ANTHROPIC_API_KEY');
 }

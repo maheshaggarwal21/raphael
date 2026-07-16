@@ -328,24 +328,33 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - [ ] LIVE prerequisite: verify `claude -p` structured extraction once the subscription
       limit resets (also unblocks the pending Phase 3 live smoke)
 
-## Phase 13 — Scout: the adopt pipeline (PLANNED 2026-07-16; ARCHITECTURE §13 is the
-## design; owner approved fetch + recommendations)
-- [ ] 13.1 Provenance ledger: src/lib/provenance.js -> state/adoptions.jsonl
-      {id, source, kind, date, license, contentHash, verdict, status, taken[]};
-      license detection (LICENSE files / SPDX markers); tests
-- [ ] 13.2 Bounded fetcher: src/lib/fetch.js — https GET only, no credentials, ≤3
-      redirects, 2MB cap, 20s timeout, content-type allowlist, basic html->text,
-      node:https only (zero new deps); tests (local server fixture)
-- [ ] 13.3 Adopt pipeline: src/lib/adopt.js — adapters (url, text/md/code file, repo
-      dir, skill file) -> snapshot -> scrub -> license -> REVIEWER AGENT (zero-tool via
-      provider, structured verdict) -> extraction to typed outputs (lessons via
-      chokepoint; skill DRAFTS staged, never auto-installed) -> ledger updated; tests
-      with provider mock (distill-test pattern)
-- [ ] 13.4 Command: src/commands/adopt.js — `raph adopt <src> [--yes|--dry-run]`,
-      `adopt list`, `adopt revoke <id>` (tombstones everything in taken[]); router +
-      help + docs; tests
-- [ ] 13.5 Dogfood: adopt the gstack prior art on this machine (`/setup-gbrain`,
-      `/sync-gbrain`, `/learn`); verify candidates + provenance + revoke live; README
+## Phase 13 — Scout: the adopt pipeline (COMPLETE 2026-07-16, session 07;
+## ARCHITECTURE §13 is the design; owner approved fetch + recommendations)
+- [x] 13.1 Provenance ledger (5740df2, +7 tests): src/lib/provenance.js ->
+      state/adoptions.jsonl, append-only last-line-wins (revokes are history, not
+      erasure); license detection (SPDX + full-text, AGPL/LGPL ordered before GPL);
+      allowsCodeAdoption() = the legal gate; unknown license blocks code adoption
+- [x] 13.2 Bounded fetcher (1076622, +7 tests): src/lib/fetch.js — GET only, https
+      only (http solely for loopback = testable), credential-embedded URLs refused,
+      2MB streaming cap, 20s cap, ≤3 redirects EACH re-policy-checked, textual types
+      only, binary rejected, deterministic html->text; E-FETCH-* codes
+- [x] 13.3 Adopt pipeline (a550ecc, +9 tests): src/lib/adopt.js — adapters (url/file/
+      repo dir/SKILL.md sniff; PDFs refused w/ guidance) -> scrub BEFORE model ->
+      reviewer agent (malformed verdict BLOCKS — never fails open; blocks recorded) ->
+      extraction -> ephemera/dedupe/rejection-memory -> writeCandidate() chokepoint;
+      skill drafts to staged/skills/ branded DRAFT, never installed; revoke deletes
+      candidates, RETIRES active lessons, removes drafts; schema: source_mix.imported
+- [x] 13.4 Command (aba2557, +5 tests): raph adopt <src> [--dry-run] | list | revoke;
+      cost gate mirrors distill; E-LIMIT exits 4 with retry guidance; blocks exit 2
+      with risks printed
+- [x] 13.5 Dogfood LIVE (session 07): adopted gstack setup-gbrain SKILL.md twice on
+      the real subscription. Sandbox e2e: 5 staged, ephemera gate killed a port-number
+      lesson live, revoke undid everything, ledger kept history. Real brain: 8 lessons
+      + 1 skill draft staged; curated as owner-delegate (2 rejected as near-dupes w/
+      reasons -> rejection memory; 4 approved batch; 2 security approved one-at-a-time
+      --confirmed) -> brain 37 -> 43 ACTIVE. Found+fixed live: provider timeout too
+      short for 60k-char extraction -> calls carry timeoutMs (provider passes through,
+      +1 test), adopt uses 240s. README adopt section added.
 - [ ] 13b (DEFERRED until Phase 12 driver exists): read-understand-patch — patches to
       raphael's own code; branch + tests + eval green BEFORE presentation; copyleft
       near-verbatim ports blocked; chokepoint files heavyweight; never auto (§11.11)

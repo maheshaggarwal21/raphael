@@ -264,10 +264,29 @@ compaction (manual or automatic) can never lose progress.
   tests + eval + human merge. TASKS Phase 13 updated + Phase 15 added. PENDING owner
   decisions: security floor (keep human-always for security/self-patches — recommended)
   and hub scope (static vs accounts).
-- Next: owner reads web-console-vision.md; then fold both vision docs into
-  ARCHITECTURE.md (§13 console, §14 adopt v2, invariant amendments) + real TASKS phases;
-  then build Track A (adopt v2) -> Track B (console MVP). Fallbacks: Academy #4, Phase 10
-  RUN window. Run builds INLINE (heavy parallel Workflows hit the limit fast).
+- Session 07 (2026-07-16): owner accepted both recommendations ("go with your
+  recommendation... one by one maintaining proper history and planner"). ARCHITECTURE
+  v1.1 (33feefe): §0.6 amended (bounded fetch) + invariant #5 above; §11.10-12 decided
+  (fetch allowed / security floor KEPT — security lessons + self-patches always human,
+  one click on the console / hub static-first); new §13 (adopt gauntlet) + §14 (console).
+  PHASE 13 COMPLETE (5740df2..aba2557 + closeout): provenance ledger (append-only
+  adoptions.jsonl, license detect w/ family gate — unknown/copyleft block code adoption),
+  bounded fetcher (all §0.6 properties in one module, loopback-http carve-out for tests),
+  adopt pipeline (six layers; malformed reviewer verdict = fail-closed block; skill
+  drafts to staged/skills/ branded DRAFT, never installed; revoke = candidates deleted +
+  active lessons RETIRED + ledger history), `raph adopt <src>|list|revoke` (--dry-run
+  spends nothing; E-LIMIT exit 4; block exit 2). LIVE dogfood on gstack setup-gbrain:
+  gauntlet verified layer-by-layer on the subscription (scrub caught 2, reviewer accurate,
+  ephemera gate killed a port-number lesson live); found+fixed a real timeout bug (model
+  calls now carry timeoutMs; adopt uses 240s; provider forwards w/ test). Real run: 8
+  lessons + 1 good skill draft; curated (2 near-dupe rejects w/ reasons, 4 batch + 2
+  security --confirmed approvals) -> BRAIN 43 ACTIVE. 244/244 tests. Trigram dedupe gap
+  noted: differently-worded same-lesson pairs slip through — curator catches them.
+- Next (planner tasks #10-15): auto-approve dial engine (autoApprove off|standard|wide,
+  §9 auto tier, security NEVER auto per §11.11) -> Phase 15 console MVP (15.1 skeleton:
+  localhost+token+Origin; 15.2 dashboard+queue; 15.3 inbox+browser+feed; 15.4 settings+
+  guard) -> company-ops backlog (Phase 12/14). Run builds INLINE (parallel Workflows hit
+  the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

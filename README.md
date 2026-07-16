@@ -50,6 +50,26 @@ High-precision by default; add `--entropy` for the noisier high-entropy pass. It
 staged content, never touches history, and fails open (a broken scan can't wedge a commit).
 Bypass a single commit with `git commit --no-verify`.
 
+## Adopt (drop a link, keep the knowledge)
+
+Found a good repo, article, or skill file? `raph adopt` digests it into reviewable
+knowledge instead of a browser tab you'll never reopen:
+
+```
+raph adopt https://example.com/great-post     # or a local file / repo dir / SKILL.md
+raph adopt <src> --dry-run                    # read + license check, zero model calls
+raph adopt list                               # the provenance ledger
+raph adopt revoke <id>                        # one-command undo of everything it produced
+```
+
+Every adoption runs a six-layer gauntlet: bounded read-only fetch (https GET, size/time
+capped, never executed) → secret scrub before any model sees it → a contained reviewer
+agent that blocks prompt injection and malicious guidance → extraction → the same
+validation chokepoint as everything else → your review queue. Lessons land as candidates
+(nothing activates without approval); reusable procedures land as skill *drafts* under
+`staged/skills/`, never auto-installed. Sources, licenses, and verdicts are recorded in
+`state/adoptions.jsonl` — `revoke` walks that record and undoes it all.
+
 ## Development
 
 ```

@@ -142,6 +142,21 @@ test('getModelCaller: subscription preferred, api fallback, explicit overrides, 
   assert.throws(() => getModelCaller({ model: { provider: 'api' } }, deps(true, false)), /E-NOPROVIDER/);
 });
 
+test('getModelCaller: a call carrying timeoutMs reaches the CLI transport as its timeout', async () => {
+  let seenOpts = null;
+  const r = getModelCaller({}, {
+    hasClaudeCli: () => true,
+    apiKey: () => null,
+    callModelCLI: async (call, opts) => { seenOpts = opts; return { ok: true }; },
+    callModel: async () => ({})
+  });
+  await r.callModel({ prompt: 'x', toolSchema: {}, timeoutMs: 240000 });
+  assert.equal(seenOpts.timeout, 240000);
+  // and calls WITHOUT timeoutMs keep the transport default (no override passed)
+  await r.callModel({ prompt: 'x', toolSchema: {} });
+  assert.deepEqual(seenOpts, {});
+});
+
 test('the caller returned by getModelCaller actually invokes the chosen backend', async () => {
   const cli = async (o) => ({ echoed: o.prompt, via: 'cli' });
   const r = getModelCaller(
