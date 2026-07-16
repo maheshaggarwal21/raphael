@@ -35,7 +35,7 @@ function shannon(s) {
 // Raphael's own ids are random base32 and would trip the entropy scan. Their
 // charset (no lowercase, no I/L/O/U) cannot encode an arbitrary secret, so
 // exempting them is safe.
-const RAPHAEL_ID_RE = /^(?:les_|ev_|prj_|mch_)[0-9A-HJKMNP-TV-Z]{26}$/;
+const RAPHAEL_ID_RE = /^(?:les_|ev_|prj_|mch_|adp_)[0-9A-HJKMNP-TV-Z]{26}$/;
 
 // True when a single token looks like a high-entropy secret. Shared by the
 // scrubber (below) and the guard's opt-in --entropy pass, so both agree.

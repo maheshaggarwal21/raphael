@@ -22,3 +22,7 @@ export function lessonId(now) {
 export function evidenceId(now) {
   return `ev_${ulid(now)}`;
 }
+
+export function adoptionId(now) {
+  return `adp_${ulid(now)}`;
+}
