@@ -282,11 +282,23 @@ compaction (manual or automatic) can never lose progress.
   lessons + 1 good skill draft; curated (2 near-dupe rejects w/ reasons, 4 batch + 2
   security --confirmed approvals) -> BRAIN 43 ACTIVE. 244/244 tests. Trigram dedupe gap
   noted: differently-worded same-lesson pairs slip through — curator catches them.
-- Next (planner tasks #10-15): auto-approve dial engine (autoApprove off|standard|wide,
-  §9 auto tier, security NEVER auto per §11.11) -> Phase 15 console MVP (15.1 skeleton:
-  localhost+token+Origin; 15.2 dashboard+queue; 15.3 inbox+browser+feed; 15.4 settings+
-  guard) -> company-ops backlog (Phase 12/14). Run builds INLINE (parallel Workflows hit
-  the limit fast).
+- Console 15.1 + 15.2 SHIPPED (sessions 07-08): src/lib/web.js + `raph web` = localhost-
+  only console, per-launch token, Host+Origin gate on EVERY request (hostile 403 even
+  with the token), strict inline-only CSP. 15.2 (2026-07-17): approve/reject engine
+  EXTRACTED to src/lib/review.js (approveRefs/rejectRefs hold ALL policy; commands are
+  thin printers) so console buttons call the exact CLI engine (§14 law literal). Routes:
+  /api/queue, /api/queue/item (=show), /api/stats, POST /api/approve|reject (64KB JSON
+  cap, fail-closed). Page: dashboard (status+stats) + queue cards; batch approve/reject
+  for normal candidates; security/quarantined = lock + full-body render + explicit
+  "I read it" check unlocking a one-item Approve --confirmed. 257/257 tests; live
+  browser smoke clicked the real flows end to end. Template-literal trap: the console
+  page is ONE server-side template literal — no backticks inside it, even in comments.
+  Doctor dashboard panel deferred (doctor's checks are inline in its command; extract
+  to lib first or the web layer would duplicate logic).
+- Next (planner tasks #13-15): 15.3 console (adopt inbox + lessons browser + activity
+  feed; adopted raw views pass the scrubber before display) -> 15.4 settings (dial via
+  `raph auto`) + guard page + docs + Phase 15 closeout -> company-ops backlog (Phase
+  12/14). Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

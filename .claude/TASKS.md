@@ -375,10 +375,28 @@ zero business logic in the web layer; no verb, no button.
       /api/status (thin aggregation over the same lib fns as the CLI — no web-only
       logic, asserted by test). escapeHtml exported = the 15.2+ render rule. Zero new
       deps (node:http). Real-brain smoke: API reported 43 active / dial off correctly.
-- [ ] Pages: dashboard (doctor/stats/limits), review queue (cards, batch, provenance,
-      heavyweight security modal), lessons browser (+why/on/off), adopt inbox (paste URL/
-      drop file -> cards; revoke-by-source), activity feed (events.jsonl), projects
-      portfolio + weekly report, agents/skills gallery, settings, guard page
+- [x] 15.2 Core pages: dashboard + review queue (2026-07-17 session 08, +2 e2e tests
+      -> 257/257). PREREQ REFACTOR: approve/reject engine extracted from the command
+      files into src/lib/review.js (approveRefs/rejectRefs — ALL policy there: no-batch
+      for security/quarantined, --confirmed requirement, slug collision, validate-on-
+      write, tombstone -> rejection memory, commitBrain + index rebuild); the commands
+      are now thin printers and the console's buttons call the EXACT same functions
+      (§14 law made literal). Routes: GET /api/queue (stable file-name refs — numbers
+      shift), GET /api/queue/item?ref= (full frontmatter + body = `raph show` for the
+      heavyweight view), GET /api/stats (same computeStats as `raph stats`),
+      POST /api/approve|/api/reject (JSON body, 64KB cap, fail-closed parse; hostile
+      Origin still 403 WITH token). Page: dashboard tab (status KPIs + brain table +
+      self-use funnel) + queue tab (cards, checkbox batch approve/reject with reason,
+      per-card reject w/ reason prompt, "Full text" expand). SECURITY/QUARANTINED cards
+      have NO checkbox — a lock icon + "Review to approve" renders the ENTIRE candidate
+      (every field + body) and an explicit "I read it" check unlocks a one-item
+      Approve --confirmed. All rendered text escaped (esc() everywhere), CSP unchanged.
+      Live browser smoke on a seeded sandbox: security confirm flow + batch approve
+      exercised by real clicks -> 3 active lessons, queue empty, zero console errors.
+      NOTE: doctor panel deferred (doctor's checks live inline in its command — no lib
+      fn to call; extract first, else the web layer would duplicate logic). Remaining
+      pages -> 15.3/15.4: lessons browser (+why/on/off), adopt inbox, activity feed,
+      projects portfolio + weekly report, agents/skills gallery, settings, guard page
 - [x] Auto-approve DIAL ENGINE (2026-07-16 session 07, +6 tests -> 251/251):
       src/lib/autoapprove.js + `raph auto [off|standard|wide] [--cap N] [--daily-cap N]`
       (the verb the console's settings page will call). off=default (fails closed on
