@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {
   installPreCommitHook, uninstallPreCommitHook, scanStaged, scanFile,
-  listTrackedFiles, gitTopLevel, isGitRepo
+  listTrackedFiles, gitTopLevel, isGitRepo, loadAllowlist, ALLOWLIST_FILE
 } from '../lib/guard.js';
 
 const HELP = `raph guard — block commits that would leak secrets
@@ -16,6 +16,12 @@ Usage:
         Scan for secrets and exit 1 if any are found. --staged = the content
         about to be committed (what the hook runs); --all = every tracked file;
         or pass explicit file paths. --entropy adds the noisier high-entropy pass.
+
+Allowlist: a .raphallow file at the repo top lists glob patterns (one per line,
+# comments; ** spans directories) for files the guard skips — for detector
+sources and test fixtures that legitimately contain secret-shaped strings.
+The scan announces when an allowlist is active. Explicit file paths are always
+scanned in full, allowlist or not.
 
 Same secret patterns as the brain's safety chokepoint. Bypass a single commit
 (sparingly) with: git commit --no-verify`;
@@ -66,14 +72,26 @@ export default async function guard(args = []) {
     const entropy = flag(rest, '--entropy');
     let results;
 
+    // visibility: an allowlist changes what a security gate sees — say so
+    const announceAllowlist = (top) => {
+      const allow = loadAllowlist(top);
+      if (allow.patterns.length) {
+        console.error(`raph: allowlist active — ${ALLOWLIST_FILE} (${allow.patterns.length} pattern(s)) skips matching files`);
+      }
+      return allow;
+    };
+
     if (flag(rest, '--staged')) {
       const cwd = process.cwd();
       if (!isGitRepo(cwd)) return 0; // nothing staged / not a repo -> clean
+      announceAllowlist(gitTopLevel(cwd) || cwd);
       results = scanStaged(cwd, { entropy });
     } else if (flag(rest, '--all')) {
       const cwd = process.cwd();
       const top = gitTopLevel(cwd) || cwd;
+      const allow = announceAllowlist(top);
       results = listTrackedFiles(cwd)
+        .filter((f) => !allow.matches(f))
         .map((f) => ({ file: f, findings: scanFile(path.join(top, f), { entropy }) }))
         .filter((r) => r.findings.length);
     } else {

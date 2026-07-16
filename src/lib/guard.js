@@ -18,12 +18,72 @@ import path from 'node:path';
 import { SECRET_RULES, isHighEntropyToken } from './scrub.js';
 
 export const HOOK_MARKER = 'raphael-guard';
+export const ALLOWLIST_FILE = '.raphallow';
 const MAX_SCAN_BYTES = 1024 * 1024; // 1 MB — skip large/generated blobs
 
 // Absolute path to this CLI's entry, baked into installed hooks as the fallback
 // used when the global `raph` command is not on PATH.
 export function cliBinPath() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'bin', 'raph.js');
+}
+
+// --- allowlist (.raphallow) -----------------------------------------------------
+//
+// Security tools' own sources and test fixtures always trip secret scanners
+// (pattern definitions, canonical example keys) — seen on repo-keeper AND assay.
+// `.raphallow` at the repo top lists glob patterns for files the PROJECT guard
+// skips. Scoped deliberately: it affects only this guard, never the brain's
+// chokepoint or the scrubber, and the CLI announces when it is active — an
+// allowlist must be visible, not silent.
+
+// Minimal glob -> RegExp: `**` spans directories, `*` stays inside one segment,
+// `?` is a single character; a trailing `/` means the whole directory.
+export function globToRegExp(pattern) {
+  let p = pattern.trim().replace(/\\/g, '/').replace(/^\.\//, '');
+  if (p.endsWith('/')) p += '**';
+  let out = '';
+  for (let i = 0; i < p.length; i++) {
+    const c = p[i];
+    if (c === '*') {
+      if (p[i + 1] === '*') {
+        out += '(?:.*)';
+        i++;
+        if (p[i + 1] === '/') i++; // "**/" also matches zero directories
+      } else {
+        out += '[^/]*';
+      }
+    } else if (c === '?') {
+      out += '[^/]';
+    } else if ('\\^$.|+()[]{}'.includes(c)) {
+      out += '\\' + c;
+    } else {
+      out += c;
+    }
+  }
+  return new RegExp(`^${out}$`);
+}
+
+// Load .raphallow from the repo top. Always returns a matcher; with no file (or
+// outside a repo) it matches nothing, so the guard's default stays strict.
+export function loadAllowlist(topDir) {
+  const patterns = [];
+  const regexps = [];
+  try {
+    const raw = readFileSync(path.join(topDir, ALLOWLIST_FILE), 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      patterns.push(t);
+      regexps.push(globToRegExp(t));
+    }
+  } catch { /* no allowlist — match nothing */ }
+  return {
+    patterns,
+    matches(relPath) {
+      const p = relPath.replace(/\\/g, '/');
+      return regexps.some((re) => re.test(p));
+    }
+  };
 }
 
 function lineOf(text, index) {
@@ -122,9 +182,12 @@ function readStagedBlob(cwd, file) {
 }
 
 // Scan everything staged for commit. Returns [{ file, findings }] for hits only.
+// Files matched by .raphallow (repo top) are skipped.
 export function scanStaged(cwd, opts) {
+  const allow = loadAllowlist(gitTopLevel(cwd) || cwd);
   const results = [];
   for (const file of listStagedFiles(cwd)) {
+    if (allow.matches(file)) continue;
     const buf = readStagedBlob(cwd, file);
     if (!buf || buf.length > MAX_SCAN_BYTES || looksBinary(buf)) continue;
     const findings = scanText(buf.toString('utf8'), opts);

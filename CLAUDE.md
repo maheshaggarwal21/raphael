@@ -240,8 +240,10 @@ compaction (manual or automatic) can never lose progress.
   M4's commit on assay's own detector patterns + fixtures (20 findings, all hand-vetted
   benign — the Repo Keeper fixture class); bypassed consciously + lesson written. Learned:
   scan --all reads TRACKED files — use scan --staged after git add for new files. Brain
-  writebacks: 4 approved lessons -> 37 active. Follow-up: guard allowlist for detector
-  sources/fixtures.
+  writebacks: 4 approved lessons -> 37 active. Follow-up CLOSED same session: `.raphallow`
+  guard allowlist (glob patterns at repo top; visible "allowlist active" announcement, never
+  silent; explicit paths always scanned; brain chokepoint unaffected) — 216/216 tests,
+  live-verified on assay (its 20-finding block now runs clean via a committed .raphallow).
 - Next: Academy #4 (backlog ideas consumed — choose + justify a new one) or formally start
   the Phase 10 self-use RUN window; Phase 12 automation items open (autopilot driver, limit
   scheduler, model policy). Run builds INLINE (heavy parallel Workflows hit the limit fast).

@@ -5,9 +5,9 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  scanText, scanFile, HOOK_MARKER,
+  scanText, scanFile, HOOK_MARKER, ALLOWLIST_FILE,
   installPreCommitHook, uninstallPreCommitHook,
-  scanStaged, listStagedFiles
+  scanStaged, listStagedFiles, globToRegExp, loadAllowlist
 } from '../src/lib/guard.js';
 
 function tmp(prefix) {
@@ -161,6 +161,56 @@ test('scanStaged is clean when nothing secret is staged', () => {
     writeFileSync(path.join(dir, 'readme.md'), '# hello\njust docs, no secrets here\n');
     spawnSync('git', ['add', '-A'], { cwd: dir, encoding: 'utf8' });
     assert.deepEqual(scanStaged(dir), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- allowlist (.raphallow) -----------------------------------------------------
+
+test('globToRegExp: * stays in a segment, ** spans, trailing / means the directory', () => {
+  assert.ok(globToRegExp('test/*.js').test('test/pii.test.js'));
+  assert.ok(!globToRegExp('test/*.js').test('test/deep/pii.test.js'));
+  assert.ok(globToRegExp('**/fixtures/*').test('a/b/fixtures/keys.txt'));
+  assert.ok(globToRegExp('**/fixtures/*').test('fixtures/keys.txt')); // zero dirs too
+  assert.ok(globToRegExp('test/').test('test/deep/nested.js'));
+  assert.ok(globToRegExp('file?.md').test('file1.md'));
+  assert.ok(!globToRegExp('file?.md').test('file10.md'));
+  assert.ok(!globToRegExp('src/a.js').test('src/aXjs')); // dot is literal
+});
+
+test('loadAllowlist: missing file matches nothing; comments and blanks skipped', () => {
+  const dir = tmp('raph-guard-allow-');
+  try {
+    const none = loadAllowlist(dir);
+    assert.deepEqual(none.patterns, []);
+    assert.equal(none.matches('anything.js'), false);
+
+    writeFileSync(path.join(dir, ALLOWLIST_FILE), '# fixtures hold fake keys\n\ntest/fixtures/**\nsrc/lib/detectors.js\n');
+    const allow = loadAllowlist(dir);
+    assert.equal(allow.patterns.length, 2);
+    assert.equal(allow.matches('test/fixtures/aws.txt'), true);
+    assert.equal(allow.matches('src\\lib\\detectors.js'), true); // windows separators normalized
+    assert.equal(allow.matches('src/lib/other.js'), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanStaged skips allowlisted files but still blocks the rest', () => {
+  const dir = gitRepo();
+  try {
+    writeFileSync(path.join(dir, ALLOWLIST_FILE), 'fixtures/**\n');
+    mkdirSync(path.join(dir, 'fixtures'), { recursive: true });
+    // the allowlisted fixture holds a secret-shaped string on purpose
+    writeFileSync(path.join(dir, 'fixtures', 'example.txt'), 'AKIAIOSFODNN7EXAMPLE\n');
+    // ...but a real leak elsewhere must still be caught
+    writeFileSync(path.join(dir, 'app.js'), 'const KEY = "AKIAIOSFODNN7EXAMPLE";\n');
+    spawnSync('git', ['add', '-A'], { cwd: dir, encoding: 'utf8' });
+
+    const results = scanStaged(dir);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].file, 'app.js');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

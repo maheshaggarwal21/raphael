@@ -154,6 +154,14 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
       AWS key was blocked, moving it to an env var let the commit through. 206/206.
       (This also closes the "used before init" gap: guard install is git-repo-scoped and
       independent of brain init.)
+- [x] `.raphallow` allowlist (2026-07-16, session 05): the Assay build proved (after
+      repo-keeper) that a security tool's own detector sources + fixtures always trip the
+      guard. `.raphallow` at the repo top = glob patterns (`**` spans dirs, trailing `/` =
+      whole dir, # comments) for files the PROJECT guard skips — visible, never silent (the
+      scan announces "allowlist active"); explicit file paths are always scanned in full;
+      brain chokepoint/scrubber unaffected. globToRegExp + loadAllowlist in guard.js, applied
+      in scanStaged + scan --all. +3 tests (216/216). Live-verified: assay's 20-finding block
+      now runs clean via its committed .raphallow.
 
 ## Phase 8 — Agent layer ✅ COMPLETE
 - [x] Shared spine (brain-first, free-checks-first, map-not-repo, cheap→strong, write-back)
