@@ -253,9 +253,21 @@ compaction (manual or automatic) can never lose progress.
   A=adopt v1 local-only, B=skills factory, C=company ops, D=Phase 11 publish). TASKS.md
   Phase 13 (Scout/adopt) + Phase 14 (Company ops) added as PROPOSED. Boundary items for the
   owner: invariant #5 amendment for CLI network fetch (v2), npm publish timing.
-- Next: owner reads the vision report; recommended first build = Track A (`raph adopt` v1,
-  local sources). Fallbacks: Academy #4 or the Phase 10 self-use RUN window. Phase 12
-  automation items open. Run builds INLINE (heavy parallel Workflows hit the limit fast).
+- Session 06 round 2: owner APPROVED CLI fetch (invariant #5 amendment pending in
+  ARCHITECTURE.md); clarified "copy code" = read/understand -> patch raphael itself;
+  wants a management WEBSITE (two roles) + auto-approve option + reviewer-agent screen
+  on adopted content. Brainstorm: docs/web-console-vision.md — resolution = LOCAL console
+  (`raph web`, each user admins their own brain; zero-dep Node http, localhost+token,
+  one-engine-three-faces: no verb, no button) + THIN static-first hosted hub (docs/pack
+  registry/contribution face); auto-approve = dial (OFF/STANDARD/WIDE) with poisoning
+  defenses; adopt v2 = six-layer gauntlet w/ reviewer agent; self-patches = branch +
+  tests + eval + human merge. TASKS Phase 13 updated + Phase 15 added. PENDING owner
+  decisions: security floor (keep human-always for security/self-patches — recommended)
+  and hub scope (static vs accounts).
+- Next: owner reads web-console-vision.md; then fold both vision docs into
+  ARCHITECTURE.md (§13 console, §14 adopt v2, invariant amendments) + real TASKS phases;
+  then build Track A (adopt v2) -> Track B (console MVP). Fallbacks: Academy #4, Phase 10
+  RUN window. Run builds INLINE (heavy parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

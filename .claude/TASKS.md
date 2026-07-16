@@ -328,21 +328,52 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - [ ] LIVE prerequisite: verify `claude -p` structured extraction once the subscription
       limit resets (also unblocks the pending Phase 3 live smoke)
 
-## Phase 13 — Scout: the adopt pipeline (PROPOSED 2026-07-16, docs/company-vision.md)
-Owner's expanded vision (session 06): drop a repo/PDF/text/skill-file -> Raphael adopts
-what's useful. v1 = LOCAL sources only (no invariant #5 change); network fetch is v2 and
-needs owner sign-off.
-- [ ] `raph adopt <path>` — source adapters: PDF-extracted text, plain text, cloned repo
-      (README + docs + key sources), skill file
+## Phase 13 — Scout: the adopt pipeline (PROPOSED 2026-07-16, docs/company-vision.md
+## + docs/web-console-vision.md)
+Owner's expanded vision (session 06): drop a repo/PDF/text/skill-file/URL -> Raphael
+adopts what's useful. OWNER APPROVED CLI fetch (invariant #5 amendment: user-initiated,
+read-only, https GET, no auth, bounded — to be written into ARCHITECTURE.md).
+- [ ] `raph adopt <path|url>` — source adapters: URL fetch (bounded read-only), PDF text,
+      plain text, cloned/local repo (README + docs + key sources), skill file
+- [ ] Provenance ledger: source, date, license detected, content hash, what was taken
+      (URLs live here, never in lessons — same pattern as evidence records)
+- [ ] REVIEWER AGENT stage (owner's design): zero-tool contained screen for prompt
+      injection / malicious instructions / license flags / junk BEFORE candidates exist;
+      deterministic gates run BEFORE and AFTER it (defense in depth)
 - [ ] Typed outputs: lessons (existing distill -> chokepoint -> queue), skill DRAFTS
-      (staged, never auto-installed), worth-installing verdicts, vendored-code PROPOSALS
-      (license check + owner approval required)
-- [ ] Provenance ledger: source, date, license detected, what was taken (URLs live here,
-      never in lessons — same pattern as evidence records)
-- [ ] Injection defenses documented + tested: fetched content is data; zero-tool distill;
-      chokepoint validation; never execute fetched code
+      (staged, never auto-installed), worth-installing verdicts, PATCH PROPOSALS to
+      raphael itself (read-understand-rewrite; branch + tests + eval + human merge;
+      chokepoint files = heavyweight confirm; copyleft near-verbatim ports blocked)
+- [ ] Injection defenses documented + tested; never execute fetched code
 - [ ] Dogfood #1: adopt the gstack toolchain docs (`/setup-gbrain`, `/sync-gbrain`,
       `/learn`) — adjacent prior art already on this machine
+
+## Phase 15 — Local web console `raph web` (PROPOSED 2026-07-16,
+## docs/web-console-vision.md)
+Two-face resolution of the owner's website vision: LOCAL console per install (each user
+admins their OWN data; owner's instance = his "global admin" view) + a THIN hosted hub
+later (docs/pack registry/contribution face — the only truly global parts; static-first).
+Principle: one engine, three faces — the console calls the same lib functions as the CLI;
+zero business logic in the web layer; no verb, no button.
+- [ ] Server: Node http, 127.0.0.1 only, random port + session token, Origin checks
+      (CSRF/DNS-rebinding defense); zero new runtime deps; static vanilla HTML/JS
+- [ ] Pages: dashboard (doctor/stats/limits), review queue (cards, batch, provenance,
+      heavyweight security modal), lessons browser (+why/on/off), adopt inbox (paste URL/
+      drop file -> cards; revoke-by-source), activity feed (events.jsonl), projects
+      portfolio + weekly report, agents/skills gallery, settings, guard page
+- [ ] Auto-approve DIAL in settings (OFF / STANDARD auto-tier / WIDE incl. adopted):
+      per-category; security + self-patches stay human (one click) unless the owner
+      explicitly amends invariant #4/§11.9; poisoning defenses: machine-approved tags,
+      bulk revoke by source, daily cap, optional quarantine delay
+- [ ] XSS hard line: all lesson/adopted text escaped, strict CSP, self-contained assets;
+      adopted raw views pass the scrubber first
+- [ ] Onboarding wizard (consent, starter pack, guard, auto-mode) — arise's face
+- [ ] Graceful no-model degradation; CLI/console write concurrency via atomic writes
+
+## Owner decisions pending (from docs/web-console-vision.md)
+- [ ] Security floor: keep human-always for security lessons + self-patches (recommended)
+      or amend invariant #4/§11.9 for full auto
+- [ ] Hub scope at launch: static-only (recommended) vs hosted app with accounts
 
 ## Phase 14 — Company ops (PROPOSED 2026-07-16, docs/company-vision.md)
 The "self-running software studio" layer on top of Phase 12 automation.
