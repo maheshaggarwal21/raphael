@@ -17,14 +17,19 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { loadConfig, isInjectionEnabled } from './config.js';
-import { dialLevel, dialCaps } from './autoapprove.js';
+import { loadConfig, isInjectionEnabled, setInjectionEnabled } from './config.js';
+import { dialLevel, dialCaps, autoApproveStaged } from './autoapprove.js';
 import { listCandidates, resolveRef, needsConfirmation } from './queue.js';
 import { approveRefs, rejectRefs } from './review.js';
 import { listAdoptions } from './provenance.js';
+import { loadSource, adoptSource, revokeAdoption, adoptConfig, estimateAdoptTokens } from './adopt.js';
+import { getModelCaller } from './provider.js';
+import { scrubSecrets } from './scrub.js';
 import { parseLessonFile } from './frontmatter.js';
 import { loadIndex } from './compile.js';
 import { computeStats } from './stats.js';
+import { rank, extractPaths } from './match.js';
+import { detectStacks } from './stacks.js';
 import { p, raphaelHome } from './paths.js';
 
 export const CONSOLE_HOST = '127.0.0.1';
@@ -183,6 +188,11 @@ export function queueItem(ref) {
 
 // The self-use report, same computation as `raph stats` (Phase 10).
 export function statsSummary() {
+  const { lessons } = loadIndex();
+  return computeStats(readEvents(), lessons);
+}
+
+function readEvents() {
   const events = [];
   if (existsSync(p.events())) {
     for (const line of readFileSync(p.events(), 'utf8').split('\n')) {
@@ -190,8 +200,122 @@ export function statsSummary() {
       try { events.push(JSON.parse(line)); } catch { /* skip a corrupt line */ }
     }
   }
+  return events;
+}
+
+// Lessons browser data. With a query it runs the EXACT scorer the hooks and
+// `raph search` use (same threshold); without one it lists the whole index.
+export function lessonsView(q, { audience } = {}) {
   const { lessons } = loadIndex();
-  return computeStats(events, lessons);
+  if (!q || !q.trim()) {
+    return lessons.map((l) => ({
+      id: l.id, slug: l.slug, title: l.title, category: l.category,
+      severity: l.severity, headline: l.injection?.headline ?? l.title
+    }));
+  }
+  const ctx = {
+    text: q,
+    paths: extractPaths(q),
+    stacks: detectStacks(process.cwd()),
+    project: path.basename(process.cwd()),
+    agent: audience || undefined,
+    injected: new Set()
+  };
+  return rank(lessons, ctx, 0.5).map((r) => ({
+    id: r.entry.id, slug: r.entry.slug, title: r.entry.title,
+    category: r.entry.category, severity: r.entry.severity,
+    headline: r.entry.injection?.headline ?? r.entry.title,
+    score: Number(r.score.toFixed(2)), reasons: r.reasons
+  }));
+}
+
+// One ACTIVE lesson in full (the browser's detail view = `raph show` for
+// active lessons): every frontmatter field plus the body.
+export function lessonItem(ref) {
+  const stack = [p.lessons()];
+  while (stack.length) {
+    const dir = stack.pop();
+    if (!existsSync(dir)) continue;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.name.endsWith('.md')) {
+        try {
+          const { data, body } = parseLessonFile(readFileSync(full, 'utf8'));
+          if (data.slug === ref || data.id === ref) return { data, body };
+        } catch { /* unreadable lesson — doctor's problem */ }
+      }
+    }
+  }
+  throw new Error(`E-NOTFOUND: no active lesson "${ref}"`);
+}
+
+// The last N injections, exactly what `raph why` prints (audit-log truth).
+export function whySummary(last = 10) {
+  const injections = readEvents().filter((e) => e.event === 'injected');
+  return { total: injections.length, shown: injections.slice(-Math.max(1, last)) };
+}
+
+// Activity feed: the newest N audit-log events, newest first.
+export function eventsFeed(limit = 50) {
+  return readEvents().slice(-Math.max(1, limit)).reverse();
+}
+
+// The provenance ledger for display. Reviewer summaries/risks derive from
+// EXTERNAL material, so everything passes the scrubber again before rendering
+// (defense in depth — the pipeline scrubbed the material, not the verdict).
+export function adoptionsView() {
+  return listAdoptions().map((a) => JSON.parse(scrubSecrets(JSON.stringify(a)).text));
+}
+
+// A full adopt run for the console's inbox — the SAME pipeline as `raph adopt`
+// (provider, gauntlet, dial), with log lines captured for the result card.
+export async function runAdopt({ src, dryRun = false, skill = false }) {
+  const kindHint = skill ? 'skill' : null;
+  const cfg = loadConfig();
+  const config = adoptConfig(cfg);
+
+  if (dryRun) {
+    const material = await loadSource(src, { kindHint });
+    return {
+      outcome: 'dry-run',
+      kind: material.kind,
+      source: material.source,
+      chars: material.text.length,
+      truncated: material.truncated ?? false,
+      license: material.license,
+      estimateTokens: estimateAdoptTokens(material),
+      model: config.adopt_model
+    };
+  }
+
+  const log = [];
+  const provider = getModelCaller(cfg);
+  log.push(`MODEL provider=${provider.provider} (${provider.reason})`);
+  const result = await adoptSource(src, { callModel: provider.callModel, config, log: (s) => log.push(s), kindHint });
+
+  if (result.outcome === 'blocked') {
+    return { outcome: 'blocked', adoption: result.adoption, verdict: JSON.parse(scrubSecrets(JSON.stringify(result.verdict)).text), log };
+  }
+
+  // the dial at 'wide' may activate reviewer-passed, non-security adoptions
+  let autoActivated = 0;
+  const eligible = result.staged.filter((s) => !s.quarantined);
+  if (eligible.length > 0) {
+    const auto = autoApproveStaged(eligible, { origin: 'adopted', config: cfg, adoption: result.adoption, log: (s) => log.push(s) });
+    autoActivated = auto.activated.length;
+    for (const sk of auto.skipped) log.push(`[held] ${sk.slug} — ${sk.why}`);
+  }
+  return {
+    outcome: 'adopted',
+    adoption: result.adoption,
+    truncated: result.truncated ?? false,
+    staged: result.staged.map((s) => ({ slug: s.slug, quarantined: !!s.quarantined })),
+    skills: result.skills,
+    dropped: result.dropped,
+    autoActivated,
+    log
+  };
 }
 
 // ---- render helpers -----------------------------------------------------------
@@ -259,6 +383,9 @@ function shellPage() {
 <nav>
   <button id="tab-dash" class="on">Dashboard</button>
   <button id="tab-queue">Review queue</button>
+  <button id="tab-lessons">Lessons</button>
+  <button id="tab-adopt">Adopt</button>
+  <button id="tab-activity">Activity</button>
 </nav>
 <div id="view" class="card">loading…</div>
 <script>
@@ -279,6 +406,7 @@ function api(path, opts) {
 var view = document.getElementById('view');
 var msg = document.getElementById('msg');
 var tab = 'dash';
+var TABS = ['dash', 'queue', 'lessons', 'adopt', 'activity'];
 
 function flash(lines, isErr) {
   msg.innerHTML = '<div class="card ' + (isErr ? 'err' : 'ok') + '">' +
@@ -287,12 +415,14 @@ function flash(lines, isErr) {
 }
 function setTab(t) {
   tab = t;
-  document.getElementById('tab-dash').className = t === 'dash' ? 'on' : '';
-  document.getElementById('tab-queue').className = t === 'queue' ? 'on' : '';
+  TABS.forEach(function (x) {
+    document.getElementById('tab-' + x).className = t === x ? 'on' : '';
+  });
   render();
 }
-document.getElementById('tab-dash').onclick = function () { setTab('dash'); };
-document.getElementById('tab-queue').onclick = function () { setTab('queue'); };
+TABS.forEach(function (x) {
+  document.getElementById('tab-' + x).onclick = function () { setTab(x); };
+});
 
 // ---- dashboard ----
 function renderDash() {
@@ -423,7 +553,184 @@ function expand(ref, withConfirm) {
   }).catch(function (e) { flash([e.message], true); });
 }
 
-function render() { if (tab === 'dash') renderDash(); else renderQueue(); }
+// ---- lessons browser ----
+function renderLessons() {
+  api('/api/status').then(function (s) {
+    var h = '<div class="actions">' +
+      '<input type="text" id="lq" placeholder="search the way the hooks rank" size="34">' +
+      '<button class="act" id="lsearch">Search</button>' +
+      '<button class="act" id="lall">All lessons</button>' +
+      '<button class="act ' + (s.injectionEnabled ? 'danger' : 'primary') + '" id="ltoggle">' +
+      (s.injectionEnabled ? 'Turn injection OFF' : 'Turn injection ON') + '</button>' +
+      '</div><div id="lres" class="muted">…</div><h2>Recent injections (raph why)</h2><div id="lwhy" class="muted">…</div>';
+    view.innerHTML = h;
+    document.getElementById('lsearch').onclick = function () { loadLessons(document.getElementById('lq').value); };
+    document.getElementById('lq').onkeydown = function (e) { if (e.key === 'Enter') loadLessons(document.getElementById('lq').value); };
+    document.getElementById('lall').onclick = function () { loadLessons(''); };
+    document.getElementById('ltoggle').onclick = function () {
+      api('/api/injection', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: !s.injectionEnabled }) })
+        .then(function () { flash(['injection turned ' + (s.injectionEnabled ? 'OFF' : 'ON')]); renderLessons(); })
+        .catch(function (e) { flash([e.message], true); });
+    };
+    loadLessons('');
+    api('/api/why?last=10').then(function (w) {
+      if (!w.shown.length) { document.getElementById('lwhy').textContent = 'no injections recorded yet'; return; }
+      var rows = w.shown.map(function (e) {
+        var ls = (e.lessons || []).map(function (l) { return esc(l.slug) + ' (' + esc(l.score) + ')'; }).join(', ');
+        return '<div>' + esc((e.ts || '').slice(0, 16)) + ' · ' + esc(e.hook) + ' · ~' + esc(e.tokens) + ' tokens · ' + ls + '</div>';
+      });
+      document.getElementById('lwhy').innerHTML = rows.join('');
+    });
+  }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+}
+function loadLessons(q) {
+  var box = document.getElementById('lres');
+  box.textContent = 'loading…';
+  api('/api/lessons' + (q && q.trim() ? '?q=' + encodeURIComponent(q.trim()) : '')).then(function (r) {
+    if (!r.items.length) { box.innerHTML = '<p class="muted">no matches</p>'; return; }
+    var h = '';
+    r.items.forEach(function (it) {
+      h += '<div class="card" data-slug="' + esc(it.slug) + '">' +
+        '<div class="row"><span class="title">' + esc(it.title) + '</span>' +
+        badge(it.severity) + badge(it.category) +
+        (it.score != null ? '<span class="muted">score ' + esc(it.score) + '</span>' : '') + '</div>' +
+        '<div class="muted">' + esc(it.headline) + '</div>' +
+        (it.reasons ? '<div class="muted">matched: ' + esc(it.reasons.join(', ')) + '</div>' : '') +
+        '<div class="actions"><button class="act" data-lshow="' + esc(it.slug) + '">Full text</button>' +
+        '<span class="muted">' + esc(it.slug) + '</span></div><div class="full" hidden></div></div>';
+    });
+    box.innerHTML = h;
+    box.querySelectorAll('[data-lshow]').forEach(function (b) {
+      b.onclick = function () {
+        var card = box.querySelector('[data-slug="' + b.dataset.lshow + '"] .full');
+        if (!card.hidden) { card.hidden = true; return; }
+        api('/api/lessons/item?ref=' + encodeURIComponent(b.dataset.lshow)).then(function (it) {
+          var h2 = '<pre>' + esc(JSON.stringify(it.data, null, 2)) + '</pre>';
+          if (it.body && it.body.trim()) h2 += '<pre>' + esc(it.body) + '</pre>';
+          card.innerHTML = h2;
+          card.hidden = false;
+        }).catch(function (e) { flash([e.message], true); });
+      };
+    });
+  }).catch(function (e) { box.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+}
+
+// ---- adopt inbox ----
+function renderAdopt() {
+  var h = '<div class="actions">' +
+    '<input type="text" id="asrc" placeholder="https url, file path, repo dir, or SKILL.md" size="42">' +
+    '<label><input type="checkbox" id="askill"> skill file</label>' +
+    '<button class="act" id="adry">Dry run</button>' +
+    '<button class="act primary" id="ago">Adopt</button></div>' +
+    '<p class="muted">Read-only, user-initiated fetch: https GET, no credentials, size/time capped — ' +
+    'content is scanned, never executed. The gauntlet stages candidates for YOUR review; ' +
+    'security lessons always wait for a human.</p>' +
+    '<div id="ares"></div><h2>Adoption history</h2><div id="ahist" class="muted">…</div>';
+  view.innerHTML = h;
+  var busy = false;
+  function run(dry) {
+    var src = document.getElementById('asrc').value.trim();
+    if (!src) return flash(['enter a URL or path first'], true);
+    if (busy) return;
+    busy = true;
+    var ares = document.getElementById('ares');
+    ares.innerHTML = '<div class="card muted">' + (dry ? 'reading + license check…' :
+      'running the six-layer gauntlet — model review + extraction can take a few minutes…') + '</div>';
+    api('/api/adopt', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ src: src, dryRun: dry, skill: document.getElementById('askill').checked }) })
+      .then(function (r) {
+        busy = false;
+        if (r.outcome === 'dry-run') {
+          ares.innerHTML = '<div class="card"><b>PLAN</b> ' + esc(r.kind) + ': ' + esc(r.source) +
+            '<br>' + esc(r.chars) + ' chars' + (r.truncated ? ' (truncated at the adopt cap)' : '') +
+            ' -> ~' + esc(Math.round(r.estimateTokens / 100) / 10) + 'k tokens on ' + esc(r.model) +
+            '<br>license: ' + esc(r.license && r.license.detected ? r.license.id + ' (' + r.license.family + ')' : 'unknown') +
+            '<br><span class="muted">dry run — no model calls, nothing written</span></div>';
+          return;
+        }
+        if (r.outcome === 'blocked') {
+          var risks = (r.verdict.risks || []).map(function (x) { return '[' + esc(x.kind) + '] ' + esc(x.detail); }).join('<br>');
+          ares.innerHTML = '<div class="card err"><b>BLOCKED</b> ' + esc(r.adoption) + ' — ' + esc(r.verdict.summary) +
+            (risks ? '<br>' + risks : '') + '<br><span class="muted">nothing was staged; the block is recorded below</span></div>';
+          loadAdoptions();
+          return;
+        }
+        var lines = ['ADOPTED ' + r.adoption,
+          'FUNNEL ' + r.staged.length + ' lesson candidate(s) staged, ' + r.skills.length + ' skill draft(s), ' + r.dropped.length + ' dropped'];
+        r.dropped.forEach(function (d) { lines.push('[dropped] ' + d.title + ' — ' + d.why); });
+        if (r.autoActivated > 0) lines.push('AUTO ' + r.autoActivated + ' activated into the auto tier (undo: revoke below)');
+        if (r.staged.length - r.autoActivated > 0) lines.push('NEXT review them in the Review queue tab — nothing activates without approval');
+        if (r.skills.length > 0) lines.push('DRAFTS staged/skills/ — a skill instructs agents; review before installing');
+        ares.innerHTML = '<div class="card ok">' + lines.map(esc).join('<br>') + '</div>' +
+          '<pre>' + esc((r.log || []).join('\\n')) + '</pre>';
+        loadAdoptions();
+      })
+      .catch(function (e) { busy = false; ares.innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+  }
+  document.getElementById('adry').onclick = function () { run(true); };
+  document.getElementById('ago').onclick = function () { run(false); };
+  loadAdoptions();
+}
+function loadAdoptions() {
+  api('/api/adoptions').then(function (r) {
+    var box = document.getElementById('ahist');
+    if (!box) return;
+    if (!r.items.length) { box.textContent = 'no adoptions yet'; return; }
+    var h = '';
+    r.items.forEach(function (a) {
+      var lessons = (a.taken || []).filter(function (t) { return t.type === 'lesson'; }).length;
+      var skills = (a.taken || []).filter(function (t) { return t.type === 'skill-draft'; }).length;
+      h += '<div class="card"><div class="row">' +
+        badge(a.status, a.status === 'blocked' || a.status === 'revoked' ? 'critical' : 'ok') +
+        '<span class="title">' + esc(a.source) + '</span><span class="muted">' + esc(a.kind) + '</span></div>' +
+        '<div class="muted">' + esc((a.ts || '').slice(0, 16)) + ' · license ' +
+        esc(a.license && a.license.detected ? a.license.id : 'unknown') + ' · ' +
+        lessons + ' lesson(s), ' + skills + ' skill draft(s)</div>' +
+        (a.status === 'adopted'
+          ? '<div class="actions"><button class="act danger" data-revoke="' + esc(a.id) + '">Revoke (undo everything)</button></div>'
+          : '') + '</div>';
+    });
+    box.innerHTML = h;
+    box.querySelectorAll('[data-revoke]').forEach(function (b) {
+      b.onclick = function () {
+        if (!confirm('Revoke this adoption? Staged candidates are removed and activated lessons retired. The ledger keeps the history.')) return;
+        api('/api/adopt/revoke', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ref: b.dataset.revoke }) })
+          .then(function (r2) { flash(['REVOKED ' + r2.adoption + ' — ' + (r2.removed ? r2.removed.length : 0) + ' item(s) undone']); loadAdoptions(); })
+          .catch(function (e) { flash([e.message], true); });
+      };
+    });
+  }).catch(function (e) { flash([e.message], true); });
+}
+
+// ---- activity feed ----
+function renderActivity() {
+  api('/api/events?limit=100').then(function (r) {
+    if (!r.items.length) { view.innerHTML = '<p class="muted">nothing in the audit log yet</p>'; return; }
+    var h = '<table>';
+    r.items.forEach(function (e) {
+      var what = e.slug || e.adoption || e.source || (e.lessons && e.lessons.length ? e.lessons.length + ' lesson(s)' : '') || '';
+      var extra = [];
+      if (e.reason) extra.push('reason: ' + e.reason);
+      if (e.tokens != null) extra.push('~' + e.tokens + ' tokens');
+      if (e.hook) extra.push(e.hook);
+      if (e.origin) extra.push(e.origin);
+      h += '<tr><td class="muted">' + esc((e.ts || '').slice(0, 16)) + '</td>' +
+        '<td><b>' + esc(e.event) + '</b></td><td>' + esc(String(what)) + '</td>' +
+        '<td class="muted">' + esc(extra.join(' · ')) + '</td></tr>';
+    });
+    view.innerHTML = h + '</table>';
+  }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+}
+
+function render() {
+  if (tab === 'dash') renderDash();
+  else if (tab === 'queue') renderQueue();
+  else if (tab === 'lessons') renderLessons();
+  else if (tab === 'adopt') renderAdopt();
+  else renderActivity();
+}
 render();
 </script>`;
 }
@@ -487,19 +794,35 @@ async function handle(req, res, token) {
         return sendJson(res, 404, { error: err.message });
       }
     }
+    if (url.pathname === '/api/lessons') {
+      return sendJson(res, 200, { items: lessonsView(url.searchParams.get('q'), { audience: url.searchParams.get('audience') }) });
+    }
+    if (url.pathname === '/api/lessons/item') {
+      const ref = url.searchParams.get('ref');
+      if (!ref) return sendJson(res, 400, { error: 'E-WEB: ?ref= is required' });
+      try {
+        return sendJson(res, 200, lessonItem(ref));
+      } catch (err) {
+        return sendJson(res, 404, { error: err.message });
+      }
+    }
+    if (url.pathname === '/api/why') return sendJson(res, 200, whySummary(Number(url.searchParams.get('last')) || 10));
+    if (url.pathname === '/api/events') return sendJson(res, 200, { items: eventsFeed(Number(url.searchParams.get('limit')) || 50) });
+    if (url.pathname === '/api/adoptions') return sendJson(res, 200, { items: adoptionsView() });
   }
 
   if (req.method === 'POST') {
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+
     // Mutations go through the SAME engine as `raph approve` / `raph reject` —
     // including the no-batch + --confirmed rules for security/quarantined,
     // which live in review.js, not here.
     if (url.pathname === '/api/approve' || url.pathname === '/api/reject') {
-      let body;
-      try {
-        body = await readJsonBody(req);
-      } catch (err) {
-        return sendJson(res, 400, { error: err.message });
-      }
       const refs = Array.isArray(body.refs) ? body.refs.filter((r) => typeof r === 'string' && r.trim()) : [];
       if (refs.length === 0) return sendJson(res, 400, { error: 'E-WEB: body.refs must be a non-empty array of candidate refs' });
       if (url.pathname === '/api/approve') {
@@ -507,6 +830,36 @@ async function handle(req, res, token) {
       }
       const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : undefined;
       return sendJson(res, 200, rejectRefs(refs, { reason }));
+    }
+
+    // `raph on` / `raph off` — the injection master switch.
+    if (url.pathname === '/api/injection') {
+      if (typeof body.enabled !== 'boolean') return sendJson(res, 400, { error: 'E-WEB: body.enabled must be true or false' });
+      setInjectionEnabled(body.enabled);
+      return sendJson(res, 200, { enabled: body.enabled });
+    }
+
+    // `raph adopt <src>` — user-initiated by this click (invariant #5b holds:
+    // the console never fetches in the background; only this handler, only now).
+    if (url.pathname === '/api/adopt') {
+      if (typeof body.src !== 'string' || !body.src.trim()) return sendJson(res, 400, { error: 'E-WEB: body.src must be a URL or path' });
+      try {
+        return sendJson(res, 200, await runAdopt({ src: body.src.trim(), dryRun: body.dryRun === true, skill: body.skill === true }));
+      } catch (err) {
+        if (err.code === 'E-LIMIT') return sendJson(res, 429, { error: err.message, code: 'E-LIMIT' });
+        return sendJson(res, 400, { error: String(err.message ?? err) });
+      }
+    }
+
+    // `raph adopt revoke <ref>` — the one-click undo.
+    if (url.pathname === '/api/adopt/revoke') {
+      if (typeof body.ref !== 'string' || !body.ref.trim()) return sendJson(res, 400, { error: 'E-WEB: body.ref must be an adoption id or source' });
+      try {
+        const r = revokeAdoption(body.ref.trim(), { log: () => {} });
+        return sendJson(res, 200, r);
+      } catch (err) {
+        return sendJson(res, 404, { error: String(err.message ?? err) });
+      }
     }
   }
 

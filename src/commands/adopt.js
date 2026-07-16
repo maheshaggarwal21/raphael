@@ -3,8 +3,7 @@
 // the six-layer gauntlet into candidate lessons + staged skill drafts. Every
 // adoption is recorded in the provenance ledger; `revoke` is the one-click undo.
 
-import { adoptSource, revokeAdoption } from '../lib/adopt.js';
-import { loadSource } from '../lib/adopt.js';
+import { adoptSource, revokeAdoption, loadSource, adoptConfig, estimateAdoptTokens } from '../lib/adopt.js';
 import { listAdoptions } from '../lib/provenance.js';
 import { getModelCaller } from '../lib/provider.js';
 import { autoApproveStaged } from '../lib/autoapprove.js';
@@ -80,18 +79,12 @@ export default async function adopt(args) {
   const modelIdx = args.indexOf('--model');
 
   const cfg = loadConfig();
-  const learning = cfg.learning ?? {};
-  const config = {
-    adopt_model: (modelIdx >= 0 ? args[modelIdx + 1] : undefined) ?? learning.adopt_model ?? learning.extract_model ?? 'claude-haiku-4-5-20251001',
-    adopt_review_model: learning.adopt_review_model,
-    dedupe_threshold: learning.dedupe_threshold ?? 0.6,
-    rejection_expiry_days: learning.rejection_expiry_days ?? 180
-  };
+  const config = adoptConfig(cfg, { model: modelIdx >= 0 ? args[modelIdx + 1] : undefined });
 
   if (dryRun) {
     try {
       const material = await loadSource(src, { kindHint });
-      const estimate = Math.ceil((material.text.length / 3.5) * 2) + 2000; // review + extract passes
+      const estimate = estimateAdoptTokens(material);
       console.log(`PLAN   ${material.kind}: ${material.source}`);
       console.log(`       ${material.text.length.toLocaleString()} chars${material.truncated ? ' (truncated at the adopt cap)' : ''} -> ~${(estimate / 1000).toFixed(1)}k tokens on ${config.adopt_model}`);
       console.log(`       license: ${fmtLicense(material.license)}`);

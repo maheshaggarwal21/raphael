@@ -42,6 +42,23 @@ const Ajv = AjvModule.default ?? AjvModule;
 const ajv = new Ajv({ allErrors: true });
 
 export const ADOPTER = 'raphael/adopt@0.1.0';
+
+// Shared by the CLI command and the web console (§14: one engine, two faces) —
+// the model/threshold knobs an adopt run reads from config, in one place.
+export function adoptConfig(cfg, { model } = {}) {
+  const learning = cfg.learning ?? {};
+  return {
+    adopt_model: model ?? learning.adopt_model ?? learning.extract_model ?? 'claude-haiku-4-5-20251001',
+    adopt_review_model: learning.adopt_review_model,
+    dedupe_threshold: learning.dedupe_threshold ?? 0.6,
+    rejection_expiry_days: learning.rejection_expiry_days ?? 180
+  };
+}
+
+// Rough spend estimate for a dry run: review + extract passes over the material.
+export function estimateAdoptTokens(material) {
+  return Math.ceil((material.text.length / 3.5) * 2) + 2000;
+}
 const MAX_MATERIAL_CHARS = 60000; // ~17k tokens; enough for docs, honest cap
 
 // ---------- source adapters (layer 1) ----------

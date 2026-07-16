@@ -397,6 +397,28 @@ zero business logic in the web layer; no verb, no button.
       fn to call; extract first, else the web layer would duplicate logic). Remaining
       pages -> 15.3/15.4: lessons browser (+why/on/off), adopt inbox, activity feed,
       projects portfolio + weekly report, agents/skills gallery, settings, guard page
+- [x] 15.3 Lessons browser + adopt inbox + activity feed (2026-07-17 session 08,
+      +1 e2e test -> 258/258). PREREQ: adoptConfig()/estimateAdoptTokens() extracted
+      to lib/adopt.js (command + console share the exact knobs). LESSONS tab:
+      GET /api/lessons (no q = whole index; with q = the EXACT rank() scorer at the
+      same 0.5 threshold as `raph search`, scores + matched-reasons rendered),
+      GET /api/lessons/item (full frontmatter+body detail), injection ON/OFF toggle
+      (POST /api/injection = setInjectionEnabled, same fn as `raph on|off`), recent-
+      injections panel (GET /api/why = the audit log, `raph why` mirrored). ADOPT tab:
+      POST /api/adopt {src,dryRun,skill} runs runAdopt() = the SAME pipeline as
+      `raph adopt` (provider -> six-layer gauntlet -> dial), log lines captured into
+      the result card; dry-run = read+license+estimate, zero calls zero writes;
+      E-LIMIT -> HTTP 429; blocked -> risks card + recorded. History cards from
+      GET /api/adoptions with one-click Revoke (POST /api/adopt/revoke =
+      revokeAdoption). DEFENSE IN DEPTH: adoptionsView + blocked verdicts re-scrub
+      ALL ledger text before display (reviewer summaries derive from external
+      material; pipeline scrubbed the material, not the verdict) — asserted in test
+      (planted AKIA key comes back <SECRET:*>). ACTIVITY tab: GET /api/events =
+      newest-first audit feed. Invariant #5b note in the route: adopt fetch fires
+      only on the user's click, never background. Live browser smoke: browse/search
+      (score 7.8 w/ reasons), dry-run plan card, history+revoke, feed — 0 console
+      errors. Gotcha: the browser-pane computer-click missed the nav (stale coords);
+      element .click() via JS was the reliable driver — page logic was never at fault.
 - [x] Auto-approve DIAL ENGINE (2026-07-16 session 07, +6 tests -> 251/251):
       src/lib/autoapprove.js + `raph auto [off|standard|wide] [--cap N] [--daily-cap N]`
       (the verb the console's settings page will call). off=default (fails closed on
@@ -408,8 +430,9 @@ zero business logic in the web layer; no verb, no button.
       every non-activation visible).
 - [ ] Console settings page exposes the dial (calls `raph auto` — no verb, no button);
       optional quarantine delay still open
-- [ ] XSS hard line: all lesson/adopted text escaped, strict CSP, self-contained assets;
-      adopted raw views pass the scrubber first
+- [x] XSS hard line (held through 15.2+15.3): all lesson/adopted text escaped at render
+      (esc() on every value), strict inline-only CSP, zero external assets; adopted
+      ledger/verdict text passes the scrubber again before display (tested)
 - [ ] Onboarding wizard (consent, starter pack, guard, auto-mode) — arise's face
 - [ ] Graceful no-model degradation; CLI/console write concurrency via atomic writes
 

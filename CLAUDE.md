@@ -295,10 +295,17 @@ compaction (manual or automatic) can never lose progress.
   page is ONE server-side template literal — no backticks inside it, even in comments.
   Doctor dashboard panel deferred (doctor's checks are inline in its command; extract
   to lib first or the web layer would duplicate logic).
-- Next (planner tasks #13-15): 15.3 console (adopt inbox + lessons browser + activity
-  feed; adopted raw views pass the scrubber before display) -> 15.4 settings (dial via
-  `raph auto`) + guard page + docs + Phase 15 closeout -> company-ops backlog (Phase
-  12/14). Run builds INLINE (parallel Workflows hit the limit fast).
+- Console 15.3 SHIPPED (session 08, 258/258): lessons browser (browse-all + the EXACT
+  rank() scorer with scores/reasons; /api/lessons[/item]), injection toggle (=on/off),
+  `raph why` panel, adopt inbox (POST /api/adopt = same provider+gauntlet+dial pipeline;
+  dry-run spends nothing; E-LIMIT->429; history + one-click revoke), activity feed.
+  adoptConfig/estimateAdoptTokens extracted to lib/adopt.js (shared knobs). Defense in
+  depth: adoption-ledger text re-passes scrubSecrets before display (verdicts derive
+  from external material) — tested. Adopt fetch fires only on the user's click (#5b).
+- Next (planner tasks #14-15): 15.4 settings (dial via `raph auto`, consent, guard
+  allowlist) + guard scan page + console docs in README + Phase 15 closeout ->
+  company-ops backlog (Phase 12/14). Run builds INLINE (parallel Workflows hit the
+  limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

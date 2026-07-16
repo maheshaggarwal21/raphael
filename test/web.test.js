@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { makeToken, startConsole, checkRequest, escapeHtml, statusSummary } from '../src/lib/web.js';
 import { writeCandidate } from '../src/lib/candidates.js';
 import { parseLessonFile } from '../src/lib/frontmatter.js';
+import { buildIndex } from '../src/lib/compile.js';
+import { recordAdoption } from '../src/lib/provenance.js';
+import { logEvent } from '../src/lib/events.js';
 import { p } from '../src/lib/paths.js';
-import { makeLesson } from './helpers.js';
+import { makeLesson, writeActiveLesson } from './helpers.js';
 
 function sandbox() {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-web-'));
@@ -193,6 +197,95 @@ test('/api/stats serves the same computation as `raph stats`', async () => {
     assert.equal(st.injections.total, 0);
     assert.deepEqual(Object.keys(st.review).sort(), ['approved', 'rejected', 'suppressed']);
     assert.ok(Array.isArray(st.lessons.neverFired));
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});
+
+// --- 15.3: lessons browser, adopt inbox, activity feed --------------------------
+
+test('console 15.3 e2e: lessons browser, injection toggle, adopt dry-run + ledger + revoke, feed', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  const opts = (extra = {}) => ({ headers: { 'x-raphael-token': token, 'content-type': 'application/json', ...extra.headers }, ...extra });
+  const post = (path, body) => fetch(`${base}${path}`, opts({ method: 'POST', body: JSON.stringify(body) }));
+  try {
+    // lessons browser: browse-all + ranked search + full detail
+    writeActiveLesson();
+    writeActiveLesson({
+      slug: 'csv-injection', category: 'security', severity: 'high',
+      title: 'CSV exports must neutralize formula-leading cells',
+      lesson: 'Spreadsheet apps execute cells starting with = + - or @; exports that pass user text through unneutralized become formula injection.',
+      triggers: { keywords: ['csv', 'export'], paths: [] },
+      injection: { headline: 'CSV export executed a user-supplied formula cell — no neutralization.', tokens: 18 }
+    });
+    buildIndex();
+
+    const all = await (await fetch(`${base}/api/lessons`, opts())).json();
+    assert.equal(all.items.length, 2);
+
+    const ranked = await (await fetch(`${base}/api/lessons?q=webhook+idempotency`, opts())).json();
+    assert.ok(ranked.items.length >= 1);
+    assert.equal(ranked.items[0].slug, 'webhook-idempotency');
+    assert.ok(Array.isArray(ranked.items[0].reasons));
+
+    const item = await (await fetch(`${base}/api/lessons/item?ref=csv-injection`, opts())).json();
+    assert.equal(item.data.category, 'security');
+    assert.equal((await fetch(`${base}/api/lessons/item?ref=nope`, opts())).status, 404);
+
+    // injection toggle = the same switch as `raph on/off`
+    await post('/api/injection', { enabled: false });
+    let st = await (await fetch(`${base}/api/status`, opts())).json();
+    assert.equal(st.injectionEnabled, false);
+    await post('/api/injection', { enabled: true });
+    st = await (await fetch(`${base}/api/status`, opts())).json();
+    assert.equal(st.injectionEnabled, true);
+    assert.equal((await post('/api/injection', { enabled: 'yes' })).status, 400);
+
+    // adopt dry-run: reads + licenses, zero model calls, zero writes
+    const mat = path.join(home, 'material.md');
+    writeFileSync(mat, '# Notes\nRetry queues need dead-letter handling after N failures.\nMIT License\n', 'utf8');
+    const dry = await (await post('/api/adopt', { src: mat, dryRun: true })).json();
+    assert.equal(dry.outcome, 'dry-run');
+    assert.ok(dry.estimateTokens > 2000);
+    assert.equal((await (await fetch(`${base}/api/adoptions`, opts())).json()).items.length, 0);
+
+    // ledger view scrubs verdict text that came from external material
+    recordAdoption({
+      source: 'https://example.com/notes', kind: 'article',
+      license: { detected: true, id: 'MIT', family: 'permissive' },
+      hash: 'x'.repeat(64),
+      verdict: { safe: true, quality: 2, summary: 'mentions key AKIAABCDEFGHIJKLMNOP in passing', risks: [] },
+      taken: []
+    });
+    const led = await (await fetch(`${base}/api/adoptions`, opts())).json();
+    assert.equal(led.items.length, 1);
+    assert.ok(!JSON.stringify(led).includes('AKIAABCDEFGHIJKLMNOP'));
+    assert.ok(JSON.stringify(led).includes('<SECRET:'));
+
+    // revoke through the console = the same revokeAdoption as the CLI
+    const rev = await (await post('/api/adopt/revoke', { ref: led.items[0].id })).json();
+    assert.equal(rev.adoption, led.items[0].id);
+    const led2 = await (await fetch(`${base}/api/adoptions`, opts())).json();
+    assert.equal(led2.items[0].status, 'revoked');
+    assert.equal((await post('/api/adopt/revoke', { ref: 'adp_nope' })).status, 404);
+
+    // activity feed reads the audit log, newest first
+    logEvent({ event: 'approved', slug: 'csv-injection', category: 'security' });
+    const feed = await (await fetch(`${base}/api/events?limit=10`, opts())).json();
+    assert.ok(feed.items.length >= 1);
+    assert.equal(feed.items[0].event, 'approved');
+
+    // /api/why mirrors `raph why`
+    const why = await (await fetch(`${base}/api/why`, opts())).json();
+    assert.equal(why.total, 0);
+
+    // bad adopt bodies are refused
+    assert.equal((await post('/api/adopt', {})).status, 400);
+    assert.equal((await post('/api/adopt', { src: path.join(home, 'missing.md') })).status, 400);
   } finally {
     server.close();
     cleanup(home);
