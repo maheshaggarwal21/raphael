@@ -24,7 +24,8 @@ const COMMANDS = {
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   guard: () => import('./commands/guard.js'),
-  stats: () => import('./commands/stats.js')
+  stats: () => import('./commands/stats.js'),
+  adopt: () => import('./commands/adopt.js')
 };
 
 const HELP = `raph — the Raphael brain CLI
@@ -73,6 +74,9 @@ Commands:
               (raph academy start|status|resume|checkpoint|boundary|limit|list)
   guard       Block commits that would leak secrets in YOUR projects
               (raph guard install|uninstall|scan [--staged|--all|<path...>])
+  adopt       Digest external material (URL, file, repo, skill file) into
+              reviewable lessons + skill drafts, with provenance and undo
+              (raph adopt <url|path> [--dry-run] | adopt list | adopt revoke <id>)
   help        Show this help
   version     Show version
 
