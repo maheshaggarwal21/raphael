@@ -9,8 +9,39 @@
   "engines": {
     "node": ">=18"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "plugin/",
+    "docs/",
+    "README.md",
+    "LICENSE",
+    "ARCHITECTURE.md"
+  ],
+  "keywords": [
+    "ai",
+    "claude",
+    "claude-code",
+    "agents",
+    "memory",
+    "learning",
+    "lessons",
+    "knowledge-graph",
+    "developer-tools",
+    "cli"
+  ],
+  "author": "Mahesh Aggarwal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maheshaggarwal21/raphael.git"
+  },
+  "homepage": "https://github.com/maheshaggarwal21/raphael#readme",
+  "bugs": {
+    "url": "https://github.com/maheshaggarwal21/raphael/issues"
+  },
   "scripts": {
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "prepublishOnly": "npm test"
   },
   "dependencies": {
     "ajv": "^8.17.1",

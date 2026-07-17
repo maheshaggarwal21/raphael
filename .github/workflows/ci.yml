@@ -1,0 +1,29 @@
+# CI gates (Phase 11): every push and PR must keep the engine green.
+# The eval dry-run is the canary gate — it re-proves the safety chokepoint
+# (schema, scrub, no-URL, containment canaries) without spending model tokens.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm test
+      - name: canary gate (zero model tokens)
+        run: node bin/raph.js eval run --dry-run
+        env:
+          RAPHAEL_HOME: ${{ runner.temp }}/raphael-ci

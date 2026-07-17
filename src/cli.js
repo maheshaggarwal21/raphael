@@ -4,6 +4,8 @@ import path from 'node:path';
 
 const COMMANDS = {
   init: () => import('./commands/init.js'),
+  arise: () => import('./commands/arise.js'),
+  contribute: () => import('./commands/contribute.js'),
   status: () => import('./commands/status.js'),
   validate: () => import('./commands/validate.js'),
   doctor: () => import('./commands/doctor.js'),
@@ -50,6 +52,10 @@ Commands:
   init        Create ~/.raphael, the brain git repo, and default config
               (raph init [--guard] — --guard also installs the project secret
                guard in the current git repo)
+  arise       One-command first-run: init + optional pack seed + guard + the
+              plugin wiring steps (raph arise [--pack] [--guard])
+  contribute  Share a lesson on purpose: strip local traces, re-scrub, re-validate,
+              write a portable .md (raph contribute <id|slug...> [--out dir] | list)
   status      Show brain health: lesson counts, pending candidates, mode
   validate    Run the safety chokepoint on lesson files
               (raph validate <file...> | raph validate --all)

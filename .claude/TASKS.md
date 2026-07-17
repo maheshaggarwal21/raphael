@@ -214,12 +214,32 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
 - Note: a genuine false-fire feedback channel ("mark this injection unhelpful") is the one
   missing datum stats can only proxy — candidate follow-up if the proxy proves insufficient.
 
-## Phase 11 — Distribution (v0.2, pre-launch)
-- [ ] `raphael-arise` one-command setup + auto mode + restricted `auto` tier enforcement
-- [ ] `raphael-brain` GitHub repo + CI gates (schema, scrub, no-URL, lint, canaries)
-- [ ] `raph contribute` (export scrubber over full lesson body) — opt-in per lesson
-- [ ] Signed pack releases + `raph update`; seed first pack from Mahesh's brain
-- [ ] README, LICENSE, launch post
+## Phase 11 — Distribution (v0.2, pre-launch) — WRAPPED session 12 (2026-07-18)
+- [x] One-command setup: shipped as `raph arise [--pack] [--guard]` (src/commands/arise.js)
+      INSIDE the package, not a separate `raphael-arise` npm name — one install, one
+      command, composes init/pack/guard, prints plugin wiring + first five minutes.
+      Live-verified in a sandbox HOME (init + 26 security candidates + next steps).
+      The restricted `auto` tier already ships (raph auto, E-AUTOSEC floor).
+- [x] CI gates: .github/workflows/ci.yml — npm test (358) + `raph eval run --dry-run`
+      (canary gate: schema/scrub/no-URL/containment, zero model tokens) on
+      ubuntu+windows × Node 18/20/22. Repo going PUBLIC on GitHub = owner switch.
+- [x] `raph contribute` (src/lib/contribute.js + command): per-lesson OPT-IN export —
+      strips scope.projects/triggers.paths/evidence.refs, re-scrubs every text field,
+      re-validates through validateLesson (refuses on failure, never "fixes" silently);
+      no --all by design. +5 tests; live-verified on a real adopted lesson.
+- [x] Pack distribution: the first pack (security, 26 lessons) SHIPS IN the npm package
+      (`raph pack add security`); npm's own integrity/signature chain covers tamper
+      protection; update = `npm i -g raphael-brain@latest`. DECISION: custom signed-pack
+      infra + `raph update` verb DEFERRED until packs ship outside npm (no second
+      distribution channel exists — capability-check).
+- [x] README (full overhaul: pitch, install, loop diagram, feature tour, security model,
+      academy products), LICENSE (MIT), docs/manual.md (every command: what/WHEN/how,
+      plugin surface, safety model — the owner's "how and when to use each" ask).
+      package.json publish-ready: files whitelist, keywords, repository/homepage/bugs,
+      author, prepublishOnly=npm test; `npm pack --dry-run` clean (133 files, 746.5 kB).
+      Launch post: drafted in docs/owner/raphael-handbook.md §5 (marketing).
+- [ ] OWNER ACTIONS to go live (the only remaining Phase 11 items): `npm publish`
+      (npm account sign-in) + flip the GitHub repo public. Everything else is ready.
 
 ## Phase 12 — Self-training pipeline ("Raphael Academy") — ARCHITECTURE §12
 Depends on: subscription provider (done), agent layer (Phase 8), eval (Phase 6).

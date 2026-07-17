@@ -1,108 +1,107 @@
 # Raphael
 
-A learning layer ("brain") for AI coding agents. Raphael distills lessons from your
-real projects — the mistakes, the fixes, the decisions — and injects the relevant ones
-back into your agent's context at the right moment, so known mistakes stop recurring.
+**A learning layer ("brain") for AI coding agents.** Raphael distills lessons from
+your real projects — the mistakes, the fixes, the decisions — and injects the
+relevant ones back into your agent's context at the right moment, so known mistakes
+stop recurring.
 
-**Status: early development.** See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design.
+Your coding agent forgets everything between sessions. You don't have to.
 
-## Install (as a Claude Code plugin)
+- **It learns from *your* work** — mining your real session history, not generic tips.
+- **You approve every lesson** — nothing enters the brain without passing one
+  validation chokepoint, and nothing activates without review (security lessons
+  *always* need a human, by code, not convention).
+- **Recall is budgeted and visible** — ≤ ~1,200 tokens/session, `raph why` shows
+  every injection, `raph off` stops it.
+- **Local by default** — the brain lives in `~/.raphael`, in its own git repo that
+  blocks pushes; sharing is per-lesson opt-in.
+- **Proof, not vibes** — `raph eval` measures the same tasks with the brain ON vs
+  OFF; `raph atlas bench` measured **147.9× fewer tokens** answering "where do I
+  look?" with the deterministic project graph vs grep-and-read.
 
-Two steps: install the CLI, then add the plugin.
+**[The full manual — every command, how and when to use it → docs/manual.md](docs/manual.md)**
+· [ARCHITECTURE.md](ARCHITECTURE.md) for the complete design.
+
+## Install
 
 ```
-# 1. the raph CLI (the engine — the plugin's hooks call it), from GitHub
-npm install -g maheshaggarwal21/raphael
+# 1. the raph CLI (the engine — the plugin's hooks call it)
+npm install -g raphael-brain        # or, from GitHub: npm install -g maheshaggarwal21/raphael
 
 # 2. the Claude Code plugin (auto-wires recall + adds the /brain commands)
 /plugin marketplace add maheshaggarwal21/raphael
 /plugin install raphael-brain@raphael
+
+# 3. one-command setup
+raph arise --pack --guard
 ```
 
-(A published `raphael-brain` on the npm registry is a later convenience — the GitHub install
-above works today and gives you the same `raph` CLI.)
+`arise` creates the brain, seeds 26 reviewed security lessons (as candidates — you
+approve them), installs a pre-commit secret guard, and prints your first five
+minutes. Run `raph doctor` any time to check health.
 
-Then run **`/brain`** — it walks you through the first five minutes (init, seed a lesson
-pack or mine your own history, review, and turn injection on). The plugin ships:
-
-- **Auto-injection hooks** — matching lesson headlines are added at session start and on
-  relevant prompts (budgeted ≤1,200 tokens/session; `raph why` shows every one; `raph off` stops it).
-- **Slash commands** — `/brain` (hub + setup), `/brain-learn` (mine + distill), `/brain-review`
-  (approve/reject the queue), `/brain-eval` (prove it helps).
-- **A recall skill** (`brain-recall`) and **10 agents** (Planner, Architect, Reviewer, Debugger, …)
-  that pull from the brain before acting.
-
-Run `raph doctor` any time to check the CLI, brain, and plugin wiring.
-
-## Secret guard (for your own repos)
-
-`raph guard` installs a pre-commit hook that blocks a commit if it would leak a secret —
-API keys, tokens, private keys, `key=secret` assignments — using the same patterns as the
-brain's safety chokepoint.
+## The loop
 
 ```
-raph guard install          # in any git repo (or: raph init --guard)
-raph guard scan --all       # audit every tracked file now
-raph guard uninstall
+ your real sessions ──▶ raph mine ──▶ raph distill ──▶ raph queue/approve ──▶ ACTIVE
+                        (episodes,     (model + 4       (YOU are the gate)      │
+                         scrubbed)      gates)                                  ▼
+ your next session ◀────────────────────────────────────────────── auto-injection
+                     budgeted, enveloped as data, fail-open, raph why explains it
 ```
 
-High-precision by default; add `--entropy` for the noisier high-entropy pass. It scans the
-staged content, never touches history, and fails open (a broken scan can't wedge a commit).
-Bypass a single commit with `git commit --no-verify`.
+Distillation uses your **Claude Code subscription** by default (fixed price, no API
+key, model contained with zero tools). Add lessons by hand with `raph note`, or seed
+curated packs with `raph pack add security`.
 
-## Adopt (drop a link, keep the knowledge)
+## Beyond the loop
 
-Found a good repo, article, or skill file? `raph adopt` digests it into reviewable
-knowledge instead of a browser tab you'll never reopen:
+- **`raph adopt <url|repo|file>`** — drop a link, keep the knowledge: a six-layer
+  gauntlet (bounded fetch → scrub → license gate → contained reviewer agent →
+  chokepoint → your queue) with a provenance ledger and one-command `revoke`.
+- **`raph atlas`** — a deterministic knowledge graph of any codebase (files, symbols,
+  error codes; imports/tests/calls). Built and queried with zero model tokens.
+  `raph atlas where "E-THING"` answers "where do I look when this breaks?";
+  `raph atlas export` produces an Obsidian vault.
+- **`raph guard`** — a pre-commit hook that blocks secret leaks in your own repos,
+  using the same patterns as the brain's chokepoint.
+- **`raph web`** — the local console: eight tabs, localhost-only, token-guarded,
+  every button calling the exact CLI engine.
+- **`raph academy` / `portfolio` / `report weekly`** — Raphael trains itself by
+  building real products autonomously (checkpointed across limits and reboots, with
+  deploy/sign-in/spend always reserved for the owner) and reports like a company.
+- **`raph contribute`** — share a lesson on purpose: local traces stripped, full body
+  re-scrubbed, re-validated through the chokepoint before it leaves your machine.
+- **`raph eval` / `stats` / `lint` / `optimize`** — proof and upkeep: ON/OFF lift,
+  cost per injection, retrieval misses, stale/contradicting lessons, prune candidates.
 
-```
-raph adopt https://example.com/great-post     # or a local file / repo dir / SKILL.md
-raph adopt <src> --dry-run                    # read + license check, zero model calls
-raph adopt list                               # the provenance ledger
-raph adopt revoke <id>                        # one-command undo of everything it produced
-```
+Three products built by Raphael's own autonomous Academy while training itself:
+[repo-keeper](https://github.com/maheshaggarwal21/repo-keeper) ·
+[onedesk](https://github.com/maheshaggarwal21/onedesk) ·
+[assay](https://github.com/maheshaggarwal21/assay)
 
-Every adoption runs a six-layer gauntlet: bounded read-only fetch (https GET, size/time
-capped, never executed) → secret scrub before any model sees it → a contained reviewer
-agent that blocks prompt injection and malicious guidance → extraction → the same
-validation chokepoint as everything else → your review queue. Lessons land as candidates
-(nothing activates without approval); reusable procedures land as skill *drafts* under
-`staged/skills/`, never auto-installed. Sources, licenses, and verdicts are recorded in
-`state/adoptions.jsonl` — `revoke` walks that record and undoes it all.
+## Security model
 
-## The console (`raph web`)
-
-Everything above, in the browser — for the days the CLI feels like friction:
-
-```
-raph web            # prints a one-time URL and opens it
-```
-
-Eight tabs: **Dashboard** (status + self-use stats) · **Review queue** (batch
-approve/reject; security and quarantined items render in full and unlock a one-item
-"Approve --confirmed" only after an explicit "I read it" check) · **Lessons** (browse
-or search with the exact scorer the hooks use, toggle injection, see what got
-injected and why) · **Adopt** (paste a URL or path, dry-run or run the gauntlet,
-revoke any adoption in one click) · **Activity** (the audit log) · **Company**
-(the project portfolio and the weekly board report — `raph portfolio` and
-`raph report weekly` in the browser) · **Guard** (scan the launch repo for secrets,
-install the pre-commit hook) · **Settings** (the auto-approve dial and the
-per-project mining consent registry).
-
-The console holds zero business logic — every button calls the same functions as
-the CLI verb it mirrors, so nothing is possible in the browser that isn't possible
-(and tested) at the command line. Security model: binds `127.0.0.1` only, a fresh
-token every launch, and every request must pass Host + Origin checks (a hostile
-website cannot reach it even with the token) under a strict inline-only CSP.
-Everything rendered is treated as untrusted text and escaped; adoption verdicts
-re-pass the secret scrubber before display.
+1. One door in: `validateLesson()` — schema-checked, URL-free, no executable fields,
+   declarative voice. No exceptions, including imports and curated packs.
+2. Secrets scrubbed before any model sees mined text, and again on output.
+3. Lessons are advisory data; they cannot command an agent. Containment canaries in
+   the eval harness re-prove it (`raph eval run --dry-run` — free).
+4. Security-category lessons never activate machine-only.
+5. Network access: model calls + user-initiated read-only adopt fetches. Nothing else.
+6. Everything mined stays local; sharing is opt-in per lesson.
 
 ## Development
 
 ```
 npm install
-npm test
-node bin/raph.js help
+npm test                  # 358 tests, node:test, no frameworks
+node bin/raph.js help     # the full CLI surface (40 verbs)
 ```
 
-Point `RAPHAEL_HOME` at a scratch directory to sandbox any command.
+Point `RAPHAEL_HOME` at a scratch directory to sandbox any command. CI runs the test
+suite plus the canary gate on Linux + Windows, Node 18/20/22.
+
+## License
+
+[MIT](LICENSE)

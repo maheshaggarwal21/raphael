@@ -459,8 +459,19 @@ compaction (manual or automatic) can never lose progress.
   under those names — nearest real equivalents adopted.) 14 candidates ALL approved after
   review (1 security + 1 quarantined on the --confirmed path) -> BRAIN 43 -> 57 ACTIVE;
   4 skill drafts staged (NOT installed). Provenance x5 in `raph adopt list`.
+- PHASE 11 WRAPPED (session 12, 2026-07-18): `raph arise [--pack|--guard]` (one-command
+  first run, composes init/pack/guard — decision: inside the package, no separate npm name),
+  `raph contribute` (per-lesson OPT-IN export: strips projects/paths/refs, re-scrubs all
+  text, RE-VALIDATES through the chokepoint, refuses on failure, no --all), CI workflow
+  (test suite + eval canary dry-run, ubuntu+windows × Node 18/20/22), LICENSE (MIT),
+  package.json publish-ready (files/keywords/repo/prepublishOnly; npm pack clean = 133
+  files), README overhauled, docs/manual.md NEW (the complete how/WHEN manual, 40 verbs).
+  Signed-pack infra + `raph update` deferred w/ reason (npm integrity covers the only
+  channel). 358/358 tests. REMAINING = owner switches only: `npm publish` + repo public.
+  Owner handbook at docs/owner/raphael-handbook.md (pitch/features/journey/interview/
+  marketing incl. launch posts).
 - DEVELOPMENT COMPLETE per plan. Remaining items are OPERATIONAL / owner-timing, not code:
-  Phase 10 self-use RUN (calendar), Phase 11 publish/launch (owner timing), Phase 12
+  Phase 10 self-use RUN (calendar), npm publish + GitHub-public (owner switches), Phase 12
   operational bits (wire mining into a real Academy build, tokens ON/OFF recording, backlog
   finalize with owner).
   Parked: doctor-to-lib extraction, Phase 5 inject latency (~390ms cold). Run builds INLINE
