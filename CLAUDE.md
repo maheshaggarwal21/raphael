@@ -451,10 +451,18 @@ compaction (manual or automatic) can never lose progress.
   - 16.8: computed confidence + decision ledger (`raph decide`, session-start envelope) +
     `academy checkpoint --tried`. Retire (`raph retire --confirmed`) + lint (`raph lint`) from 16.6.
   Tests 288 -> 353 (all green). `raph doctor` = healthy. 38 CLI verbs.
+- 16.7 LIVE CLOSED (session 12, 2026-07-18, owner go "complete this 16.7"): 5 supervised
+  adopt runs via the normal gauntlet over the sweep's real sources (both MIT, cloned locally):
+  fable-method core (TWIN CHECK, AUTH gate [security --confirmed], spec/tests/code
+  contradiction, read-sources, outcome-first), act-when-ready, effort-calibrator,
+  regrounding-summary, no-gold-plating. ("karpathy-guidelines"/"handover format" don't exist
+  under those names — nearest real equivalents adopted.) 14 candidates ALL approved after
+  review (1 security + 1 quarantined on the --confirmed path) -> BRAIN 43 -> 57 ACTIVE;
+  4 skill drafts staged (NOT installed). Provenance x5 in `raph adopt list`.
 - DEVELOPMENT COMPLETE per plan. Remaining items are OPERATIONAL / owner-timing, not code:
-  Phase 10 self-use RUN (calendar), Phase 11 publish/launch (owner timing), 16.7 LIVE adopt runs
-  over the sweep's skills (model spend + external fetch — supervised), Phase 12 operational bits
-  (wire mining into a real Academy build, tokens ON/OFF recording, backlog finalize with owner).
+  Phase 10 self-use RUN (calendar), Phase 11 publish/launch (owner timing), Phase 12
+  operational bits (wire mining into a real Academy build, tokens ON/OFF recording, backlog
+  finalize with owner).
   Parked: doctor-to-lib extraction, Phase 5 inject latency (~390ms cold). Run builds INLINE
   (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

@@ -656,12 +656,20 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       on the real brain (unindexed-path staleness); retire refuse→confirm→gone verified.
       +11 tests. Capability-check honored: lint only points at `raph retire` now that it
       exists. OPEN (16.6 follow-on for 16.8): low-confidence+never-fired retire sweep.
-- [ ] 16.7 Adopt runs over the sweep's skills: fable-method (fit gate, TWIN CHECK ->
-      also a Debugger spine line, AUTH gate), act-when-ready, effort-calibrator,
-      karpathy-guidelines (4 principles: think-first/simplicity/surgical/goal-driven),
-      fable-skills handover format -> skills-factory template ("honest limits"
-      section mandatory). All via the normal adopt gauntlet. + defuddle idea:
-      zero-dep HTML->text cleanup in adopt fetch (fewer reviewer tokens).
+- [x] 16.7 COMPLETE (code session 11, LIVE runs session 12 with owner go). Code: defuddle
+      zero-dep HTML->text cleanup in adopt fetch (mainRegion + boilerplate drop + entity
+      decode). LIVE (2026-07-18): 5 supervised adopt runs via the normal gauntlet over the
+      sweep's real sources (both MIT; cloned locally) — fable-method core skill (TWIN CHECK
+      "defect patterns recur; search the whole project", AUTH gate "irreversible actions need
+      the user's own words", spec/tests/code-contradiction, read-sources, outcome-first),
+      act-when-ready, effort-calibrator, regrounding-summary, no-gold-plating. NOTE:
+      "karpathy-guidelines" + "handover format" don't exist under those names in the real
+      repos — nearest real equivalents adopted instead (no-gold-plating = simplicity/surgical;
+      regrounding-summary = the handover/report format). Result: 14 lesson candidates
+      (1 security --confirmed, 1 quarantined --confirmed, 12 batch) ALL approved after
+      review -> brain 43 -> 57 ACTIVE; 4 skill drafts staged (act-when-ready,
+      effort-selection, grounded-summaries, no-gold-plating-checklist) — staged, NOT
+      installed, per the skills-factory rule. Provenance: adp_01KXRVX2... x5 in adopt list.
 - [x] 16.8 SHIPPED (session 11, 326/326, live-verified): three pure-Node, zero-network
       additions from the gstack audit. (a) COMPUTED CONFIDENCE — src/lib/confidence.js
       computeConfidence(lesson) = deterministic 0-10 from evidence (breadth > repetition;
