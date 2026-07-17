@@ -332,7 +332,18 @@ compaction (manual or automatic) can never lose progress.
   alignment enforced (checkRosterAlignment — 'inherit' defers to policy);
   `raph policy [<kind>] [--escalated] [--json]`; provider buildCliArgs/callModelCLI
   forward --effort. distill stays model:null = CLI default.
-- Next: 14.5 scheduler + autopilot driver. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
+- 14.5 SHIPPED (274/274): src/lib/driver.js = the autopilot. Pure state machine
+  (driver state INSIDE academy state.json — all resume infra carries it; state
+  written BEFORE every spawn) + makeStageRunner (real `claude -p`, tools ON,
+  acceptEdits, workspace cwd, per-stage --session-id, API keys stripped) + drive()
+  loop. E-LIMIT -> recordLimit + exit 4; rerun resumes the SAME stage via --resume.
+  Fail -> one escalated retry (policy) else owner. Boundary IN CODE: no deploy kind
+  exists (E-POLICY), completion -> recordBoundary + blocked. `raph academy drive
+  <p> --brief|--brief-file [--pipeline] [--dry-run] [--max-stages]`. LIVE-verified:
+  real plan stage wrote spec.md in a sandbox, 541 tokens, boundary recorded.
+  Closes Phase 12: driver, scheduler, per-stage session resume, boundary-in-code.
+- Next: Phase 14 meta layer (skills factory -> agent-maker -> optimizer -> self-
+  upgrade rule) or 13b (driver now exists). Parked: Phase 10 RUN (calendar), Phase 11 publish +
   hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows
   hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

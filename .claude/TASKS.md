@@ -310,15 +310,21 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
         enforced). `assay contract|check|report`. Live e2e: drifted file failed all 4 classes.
   - Wrote back 4 approved lessons this build (scanner-fixture false positives, leading-zero
     codes, outliers-are-WATCH, contract-enforce-vs-record) -> brain 37 active.
-- [ ] Autopilot driver: runs the 10-agent build loop (plan -> architect -> build -> test
-      -> prep-deploy) stage by stage, output-of-one -> input-of-next
-- [ ] Limit-aware scheduler: catch E-LIMIT, checkpoint, auto-resume at the reset time
-      (schedule/loop mechanisms), continue where it stopped
-- [ ] Model policy table: task-kind -> model (Haiku mechanical / Sonnet dev / Opus hard)
-      via `claude --model`; effort policy via `claude --effort`
-- [ ] Session resume across pauses: `claude --resume <id>` / `--session-id` per stage
-- [ ] Autonomy boundary ENFORCED in code: reversible/local runs autonomously; deploy /
-      account sign-in / spend / public push / publish STOP and hand to the owner
+- [x] Autopilot driver (2026-07-17 session 09 = milestone 14.5, src/lib/driver.js):
+      `raph academy drive` runs the pipeline stage by stage, output-of-one ->
+      input-of-next, model/effort per stage from the policy table; LIVE-verified
+      (real plan stage, 541 tokens, spec written to the workspace)
+- [x] Limit-aware scheduler (14.5): E-LIMIT mid-stage -> state written FIRST,
+      recordLimit w/ reset time, clean exit 4; rerunning `drive` clears the block
+      and resumes the interrupted stage. The timed re-trigger is the existing
+      auto-resume infra (resume.ps1 + Startup launcher, project-agnostic).
+- [x] Model policy table (14.4): task-kind -> model (haiku mechanical / sonnet dev /
+      opus escalation-only) + effort, `raph policy`, --model/--effort forwarded
+- [x] Session resume across pauses (14.5): every stage runs under its own
+      `--session-id`; a stage interrupted mid-run resumes with `--resume <id>` (tested)
+- [x] Autonomy boundary ENFORCED in code (14.5): no "deploy" task kind EXISTS
+      (E-POLICY at init); pipeline completion records the boundary and blocks;
+      boundary rules verbatim in every stage prompt; workspace-confined cwd
 - [ ] Sandbox workspace: ~/raphael-academy/<project>/, own git repo, never auto-pushed,
       no real secrets; unattended tool use only inside it
 - [ ] Wire the loop into mining: each build session -> `raph mine` -> `raph distill`
@@ -518,7 +524,21 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       defers to policy — tested). `raph policy [<kind>] [--escalated] [--json]`
       thin printer. buildCliArgs/callModelCLI now forward --effort (flag verified
       on CLI v2.1.168). distill's model stays null = CLI default, shown honestly.
-- [ ] 14.5 Limit-aware scheduler + autopilot driver design (Phase 12 items)
+- [x] 14.5 Autopilot driver + limit-aware scheduler (2026-07-17 session 09, +4 tests
+      -> 274\274): src/lib/driver.js = pure state machine (initDriver/nextAction/
+      applyStageResult; driver state INSIDE academy state.json so all existing
+      resume infra carries it) + makeStageRunner (the one token-spending surface:
+      real `claude -p`, tools ON, acceptEdits, workspace cwd, subscription-forced
+      env — the eval-runner pattern) + drive() loop (state written BEFORE each
+      spawn; E-LIMIT -> recordLimit -> exit 4; rerun resumes the interrupted
+      stage's session via --resume; failed stage retries ONCE escalated when the
+      policy allows, else fails to owner attention). DEFAULT_PIPELINE = plan ->
+      architect -> develop -> test -> review -> security -> deploy-prep. Boundary
+      in code: no deploy kind exists; completion -> recordBoundary + blocked.
+      `raph academy drive <project> --brief|--brief-file [--pipeline] [--dry-run]
+      [--max-stages N]` (dry-run spends nothing). LIVE: one-stage real run on the
+      subscription — plan stage wrote a true spec.md in the sandbox workspace,
+      541 tokens, boundary recorded, state.json exact.
 - [ ] Skills factory: skill drafts from adopt + self-observation ("this lesson fires
       everywhere -> package it as a skill"); one source of truth + generator, like agents.js
 - [ ] Agent-maker (meta-agent): drafts roster entries as PROPOSALS, regenerates

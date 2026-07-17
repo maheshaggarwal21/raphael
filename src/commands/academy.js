@@ -5,9 +5,11 @@
 // human input. `raph academy status` / `resume` are what that fresh session reads
 // first. Checkpoints are cheap and frequent; the autonomy boundary is explicit.
 
+import { readFileSync } from 'node:fs';
 import {
   startProject,
   readState,
+  writeState,
   checkpoint,
   recordBoundary,
   recordLimit,
@@ -15,6 +17,7 @@ import {
   renderStatus,
   parseMilestones
 } from '../lib/academy.js';
+import { initDriver, drive, makeStageRunner, renderPlan, DEFAULT_PIPELINE } from '../lib/driver.js';
 
 function flag(args, name) {
   const i = args.indexOf(name);
@@ -31,6 +34,7 @@ function usage(code = 1) {
       '  raph academy checkpoint <project> [--milestone id] [--step "..."] [--next "..."] [--status s] [--note "..."] [--done id] [--tests N] [--lessons N]',
       '  raph academy boundary <project> --reason "what the owner must do"',
       '  raph academy limit <project> [--reset "12am IST"]',
+      '  raph academy drive <project> --brief "..."|--brief-file <f> [--pipeline "plan,architect,..."] [--dry-run] [--max-stages N]',
       '  raph academy list'
     ].join('\n')
   );
@@ -152,6 +156,87 @@ export default async function academy(args) {
       console.error(`raph: ${err.message}`);
       return 1;
     }
+  }
+
+  if (sub === 'drive') {
+    const project = args[1];
+    if (!project || project.startsWith('--')) return usage(1);
+    const state = readState(project);
+    if (!state) {
+      console.error(`raph: no academy project "${project}" — start it first`);
+      return 1;
+    }
+
+    let brief = flag(args, '--brief');
+    const briefFile = flag(args, '--brief-file');
+    if (!brief && briefFile) {
+      try {
+        brief = readFileSync(briefFile, 'utf8');
+      } catch (err) {
+        console.error(`raph: E-DRIVER: could not read --brief-file: ${err.message}`);
+        return 1;
+      }
+    }
+    const pipelineFlag = flag(args, '--pipeline');
+    const pipeline = pipelineFlag
+      ? pipelineFlag.split(',').map((s) => s.trim()).filter(Boolean)
+      : DEFAULT_PIPELINE;
+
+    try {
+      // idempotent mid-flight: an existing unfinished driver keeps its brief/pipeline
+      if (!state.driver || state.driver.status === 'done') {
+        initDriver(state, { brief, pipeline });
+        writeState(project, state);
+      }
+    } catch (err) {
+      console.error(`raph: ${err.message}`);
+      return 1;
+    }
+
+    if (args.includes('--dry-run')) {
+      console.log(renderPlan(readState(project)));
+      console.log('raph: dry run — nothing was spawned, nothing was spent.');
+      return 0;
+    }
+
+    if (!state.workspace) {
+      console.error('raph: E-DRIVER: the project has no workspace — set one at start (--workspace) before driving');
+      return 1;
+    }
+
+    const maxFlag = flag(args, '--max-stages');
+    const maxStages = maxFlag ? Number(maxFlag) : Infinity;
+    if (maxFlag && (!Number.isInteger(maxStages) || maxStages < 1)) {
+      console.error('raph: E-DRIVER: --max-stages must be a positive integer');
+      return 1;
+    }
+
+    const runner = makeStageRunner({ workspace: state.workspace });
+    let outcome;
+    try {
+      outcome = await drive(project, { runner, log: (m) => console.log(`raph: ${m}`), maxStages });
+    } catch (err) {
+      console.error(`raph: ${err.message}`);
+      return 1;
+    }
+
+    const final = outcome.state;
+    if (outcome.stopped === 'done' || outcome.stopped === 'owner') {
+      console.log('raph: autopilot pipeline complete.');
+      if (final.boundary) console.log(`raph: OWNER ACTION — ${final.boundary.reason}`);
+      return 0;
+    }
+    if (outcome.stopped === 'limit') {
+      console.log(`raph: limit hit mid-pipeline — checkpointed; rerun \`raph academy drive ${project}\` after the reset${final.limit?.reset_at ? ` (${final.limit.reset_at})` : ''}.`);
+      return 4;
+    }
+    if (outcome.stopped === 'max-stages') {
+      console.log('raph: stopped at --max-stages; rerun to continue from the checkpoint.');
+      return 0;
+    }
+    const kind = final.driver?.pipeline?.[final.driver.stage];
+    console.error(`raph: stage "${kind}" failed twice — needs attention (raph academy status ${project}).`);
+    return 2;
   }
 
   if (sub === 'limit') {
