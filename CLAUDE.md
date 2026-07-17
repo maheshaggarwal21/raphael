@@ -470,10 +470,15 @@ compaction (manual or automatic) can never lose progress.
   channel). 358/358 tests. REMAINING = owner switches only: `npm publish` + repo public.
   Owner handbook at docs/owner/raphael-handbook.md (pitch/features/journey/interview/
   marketing incl. launch posts).
+- RAPHAEL IS PUBLIC (session 12 round 2, owner go): pre-publish secret audit (46 findings
+  hand-vetted benign -> committed .raphallow, scan clean), then flipped
+  github.com/maheshaggarwal21/raphael public via API (cached GCM token) + topics.
+  Verified: unauth 200; `npm pack maheshaggarwal21/raphael` builds from the public repo —
+  the GitHub install path works for strangers. CI live on the public repo.
 - DEVELOPMENT COMPLETE per plan. Remaining items are OPERATIONAL / owner-timing, not code:
-  Phase 10 self-use RUN (calendar), npm publish + GitHub-public (owner switches), Phase 12
-  operational bits (wire mining into a real Academy build, tokens ON/OFF recording, backlog
-  finalize with owner).
+  `npm publish` (the ONE owner action left — machine has no npm login; name raphael-brain
+  is free), Phase 10 self-use RUN (calendar), Phase 12 operational bits (wire mining into
+  a real Academy build, tokens ON/OFF recording, backlog finalize with owner).
   Parked: doctor-to-lib extraction, Phase 5 inject latency (~390ms cold). Run builds INLINE
   (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

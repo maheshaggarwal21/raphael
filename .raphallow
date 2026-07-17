@@ -1,0 +1,17 @@
+# raph guard allowlist — every entry hand-vetted 2026-07-18 (pre-publish audit).
+# A security tool's own tests and pattern definitions always trip secret scanners:
+# these files contain FIXTURE secrets (canonical example keys) or pattern-shaped
+# strings (help text, error messages), never real credentials.
+# Explicit paths passed to `raph guard scan <path>` are ALWAYS scanned regardless.
+
+# test fixtures: canonical fake keys exercising the scrubber/guard/pipeline
+test/
+
+# eval scenario fixtures: S15 deliberately seeds a fake .env for the agent under test
+src/eval/scenarios.js
+
+# pattern coincidences, no values: console help text / URL template mentioning the
+# per-launch session token query param, and the E-APIKEY error naming the env var
+src/commands/web.js
+src/lib/web.js
+src/lib/model.js

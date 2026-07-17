@@ -238,8 +238,18 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
       package.json publish-ready: files whitelist, keywords, repository/homepage/bugs,
       author, prepublishOnly=npm test; `npm pack --dry-run` clean (133 files, 746.5 kB).
       Launch post: drafted in docs/owner/raphael-handbook.md §5 (marketing).
-- [ ] OWNER ACTIONS to go live (the only remaining Phase 11 items): `npm publish`
-      (npm account sign-in) + flip the GitHub repo public. Everything else is ready.
+- [x] REPO PUBLIC (session 12, owner go "continue... go with your recommendations"):
+      pre-publish secret audit first — `raph guard scan --all` = 46 findings, ALL
+      hand-vetted benign (test fixtures, eval-seeded fakes, help-text pattern
+      coincidences) -> committed .raphallow (announced, entry-by-entry comments;
+      one meta-catch: the allowlist's own comment tripped kv-secret, reworded) ->
+      scan clean. Flipped public via the GitHub API (cached GCM token, never
+      printed) + description + 10 topics. VERIFIED: unauthenticated 200; `npm pack
+      maheshaggarwal21/raphael` builds the tarball from the public repo — the
+      GitHub install path in the README works for strangers today.
+- [ ] LAST OWNER ACTION: `npm publish` (needs `npm login` — machine is not
+      authenticated; name raphael-brain confirmed FREE on the registry).
+      Then the README's first install line goes live too.
 
 ## Phase 12 — Self-training pipeline ("Raphael Academy") — ARCHITECTURE §12
 Depends on: subscription provider (done), agent layer (Phase 8), eval (Phase 6).
