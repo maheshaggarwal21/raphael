@@ -84,3 +84,30 @@ test('renderStats surfaces the headline signals', () => {
   assert.match(text, /env-no-commit/);
   assert.match(text, /Review funnel/);
 });
+
+test('atlas bench: latest event per project surfaces leverage', () => {
+  const withBench = [
+    ...EVENTS,
+    { event: 'atlas-bench', ts: '2026-06-01T08:00:00Z', project: 'raphael', questions: 10, graphTokens: 1000, rawTokens: 100000, saved: 99000, ratio: 100.0 },
+    { event: 'atlas-bench', ts: '2026-06-03T08:00:00Z', project: 'raphael', questions: 10, graphTokens: 1179, rawTokens: 174324, saved: 173145, ratio: 147.9 },
+    { event: 'atlas-bench', ts: '2026-06-02T08:00:00Z', project: 'assay', questions: 4, graphTokens: 0, rawTokens: 0, saved: 0, ratio: null }
+  ];
+  const s = computeStats(withBench, ACTIVE);
+  assert.equal(s.atlas.benches.length, 2); // one per project
+  const raph = s.atlas.benches.find((b) => b.project === 'raphael');
+  assert.equal(raph.ratio, 147.9); // the LATEST raphael bench, not the earlier 100x
+  assert.equal(raph.rawTokens, 174324);
+  const text = renderStats(s);
+  assert.match(text, /Atlas leverage/);
+  assert.match(text, /raphael : 147\.9x fewer/);
+  assert.match(text, /assay : no readable candidate files/);
+});
+
+test('a bench-only log still renders (no injections, no review)', () => {
+  const only = [{ event: 'atlas-bench', ts: '2026-06-01T08:00:00Z', project: 'p', questions: 3, graphTokens: 10, rawTokens: 500, saved: 490, ratio: 50.0 }];
+  const s = computeStats(only, ACTIVE);
+  const text = renderStats(s);
+  assert.doesNotMatch(text, /nothing recorded yet/);
+  assert.match(text, /Atlas leverage/);
+  assert.match(text, /p : 50x fewer/);
+});

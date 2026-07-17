@@ -23,6 +23,7 @@ import {
 } from '../lib/atlas.js';
 import { mapFileName } from '../lib/map.js';
 import { atomicWrite } from '../lib/files.js';
+import { logEvent } from '../lib/events.js';
 import { p } from '../lib/paths.js';
 
 function projectDirFrom(args) {
@@ -200,6 +201,19 @@ export default async function atlas(args) {
       }
     };
     const bench = benchAtlas(doc, { questions, tokensForFile });
+    // Record the totals so `raph stats` and the weekly report can show the
+    // atlas's measured leverage without re-running the scan (zero tokens either way).
+    const t = bench.totals;
+    logEvent({
+      event: 'atlas-bench',
+      project: doc.project || path.basename(projectDir),
+      questions: t.count,
+      answered: t.answered,
+      graphTokens: t.graphTokens,
+      rawTokens: t.rawTokens,
+      saved: t.saved,
+      ratio: t.ratio
+    });
     if (asJson) {
       console.log(JSON.stringify(bench, null, 2));
       return 0;

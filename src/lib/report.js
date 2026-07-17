@@ -55,6 +55,18 @@ export function computeWeekly({ states = [], events = [], adoptions = [], active
     capHits: injected.filter((e) => e.cap_reached).length
   };
 
+  // Atlas leverage: bench runs inside the window, with the best measured ratio
+  // (the deterministic graph's tokens-to-answer saving over a raw grep-and-read).
+  const benchWin = win.filter((e) => e.event === 'atlas-bench');
+  const latestBench = benchWin.reduce((m, e) => (!m || (e.ts || '') > (m.ts || '') ? e : m), null);
+  const atlas = {
+    benches: benchWin.length,
+    bestRatio: benchWin.reduce((m, e) => (e.ratio != null && (m == null || e.ratio > m) ? e.ratio : m), null),
+    latest: latestBench
+      ? { project: latestBench.project || 'unknown', ratio: latestBench.ratio ?? null, questions: Number(latestBench.questions) || 0 }
+      : null
+  };
+
   // Retrieval miss is an ALL-TIME signal (a lesson that never fired is dead
   // weight regardless of the window) — computed over the full log on purpose.
   const firedIds = new Set(
@@ -89,7 +101,7 @@ export function computeWeekly({ states = [], events = [], adoptions = [], active
       boundary: s.boundary?.reason || null
     }));
 
-  return { window: { from, to, days }, builds, brain, recall, misses, adoptions: adopted, next };
+  return { window: { from, to, days }, builds, brain, recall, atlas, misses, adoptions: adopted, next };
 }
 
 // Disk wrapper — the one the CLI verb and the console both call.
@@ -126,6 +138,14 @@ export function renderWeekly(r) {
     L.push(`  ${r.recall.injections} injection(s) across ${r.recall.sessions} session(s) — ${r.recall.tokens.toLocaleString()} tokens, ${r.recall.capHits} cap hit(s)`);
   } else {
     L.push('  no injections this window');
+  }
+
+  if (r.atlas && r.atlas.benches) {
+    L.push('');
+    L.push('Atlas leverage');
+    const a = r.atlas;
+    const best = a.bestRatio != null ? `${a.bestRatio}x fewer tokens to answer (best)` : 'no readable-file comparison';
+    L.push(`  ${a.benches} bench run(s) — ${best}${a.latest ? `; latest: ${a.latest.project}, ${a.latest.questions} question(s)` : ''}`);
   }
 
   L.push('');

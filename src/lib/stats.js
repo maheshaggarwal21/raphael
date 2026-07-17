@@ -80,6 +80,28 @@ export function computeStats(events, activeLessons = []) {
 
   const totalSessionTokens = [...sessions.values()].reduce((a, b) => a + b, 0);
 
+  // Atlas leverage: the latest `raph atlas bench` result per project — the
+  // measured tokens-to-answer saving of the deterministic graph over a raw
+  // grep-and-read. Not injection cost; a separate, honest efficiency signal.
+  const latestBench = new Map();
+  for (const e of events) {
+    if (e.event !== 'atlas-bench') continue;
+    const proj = e.project || 'unknown';
+    const prev = latestBench.get(proj);
+    if (!prev || (e.ts && e.ts > (prev.ts || ''))) latestBench.set(proj, e);
+  }
+  const atlasBench = [...latestBench.values()]
+    .map((e) => ({
+      project: e.project || 'unknown',
+      ratio: e.ratio ?? null,
+      questions: Number(e.questions) || 0,
+      rawTokens: Number(e.rawTokens) || 0,
+      graphTokens: Number(e.graphTokens) || 0,
+      saved: Number(e.saved) || 0,
+      ts: e.ts || null
+    }))
+    .sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+
   return {
     window: { from: first, to: last },
     injections: {
@@ -99,6 +121,7 @@ export function computeStats(events, activeLessons = []) {
       neverFired,
       lowScoreFires
     },
+    atlas: { benches: atlasBench },
     review: {
       approved: events.filter((e) => e.event === 'approved').length,
       rejected: events.filter((e) => e.event === 'rejected').length,
@@ -117,8 +140,9 @@ export function renderStats(s, { topN = 8, listN = 12 } = {}) {
 
   const hasInj = s.injections.total > 0;
   const hasReview = s.review.approved + s.review.rejected + s.review.suppressed > 0;
+  const benches = s.atlas?.benches ?? [];
 
-  if (!hasInj && !hasReview) {
+  if (!hasInj && !hasReview && !benches.length) {
     L.push('');
     L.push('  nothing recorded yet — approve some lessons and use the agent with');
     L.push('  injection on ("raph on"), then check back. Mining and review work regardless.');
@@ -170,6 +194,19 @@ export function renderStats(s, { topN = 8, listN = 12 } = {}) {
     L.push('  - a noise-watch lesson that is not helping: tighten its triggers or reject it.');
   } else {
     L.push(`Lessons : ${s.lessons.active} active, awaiting their first live injection.`);
+  }
+
+  if (benches.length) {
+    L.push('');
+    L.push('Atlas leverage  (tokens-to-answer, deterministic graph vs raw grep-and-read)');
+    for (const b of benches) {
+      if (b.ratio != null) {
+        L.push(`  ${b.project} : ${b.ratio}x fewer  (${b.rawTokens.toLocaleString()} grep+read -> ${b.graphTokens.toLocaleString()} graph over ${b.questions} question(s)${b.ts ? `, ${b.ts.slice(0, 10)}` : ''})`);
+      } else {
+        L.push(`  ${b.project} : no readable candidate files to compare${b.ts ? ` (${b.ts.slice(0, 10)})` : ''}`);
+      }
+    }
+    L.push('  (zero model tokens to build or measure — run "raph atlas bench" to refresh)');
   }
 
   L.push('');

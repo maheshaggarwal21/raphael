@@ -403,11 +403,17 @@ compaction (manual or automatic) can never lose progress.
   then top symbols) or --questions; --json. LIVE on raphael: 10 error-code questions =
   174,324 grep+read vs 1,179 graph = 147.9x fewer (55x-385x/question), zero model tokens
   — the deterministic confirmation of graphify's 70-80x claim on our OWN code.
-- Next: 16.4b (small: feed bench totals into `raph stats` + weekly report), then 16.5
-  Obsidian export / 16.6 freshness+retire heuristics / 16.7 adopt runs / 16.8 (computed
-  confidence + decision ledger + checkpoint --tried, from the gstack audit). Then Phase 14
-  meta layer or 13b. Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing),
-  doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
+- ATLAS 16.4b SHIPPED (session 11, 291/291, live-verified): `raph atlas bench` now logs a
+  durable `atlas-bench` event (project/questions/graph+raw tokens/saved/ratio) so the
+  self-use reports can show the graph's measured leverage with zero re-scan. `raph stats`
+  gained an "Atlas leverage" block (latest bench per project; a bench-only log renders now,
+  no more "nothing recorded yet"); `raph report weekly` counts in-window bench runs + best
+  ratio + latest project. Both pure over the events array. Sandbox smoke: stats
+  "raphael : 148.3x fewer", weekly "1 bench run(s) — 148.3x fewer". +5 tests.
+- Next: 16.5 Obsidian export / 16.6 freshness+retire heuristics / 16.7 adopt runs / 16.8
+  (computed confidence + decision ledger + checkpoint --tried, from the gstack audit). Then
+  Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner
+  timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

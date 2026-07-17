@@ -584,7 +584,14 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       one-small-file answers); zero model tokens to measure. LIVE on raphael: 10 error-
       code questions = 174,324 grep+read tokens vs 1,179 graph = 147.9x fewer (55x-385x
       per question). Validates graphify's 70-80x claim on our own code, deterministically.
-      OPEN (16.4b, small): feed the totals into `raph stats` + weekly report.
+- [x] 16.4b `raph atlas bench` totals feed the self-use reports (session 11, 291/291,
+      live-verified): bench now logs a durable `atlas-bench` event (project, questions,
+      graph/raw tokens, saved, ratio) via logEvent — zero tokens either way. `raph stats`
+      shows an "Atlas leverage" block = the LATEST bench per project (computeStats picks
+      latest-by-ts; renderStats prints "<proj> : Nx fewer"; a bench-only log still renders,
+      no more "nothing recorded yet"). `raph report weekly` counts in-window bench runs +
+      the best ratio + latest project. Pure over the events array; +5 tests. Live sandbox:
+      bench -> stats "raphael : 148.3x fewer" + weekly "1 bench run(s) — 148.3x fewer".
 - [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
       (plain md, no deps) + atlas.canvas per JSON Canvas 1.0 (kepano spec)
 - [ ] 16.6 Freshness (OKM) lint + RETIRE HEURISTICS: timeless/dated/pointer rule for

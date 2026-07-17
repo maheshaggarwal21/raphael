@@ -86,3 +86,18 @@ test('renderWeekly stays honest on an empty week', () => {
   assert.match(text, /no injections this window/);
   assert.match(text, /all academy projects are done — pick the next build/);
 });
+
+test('atlas bench runs in-window feed the report with the best ratio', () => {
+  const events = [
+    { ts: IN, event: 'atlas-bench', project: 'raphael', questions: 10, ratio: 100.0 },
+    { ts: '2026-07-16T10:00:00Z', event: 'atlas-bench', project: 'raphael', questions: 10, ratio: 147.9 },
+    { ts: OUT, event: 'atlas-bench', project: 'raphael', questions: 10, ratio: 999.0 } // outside — ignored
+  ];
+  const r = computeWeekly({ events, activeLessons: [], now: NOW });
+  assert.equal(r.atlas.benches, 2);
+  assert.equal(r.atlas.bestRatio, 147.9);       // best inside window, not the 999 outside
+  assert.equal(r.atlas.latest.questions, 10);
+  const text = renderWeekly(r);
+  assert.match(text, /Atlas leverage/);
+  assert.match(text, /147\.9x fewer tokens to answer \(best\)/);
+});
