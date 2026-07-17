@@ -25,6 +25,7 @@ const COMMANDS = {
   atlas: () => import('./commands/atlas.js'),
   lint: () => import('./commands/lint.js'),
   decide: () => import('./commands/decide.js'),
+  skills: () => import('./commands/skills.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -89,6 +90,8 @@ Commands:
   decide      Record/list durable decisions (architecture, scope, vendor) so
               settled calls are surfaced at session start, not re-litigated
               (raph decide "<decision>" [--why "..."] [--supersedes dec_x] | decide list)
+  skills      The skills factory: package a broadly-firing lesson into a staged
+              SKILL.md draft (never auto-installed) (raph skills [suggest|draft <id>|list])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts

@@ -539,8 +539,15 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       [--max-stages N]` (dry-run spends nothing). LIVE: one-stage real run on the
       subscription — plan stage wrote a true spec.md in the sandbox workspace,
       541 tokens, boundary recorded, state.json exact.
-- [ ] Skills factory: skill drafts from adopt + self-observation ("this lesson fires
-      everywhere -> package it as a skill"); one source of truth + generator, like agents.js
+- [x] Skills factory (session 11, 336/336): src/lib/skillfactory.js (pure, zero tokens) +
+      `raph skills [suggest|draft <id|slug>|list]`. Self-observation: skillCandidates()
+      flags active lessons that fire across >=5 DISTINCT sessions (a recurring need worth
+      packaging), gated on >=20 injections (capability-check). renderSkillDraft() emits a
+      SKILL.md with when-to-use (from triggers), guidance (lesson body, secrets scrubbed),
+      and a MANDATORY "Honest limits" section (fable-skills rule: states what it does NOT
+      guarantee; single-project + counter-indication caveats auto-added). Drafts are STAGED
+      (staged/skills/<slug>/SKILL.md), branded DRAFT, NEVER auto-installed (installing hands
+      agents instructions — a human act). +7 tests. Mirrors adopt's skill-draft discipline.
 - [ ] Agent-maker (meta-agent): drafts roster entries as PROPOSALS, regenerates
       plugin/agents; demand-driven only. Agent-manager = the Phase 12 autopilot driver.
 - [ ] Optimizer loop: stats -> retire never-firing lessons / unused agents (pruning)
