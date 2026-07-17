@@ -22,6 +22,7 @@ import {
   renderBench
 } from '../lib/atlas.js';
 import { mapFileName } from '../lib/map.js';
+import { renderVault } from '../lib/obsidian.js';
 import { atomicWrite } from '../lib/files.js';
 import { logEvent } from '../lib/events.js';
 import { p } from '../lib/paths.js';
@@ -222,6 +223,24 @@ export default async function atlas(args) {
     return 0;
   }
 
-  console.error('raph: usage: raph atlas [where|path|explain|digest|bench] [--project <path>] [--refresh] [--json]');
+  if (sub === 'export') {
+    const { atlas: doc } = ensureAtlas(projectDir, { refresh: rest.includes('--refresh') });
+    const oi = rest.indexOf('--out');
+    const outDir = oi >= 0 && rest[oi + 1]
+      ? path.resolve(rest[oi + 1])
+      : path.join(p.atlas(), `${mapFileName(doc.project)}-vault`);
+    const { notes, canvas } = renderVault(doc);
+    for (const n of notes) atomicWrite(path.join(outDir, n.path), n.content);
+    atomicWrite(path.join(outDir, 'atlas.canvas'), canvas);
+    if (asJson) {
+      console.log(JSON.stringify({ project: doc.project, out: outDir, notes: notes.length, canvas: 'atlas.canvas' }, null, 2));
+      return 0;
+    }
+    console.log(`raph: exported "${doc.project}" as an Obsidian vault -> ${outDir}`);
+    console.log(`raph: ${notes.length} note(s) + atlas.canvas (open the folder as a vault; start at index.md). 0 tokens.`);
+    return 0;
+  }
+
+  console.error('raph: usage: raph atlas [where|path|explain|digest|bench|export] [--project <path>] [--refresh] [--json]');
   return 1;
 }

@@ -75,7 +75,8 @@ Commands:
   map         Generate/refresh the cached project map agents read instead of the repo
               (raph map [--refresh] [--project path] [--summary])
   atlas       The project knowledge graph: build it free, then ask it where to look
-              (raph atlas [where "<error>"|path A B|explain X|digest|bench] [--refresh] [--json])
+              (raph atlas [where "<error>"|path A B|explain X|digest|bench|export]
+               [--out <dir>] [--refresh] [--json])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts

@@ -410,10 +410,19 @@ compaction (manual or automatic) can never lose progress.
   no more "nothing recorded yet"); `raph report weekly` counts in-window bench runs + best
   ratio + latest project. Both pure over the events array. Sandbox smoke: stats
   "raphael : 148.3x fewer", weekly "1 bench run(s) — 148.3x fewer". +5 tests.
-- Next: 16.5 Obsidian export / 16.6 freshness+retire heuristics / 16.7 adopt runs / 16.8
-  (computed confidence + decision ledger + checkpoint --tried, from the gstack audit). Then
-  Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner
-  timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
+- ATLAS 16.5 SHIPPED (session 11, 298/298, live-verified): `raph atlas export [--out <dir>]`
+  turns the graph into a self-contained Obsidian vault. src/lib/obsidian.js (pure, zero deps/
+  tokens): one md note per FILE mirroring the repo path (path-wikilinks resolve exactly) with
+  forward [[links]] (imports/tests/calls, confidence-tagged, deduped) AND backrefs (imported-
+  by/tested-by from reverse edges) + defines/packages/error-codes; one note per ERROR CODE
+  (raised-by/mentioned-by = "where does E-SCHEMA come from"); index.md MOC (god-nodes by
+  degree); atlas.canvas in JSON Canvas 1.0 (top-48 grid, file nodes open notes, test edges
+  tinted). +7 tests. LIVE on raphael: 191 notes + 48-node/168-edge canvas, all valid.
+- Next: 16.6 freshness (OKM) lint + RETIRE heuristics (atlas-provable staleness + contradiction,
+  human-surfaced) / 16.7 adopt runs over the sweep's skills / 16.8 (computed confidence +
+  decision ledger + checkpoint --tried, from the gstack audit). Then Phase 14 meta layer or 13b.
+  Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib
+  extraction. Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

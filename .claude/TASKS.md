@@ -592,8 +592,19 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       no more "nothing recorded yet"). `raph report weekly` counts in-window bench runs +
       the best ratio + latest project. Pure over the events array; +5 tests. Live sandbox:
       bench -> stats "raphael : 148.3x fewer" + weekly "1 bench run(s) — 148.3x fewer".
-- [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
-      (plain md, no deps) + atlas.canvas per JSON Canvas 1.0 (kepano spec)
+- [x] 16.5 Obsidian-compatible export (session 11, 298/298, live-verified): src/lib/
+      obsidian.js renderVault + renderCanvas (pure/deterministic, zero deps, zero tokens)
+      + `raph atlas export [--out <dir>] [--refresh] [--json]`. Emits a self-contained
+      vault: one md note per FILE mirroring the repo path (so Obsidian path-wikilinks
+      resolve exactly), each with forward [[links]] (imports/tests/calls, call confidence
+      tagged) AND backrefs (imported-by / tested-by from the reverse edges — the thing a
+      raw listing can't give), defines/packages/error-codes; one note per ERROR CODE
+      listing every file that raises/mentions it (the "where does E-SCHEMA come from"
+      view); an index.md MOC ranking god-nodes by degree + advisory framing; and
+      atlas.canvas in JSON Canvas 1.0 (kepano) — top-48 files on a deterministic grid,
+      file nodes that open their note, import/test edges (test edges tinted). Calls are
+      deduped by (file,symbol) strongest-first. Default out = brain/atlas/<name>-vault.
+      +7 tests. LIVE on raphael: 191 notes + 48-node/168-edge canvas, all valid.
 - [ ] 16.6 Freshness (OKM) lint + RETIRE HEURISTICS: timeless/dated/pointer rule for
       lessons (warn-only first); retire-wrong-lessons path (reject-after-approve
       tombstone). Adopt gstack's `/learn prune` mechanics (session 10): (a) FILE-EXISTENCE
