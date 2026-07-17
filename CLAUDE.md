@@ -435,12 +435,28 @@ compaction (manual or automatic) can never lose progress.
   / `decide list`; surfaced at session start in a <raphael-decisions> envelope ("settled, do not
   re-litigate"), capability-checked. (c) `academy checkpoint --tried "<dead end>"` -> state.tried,
   shown in status so a resume won't repeat it. +21 tests.
-- Next: 16.7 adopt runs over the research sweep's skills (fable-method twin-check/fit-gate,
-  act-when-ready, effort-calibrator, karpathy 4 principles, fable-skills handover) via the normal
-  adopt gauntlet + a defuddle-style HTML->text cleanup in adopt fetch — this is the ONE remaining
-  Phase 16 milestone and it does LIVE adopt runs (subscription model spend, external fetch). Then
-  Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner
-  timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
+- SESSION 11 (2026-07-17) — owner directive "stop only when development is complete according
+  to plan". Ran INLINE, ritual + tests green at every boundary. Shipped: 16.4b, 16.5, 16.6,
+  16.7(code), 16.8 (Atlas 16.1-16.8 all done) + the full PHASE 14 META LAYER and 13b:
+  - 16.7 (code): defuddle HTML->text in adopt fetch (mainRegion extraction + boilerplate drop
+    + numeric entity decode). `raph` commands added this session: lint, decide, skills, optimize,
+    agent, selfcheck, selfpatch, retire.
+  - Skills factory (`raph skills`): package a broadly-firing lesson into a staged SKILL.md draft
+    (mandatory "Honest limits"), never auto-installed.
+  - Optimizer (`raph optimize`): retire candidates + retrieval miss + confidence + agent coverage.
+  - Agent-maker (`raph agent`): staged roster PROPOSALS (never edits agents.js) + demand signal.
+  - Self-upgrade gate (`raph selfcheck`): branch + npm test + eval canaries must be green.
+  - 13b self-patch gate (`raph selfpatch`): + chokepoint-file heavyweight + copyleft-port block;
+    §11.11 present-only, NEVER auto-applies.
+  - 16.8: computed confidence + decision ledger (`raph decide`, session-start envelope) +
+    `academy checkpoint --tried`. Retire (`raph retire --confirmed`) + lint (`raph lint`) from 16.6.
+  Tests 288 -> 353 (all green). `raph doctor` = healthy. 38 CLI verbs.
+- DEVELOPMENT COMPLETE per plan. Remaining items are OPERATIONAL / owner-timing, not code:
+  Phase 10 self-use RUN (calendar), Phase 11 publish/launch (owner timing), 16.7 LIVE adopt runs
+  over the sweep's skills (model spend + external fetch — supervised), Phase 12 operational bits
+  (wire mining into a real Academy build, tokens ON/OFF recording, backlog finalize with owner).
+  Parked: doctor-to-lib extraction, Phase 5 inject latency (~390ms cold). Run builds INLINE
+  (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
