@@ -16,7 +16,10 @@ import {
   renderDigest,
   whereQuery,
   pathQuery,
-  explainQuery
+  explainQuery,
+  benchAtlas,
+  benchQuestions,
+  renderBench
 } from '../lib/atlas.js';
 import { mapFileName } from '../lib/map.js';
 import { atomicWrite } from '../lib/files.js';
@@ -177,6 +180,34 @@ export default async function atlas(args) {
     return 0;
   }
 
-  console.error('raph: usage: raph atlas [where|path|explain|digest] [--project <path>] [--refresh] [--json]');
+  if (sub === 'bench') {
+    const { atlas: doc } = ensureAtlas(projectDir);
+    // Questions: --questions "a;b;c" overrides; otherwise derive from the graph.
+    const qi = rest.indexOf('--questions');
+    const questions = qi >= 0 && rest[qi + 1]
+      ? rest[qi + 1].split(';').map((s) => s.trim()).filter(Boolean)
+      : benchQuestions(doc);
+    if (!questions.length) {
+      console.log('raph: nothing to bench — the atlas has no error codes or symbols yet');
+      return 0;
+    }
+    // Read candidate files from the project root to size the grep-and-read baseline.
+    const tokensForFile = (rel) => {
+      try {
+        return Math.ceil(readFileSync(path.join(projectDir, rel), 'utf8').length / 4);
+      } catch {
+        return 0; // file moved/unreadable — contributes nothing (keeps the ratio honest)
+      }
+    };
+    const bench = benchAtlas(doc, { questions, tokensForFile });
+    if (asJson) {
+      console.log(JSON.stringify(bench, null, 2));
+      return 0;
+    }
+    console.log(renderBench(bench));
+    return 0;
+  }
+
+  console.error('raph: usage: raph atlas [where|path|explain|digest|bench] [--project <path>] [--refresh] [--json]');
   return 1;
 }

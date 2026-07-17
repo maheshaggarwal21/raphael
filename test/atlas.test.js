@@ -14,7 +14,10 @@ import {
   explainQuery,
   renderAtlas,
   renderDigest,
-  queryTokens
+  queryTokens,
+  benchAtlas,
+  benchQuestions,
+  renderBench
 } from '../src/lib/atlas.js';
 
 // A small fixture project with the shapes the atlas must understand:
@@ -241,4 +244,49 @@ test('extractFile edge details: python defs, ambiguous calls across multiple exp
   assert.ok(amb.every((e) => e.confidence === 'AMBIGUOUS'));
   // and the report surfaces them for review
   assert.match(renderAtlas(atlas), /Ambiguous connections[\s\S]*c\.js/);
+});
+
+test('16.4 bench: honest tokens-to-answer, conservative grep-and-read baseline', () => {
+  // validate.js raises E-SCHEMA and defines a symbol; a big README also mentions it.
+  const extractions = {
+    'src/lib/validate.js': extractFile('src/lib/validate.js', "export function validateLesson() { throw new Error('E-SCHEMA: bad'); }\n"),
+    'README.md': extractFile('README.md', 'E-SCHEMA appears in validation. '.repeat(40))
+  };
+  const atlas = buildAtlas(extractions, { project: 'bench' });
+
+  // questions auto-derived from the graph: the error code shows up
+  const qs = benchQuestions(atlas);
+  assert.ok(qs.includes('E-SCHEMA'), 'error codes become bench questions');
+
+  // sizes: the source file is small, the README is large
+  const sizes = { 'src/lib/validate.js': 20, 'README.md': 320 };
+  const bench = benchAtlas(atlas, { questions: ['E-SCHEMA'], tokensForFile: (f) => sizes[f] ?? 0 });
+  const row = bench.questions[0];
+  assert.equal(row.question, 'E-SCHEMA');
+  assert.ok(row.hits >= 1);
+  assert.ok(row.graphTokens >= 1);
+  // grep+read baseline sums the candidate files whole; graph answer is far smaller
+  assert.ok(row.rawTokens >= row.graphTokens, 'reading candidate files costs at least the ranked answer');
+  assert.ok(row.ratio >= 1);
+  assert.equal(bench.totals.count, 1);
+  assert.equal(bench.totals.answered, 1);
+
+  // renders without throwing and states the honest caveat + zero-token measurement
+  const md = renderBench(bench);
+  assert.match(md, /grep\+read/);
+  assert.match(md, /Honest caveat/);
+  assert.match(md, /Zero model tokens|zero model tokens/i);
+});
+
+test('16.4 bench: unreadable candidate files contribute 0 (ratio stays honest, no crash)', () => {
+  const extractions = {
+    'src/a.js': extractFile('src/a.js', "throw new Error('E-GONE: x');\n")
+  };
+  const atlas = buildAtlas(extractions, { project: 'bench2' });
+  // tokensForFile always fails (files moved) -> rawTokens 0, ratio null, no throw
+  const bench = benchAtlas(atlas, { questions: ['E-GONE'], tokensForFile: () => 0 });
+  assert.equal(bench.questions[0].rawTokens, 0);
+  assert.equal(bench.questions[0].ratio, null);
+  assert.equal(bench.totals.ratio, null);
+  assert.match(renderBench(bench), /no readable candidate files|graph tokens/);
 });

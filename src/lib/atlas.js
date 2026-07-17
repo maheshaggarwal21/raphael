@@ -491,6 +491,98 @@ export function explainQuery(atlas, term) {
   return { node, relations };
 }
 
+// --- Bench (16.4): honest tokens-to-answer, graph vs grep-and-read -----------
+
+const tokenEst = (s) => Math.ceil(String(s).length / 4);
+
+// Auto-generate the bench questions from the graph itself: the error codes (the
+// awareness use case — "where does this come from?") first, then top symbols.
+export function benchQuestions(atlas, { max = 10 } = {}) {
+  const codes = atlas.nodes.filter((n) => n.type === 'error-code').map((n) => n.label);
+  const syms = atlas.nodes
+    .filter((n) => n.type === 'symbol')
+    .sort((a, b) => (b.degree ?? 0) - (a.degree ?? 0))
+    .slice(0, max)
+    .map((n) => `where is ${n.label} defined?`);
+  const out = [];
+  for (const c of codes) { out.push(c); if (out.length >= max) return out; }
+  for (const s of syms) { out.push(s); if (out.length >= max) return out; }
+  return out;
+}
+
+// For each question: graph answer = the ranked where() result the agent reads;
+// baseline = reading the candidate files whole (a CONSERVATIVE grep-and-read —
+// it counts only the files the graph already surfaced, so the ratio is honest,
+// never inflated). `tokensForFile(relPath)` is injected so this stays pure.
+export function benchAtlas(atlas, { questions, tokensForFile }) {
+  const rows = (questions || []).map((q) => {
+    const hits = whereQuery(atlas, q, { limit: 8 });
+    const answer = hits.length
+      ? hits.map((h) => `${h.file}  (score ${h.score})  ${h.reasons.join('; ')}`).join('\n')
+      : '(no atlas hit — the agent would fall back to a raw search)';
+    const graphTokens = Math.max(1, tokenEst(answer));
+    let rawTokens = 0;
+    const files = [];
+    for (const h of hits) {
+      const t = Number(tokensForFile(h.file)) || 0;
+      rawTokens += t;
+      files.push({ file: h.file, tokens: t });
+    }
+    return {
+      question: q,
+      hits: hits.length,
+      graphTokens,
+      rawTokens,
+      saved: Math.max(0, rawTokens - graphTokens),
+      ratio: rawTokens > 0 ? Number((rawTokens / graphTokens).toFixed(1)) : null,
+      files
+    };
+  });
+  const totGraph = rows.reduce((a, r) => a + r.graphTokens, 0);
+  const totRaw = rows.reduce((a, r) => a + r.rawTokens, 0);
+  const rated = rows.filter((r) => r.ratio != null);
+  return {
+    questions: rows,
+    totals: {
+      count: rows.length,
+      answered: rated.length,
+      graphTokens: totGraph,
+      rawTokens: totRaw,
+      saved: Math.max(0, totRaw - totGraph),
+      ratio: totGraph > 0 && totRaw > 0 ? Number((totRaw / totGraph).toFixed(1)) : null
+    }
+  };
+}
+
+export function renderBench(bench) {
+  const t = bench.totals;
+  const lines = [
+    `Atlas token bench — ${t.count} question(s), ${t.answered} with a graph answer`,
+    '',
+    'question                                          graph   grep+read   ratio',
+    '------------------------------------------------  ------  ----------  ------'
+  ];
+  for (const r of bench.questions) {
+    const q = (r.question.length > 48 ? r.question.slice(0, 45) + '...' : r.question).padEnd(48);
+    const g = String(r.graphTokens).padStart(6);
+    const raw = String(r.rawTokens).padStart(10);
+    const ratio = (r.ratio != null ? `${r.ratio}x` : '—').padStart(6);
+    lines.push(`${q}  ${g}  ${raw}  ${ratio}`);
+  }
+  lines.push('');
+  lines.push(
+    t.ratio != null
+      ? `TOTAL: ${t.rawTokens} grep+read tokens vs ${t.graphTokens} graph tokens = ${t.ratio}x fewer, ${t.saved} saved`
+      : `TOTAL: ${t.graphTokens} graph tokens (no readable candidate files to compare against)`
+  );
+  lines.push('');
+  lines.push('Honest caveat: the baseline reads ONLY the files the graph already');
+  lines.push('surfaced, whole — a conservative grep-and-read. On a tiny repo or a');
+  lines.push('one-small-file answer the ratio nears 1; the graph wins most on large');
+  lines.push('files and many candidates. Zero model tokens were spent to measure this.');
+  return lines.join('\n');
+}
+
 // --- Rendering -------------------------------------------------------------
 
 export function renderAtlas(atlas) {

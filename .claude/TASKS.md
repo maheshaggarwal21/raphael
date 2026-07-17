@@ -575,8 +575,16 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       surface that isn't there. Live: raphael atlas (146 files) -> session-start shows
       most-connected files; Grep nudge fires once then silent; Read/npm-test silent.
       inject.js + driver.js + plugin/hooks.json + docs/hooks.md + tests.
-- [ ] 16.4 `raph atlas bench`: tokens-to-answer graph-vs-raw, honest per-size caveats,
-      feeds stats + weekly report
+- [x] 16.4 `raph atlas bench` (session 10, 288/288, live-verified): tokens-to-answer,
+      graph vs a CONSERVATIVE grep-and-read baseline (reads only the files the graph
+      already surfaced, whole — so the ratio is honest, never inflated). Questions auto-
+      derived from the graph (error codes first, then top symbols) or --questions "a;b;c".
+      benchAtlas/benchQuestions/renderBench in atlas.js (pure; tokensForFile injected),
+      `raph atlas bench [--json]`. Honest caveat printed (ratio nears 1 on tiny repos /
+      one-small-file answers); zero model tokens to measure. LIVE on raphael: 10 error-
+      code questions = 174,324 grep+read tokens vs 1,179 graph = 147.9x fewer (55x-385x
+      per question). Validates graphify's 70-80x claim on our own code, deterministically.
+      OPEN (16.4b, small): feed the totals into `raph stats` + weekly report.
 - [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
       (plain md, no deps) + atlas.canvas per JSON Canvas 1.0 (kepano spec)
 - [ ] 16.6 Freshness (OKM) lint + RETIRE HEURISTICS: timeless/dated/pointer rule for

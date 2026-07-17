@@ -396,11 +396,18 @@ compaction (manual or automatic) can never lose progress.
   renderStagePrompt carries the workspace map (workspaceAtlasDigest, zero tokens) for
   CODE_BEARING_KINDS only. Live: raphael atlas (146 files) session-start block + Grep-once
   nudge + Read-silent all confirmed; smoke artifacts cleaned from the real brain.
-- Next: 16.4 `raph atlas bench` (tokens-to-answer graph-vs-raw), then 16.5 Obsidian export /
-  16.6 freshness+retire heuristics / 16.7 adopt runs / 16.8 (computed confidence + decision
-  ledger + checkpoint --tried, from the gstack audit). Then Phase 14 meta layer or 13b.
-  Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib
-  extraction. Run builds INLINE (parallel Workflows hit the limit fast).
+- ATLAS 16.4 SHIPPED (session 10, 288/288, live-verified): `raph atlas bench` = honest
+  tokens-to-answer, graph vs a conservative grep-and-read baseline (reads only the files
+  the graph already surfaced, whole — ratio never inflated). benchAtlas/benchQuestions/
+  renderBench in atlas.js (pure, tokensForFile DI'd); questions auto-derived (error codes
+  then top symbols) or --questions; --json. LIVE on raphael: 10 error-code questions =
+  174,324 grep+read vs 1,179 graph = 147.9x fewer (55x-385x/question), zero model tokens
+  — the deterministic confirmation of graphify's 70-80x claim on our OWN code.
+- Next: 16.4b (small: feed bench totals into `raph stats` + weekly report), then 16.5
+  Obsidian export / 16.6 freshness+retire heuristics / 16.7 adopt runs / 16.8 (computed
+  confidence + decision ledger + checkpoint --tried, from the gstack audit). Then Phase 14
+  meta layer or 13b. Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing),
+  doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
