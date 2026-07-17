@@ -310,11 +310,20 @@ compaction (manual or automatic) can never lose progress.
   CLI). Cross-face verified live: console click -> `raph auto` read back "standard".
   README has "The console (raph web)". Onboarding wizard deferred to Phase 11 (it's
   the install face). Console = 7 tabs, one engine.
-- Next (planner task #15): company-ops backlog (Phase 12/14) — autopilot driver,
-  limit-aware scheduler, model policy table, `raph report weekly`, portfolio registry,
-  skills factory, agent-maker/manager. Parked: 13b (needs driver), Phase 10 RUN
-  (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib extraction. Run
-  builds INLINE (parallel Workflows hit the limit fast).
+- Session 09 (2026-07-17): PHASE 14 STARTED (company ops), dependency-ordered plan in
+  TASKS.md (substrate -> driver stack -> meta layer). 14.1 portfolio registry SHIPPED
+  (262/262): src/lib/portfolio.js (buildPortfolio pure over academy states + injected
+  events; readPortfolio; renderPortfolio) + `raph portfolio [--json]`. tests/lessons
+  are EXPLICIT records via `raph academy checkpoint --tests N --lessons N` (new flags,
+  E-ACADEMY on junk) because lesson scope.projects is empty in the real brain — index
+  attribution would lie 0. Backfilled repo-keeper 41/3, onedesk 64/4, assay 59/4;
+  live table = 164 tests / 11 lessons / 0 recall tokens (honest). readEvents()
+  consolidated into lib/events.js (stats/why/web now share it).
+- Next: 14.2 `raph report weekly [--json]` (pure computeWeekly over events + portfolio
+  + adoptions) -> 14.3 console Company tab -> 14.4 model policy -> 14.5 scheduler +
+  autopilot. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
+  hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows
+  hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

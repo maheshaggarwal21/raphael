@@ -90,7 +90,8 @@ export function startProject(project, { title, workspace, milestones = [] } = {}
 }
 
 // Merge a checkpoint patch. Recognized fields: milestone, step, next, status, note,
-// done (a milestone id to mark complete). Anything else is ignored on purpose.
+// done (a milestone id to mark complete), tests (latest green test count), lessons
+// (lessons written back to the brain so far). Anything else is ignored on purpose.
 export function checkpoint(project, patch = {}) {
   const state = readState(project);
   if (!state) throw new Error(`E-ACADEMY: no project "${project}" — start it first`);
@@ -98,6 +99,12 @@ export function checkpoint(project, patch = {}) {
   if (patch.milestone) state.current.milestone = patch.milestone;
   if (patch.step) state.current.step = patch.step;
   if (patch.next) state.current.next_action = patch.next;
+  for (const field of ['tests', 'lessons']) {
+    if (patch[field] === undefined) continue;
+    const n = Number(patch[field]);
+    if (!Number.isInteger(n) || n < 0) throw new Error(`E-ACADEMY: --${field} must be a non-negative integer`);
+    state[field] = { count: n, at: now() };
+  }
   if (patch.status) {
     if (!STATUSES.includes(patch.status)) throw new Error(`E-ACADEMY: bad status "${patch.status}"`);
     state.status = patch.status;
@@ -146,6 +153,8 @@ export function renderStatus(state) {
   lines.push(`  workspace: ${state.workspace || '(none)'}`);
   lines.push(`  progress:  ${done}/${state.milestones.length} milestones`);
   for (const m of state.milestones) lines.push(`    [${m.done ? 'x' : ' '}] ${m.id} ${m.title}`);
+  if (state.tests) lines.push(`  tests:     ${state.tests.count} green (recorded ${state.tests.at.slice(0, 10)})`);
+  if (state.lessons) lines.push(`  lessons:   ${state.lessons.count} written back to the brain`);
   lines.push(`  current:   ${state.current.milestone || '—'} · ${state.current.step}`);
   lines.push(`  NEXT:      ${state.current.next_action}`);
   if (state.boundary) lines.push(`  BOUNDARY:  ${state.boundary.reason} (since ${state.boundary.at})`);

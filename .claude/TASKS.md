@@ -469,14 +469,33 @@ weekly report, agents gallery) fold into Phase 14 company-ops where their DATA c
 Build order: Phase 13 (adopt) -> Phase 15 (console MVP) -> company ops interleaved ->
 distribution + hub at launch. One by one, ritual at every milestone.
 
-## Phase 14 — Company ops (PROPOSED 2026-07-16, docs/company-vision.md)
+## Phase 14 — Company ops (PLANNED 2026-07-17 session 09, docs/company-vision.md)
 The "self-running software studio" layer on top of Phase 12 automation.
+Build order (dependency-driven, decided under the standing mandate): data substrate
+first (portfolio -> weekly report -> console face), then the driver stack (model
+policy -> limit-aware scheduler -> autopilot), then the meta layer (skills factory,
+agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
+- [x] 14.1 Portfolio registry (2026-07-17 session 09, +3 tests -> 262/262):
+      src/lib/portfolio.js — buildPortfolio() pure over academy states + injected
+      events (per project: status, milestones, recorded tests, lessons written
+      back, recall tokens spent in it; boundary + next surfaced; done projects
+      carry no next); readPortfolio() disk wrapper; `raph portfolio [--json]`
+      (thin printer, cli.js + help). PREREQS: readEvents() consolidated into
+      lib/events.js (was copy-pasted in stats/why/web — all three now import it);
+      academy checkpoint learns --tests N + --lessons N (explicit recorded facts,
+      E-ACADEMY on junk, shown in renderStatus — lesson scope.projects is empty
+      in the real brain, so index attribution would have lied 0 everywhere).
+      Backfilled the three done projects (repo-keeper 41/3, onedesk 64/4,
+      assay 59/4) and live-verified `raph portfolio` on the real brain: 164
+      green tests / 11 lessons / recall honestly 0 (hooks never fired in them).
+- [ ] 14.2 `raph report weekly [--json]` — the board report: window over events +
+      portfolio + adoptions (shipped, lessons approved/rejected/auto, adoptions,
+      injection cost, retrieval misses, next actions); pure computeWeekly(now)
+- [ ] 14.3 Console: Company tab (portfolio + weekly report) over the SAME lib fns
+- [ ] 14.4 Model policy table (Phase 12 item): task-kind -> model/effort lookup
+- [ ] 14.5 Limit-aware scheduler + autopilot driver design (Phase 12 items)
 - [ ] Skills factory: skill drafts from adopt + self-observation ("this lesson fires
       everywhere -> package it as a skill"); one source of truth + generator, like agents.js
-- [ ] `raph report weekly` — the board report: shipped, tokens, lessons, misses, next
-- [ ] Portfolio registry: all projects, status, tests, tokens, lessons written
-      (seed: `raph academy list`)
-- [ ] Token budgets per project/day + the Phase 12 limit-aware scheduler
 - [ ] Agent-maker (meta-agent): drafts roster entries as PROPOSALS, regenerates
       plugin/agents; demand-driven only. Agent-manager = the Phase 12 autopilot driver.
 - [ ] Optimizer loop: stats -> retire never-firing lessons / unused agents (pruning)

@@ -27,6 +27,7 @@ import { loadSource, adoptSource, revokeAdoption, adoptConfig, estimateAdoptToke
 import { getModelCaller } from './provider.js';
 import { scrubSecrets } from './scrub.js';
 import { parseLessonFile } from './frontmatter.js';
+import { readEvents } from './events.js';
 import { loadIndex } from './compile.js';
 import { computeStats } from './stats.js';
 import { rank, extractPaths } from './match.js';
@@ -191,17 +192,6 @@ export function queueItem(ref) {
 export function statsSummary() {
   const { lessons } = loadIndex();
   return computeStats(readEvents(), lessons);
-}
-
-function readEvents() {
-  const events = [];
-  if (existsSync(p.events())) {
-    for (const line of readFileSync(p.events(), 'utf8').split('\n')) {
-      if (!line.trim()) continue;
-      try { events.push(JSON.parse(line)); } catch { /* skip a corrupt line */ }
-    }
-  }
-  return events;
 }
 
 // Lessons browser data. With a query it runs the EXACT scorer the hooks and

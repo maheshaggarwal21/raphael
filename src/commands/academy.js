@@ -28,7 +28,7 @@ function usage(code = 1) {
       '  raph academy start <project> --title "..." [--workspace <path>] [--milestones "M1:Scaffold,M2:Keeper"]',
       '  raph academy status [<project>]',
       '  raph academy resume [<project>]              show the runbook + next action for a fresh session',
-      '  raph academy checkpoint <project> [--milestone id] [--step "..."] [--next "..."] [--status s] [--note "..."] [--done id]',
+      '  raph academy checkpoint <project> [--milestone id] [--step "..."] [--next "..."] [--status s] [--note "..."] [--done id] [--tests N] [--lessons N]',
       '  raph academy boundary <project> --reason "what the owner must do"',
       '  raph academy limit <project> [--reset "12am IST"]',
       '  raph academy list'
@@ -125,7 +125,9 @@ export default async function academy(args) {
         next: flag(args, '--next'),
         status: flag(args, '--status'),
         note: flag(args, '--note'),
-        done: flag(args, '--done')
+        done: flag(args, '--done'),
+        tests: flag(args, '--tests'),
+        lessons: flag(args, '--lessons')
       });
       console.log(`raph: checkpoint saved (${state.status}). NEXT: ${state.current.next_action}`);
       return 0;

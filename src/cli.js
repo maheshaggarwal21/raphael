@@ -23,6 +23,7 @@ const COMMANDS = {
   map: () => import('./commands/map.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
+  portfolio: () => import('./commands/portfolio.js'),
   guard: () => import('./commands/guard.js'),
   stats: () => import('./commands/stats.js'),
   adopt: () => import('./commands/adopt.js'),
@@ -74,6 +75,8 @@ Commands:
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts
               (raph academy start|status|resume|checkpoint|boundary|limit|list)
+  portfolio   The company project table: every Academy build with status,
+              tests, lessons written back, and recall cost (raph portfolio [--json])
   guard       Block commits that would leak secrets in YOUR projects
               (raph guard install|uninstall|scan [--staged|--all|<path...>])
   adopt       Digest external material (URL, file, repo, skill file) into
