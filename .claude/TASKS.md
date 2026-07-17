@@ -566,21 +566,41 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       `digest` (the 16.3 injection block). Live on raphael: "E-SCHEMA" ->
       src/lib/validate.js #1 (error text origin). 279/279 tests (+5).
 - [ ] 16.3 Query-first wiring: Atlas digest in inject budget + PreToolUse nudge hook
-      (plugin) + driver stage prompts carry the digest for debug/review/develop kinds
+      (plugin) + driver stage prompts carry the digest for debug/review/develop kinds.
+      CAPABILITY-CHECK RULE (from gstack's gbrain-guidance design, session 10): only
+      inject the "ask `raph atlas where`" nudge/digest when an atlas actually exists
+      for this project AND answers — never tell the agent to use a surface that isn't
+      built. Digest is empty-string when no atlas cache is present (fail-quiet).
 - [ ] 16.4 `raph atlas bench`: tokens-to-answer graph-vs-raw, honest per-size caveats,
       feeds stats + weekly report
 - [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
       (plain md, no deps) + atlas.canvas per JSON Canvas 1.0 (kepano spec)
-- [ ] 16.6 Freshness (OKM) lint: timeless/dated/pointer rule for lessons (warn-only
-      first); retire-wrong-lessons path (reject-after-approve tombstone)
+- [ ] 16.6 Freshness (OKM) lint + RETIRE HEURISTICS: timeless/dated/pointer rule for
+      lessons (warn-only first); retire-wrong-lessons path (reject-after-approve
+      tombstone). Adopt gstack's `/learn prune` mechanics (session 10): (a) FILE-EXISTENCE
+      STALENESS — a lesson naming a file/symbol NOT in the current atlas graph is flagged
+      STALE (Atlas makes this provable, stronger than gstack's plain fs check);
+      (b) CONTRADICTION DETECTION — two active lessons, same topic/key, opposite advice ->
+      flagged CONFLICT. Both surface for a human call, never auto-delete (security floor).
 - [ ] 16.7 Adopt runs over the sweep's skills: fable-method (fit gate, TWIN CHECK ->
       also a Debugger spine line, AUTH gate), act-when-ready, effort-calibrator,
       karpathy-guidelines (4 principles: think-first/simplicity/surgical/goal-driven),
       fable-skills handover format -> skills-factory template ("honest limits"
       section mandatory). All via the normal adopt gauntlet. + defuddle idea:
       zero-dep HTML->text cleanup in adopt fetch (fewer reviewer tokens).
+- [ ] 16.8 (NEW, from the gstack audit, session 10 — docs/atlas-upgrade-plan.md addendum):
+      two pure-Node, zero-network, zero-dep additions gstack has that Raphael lacks —
+      (a) COMPUTED CONFIDENCE 0-10 per lesson, derived deterministically from evidence
+      (observations x distinct_projects, age-decayed); improves ranking + powers a
+      "low-confidence + never-fired -> retire candidate" sweep in 16.6. (b) DECISION LEDGER
+      — durable architecture/scope/vendor decisions with rationale + supersede + "don't
+      re-litigate" surfacing at session start; distinct from lessons (advice) and academy
+      checkpoints (build state). Also minor: `academy checkpoint --tried` (record dead-end
+      approaches so a post-limit resume doesn't repeat them).
 - NOT adopted (recorded in the plan doc): pxpipe image proxy, tree-sitter/embeddings,
-  hosted memory systems, vibekit sandbox (revisit if untrusted code ever runs).
+  hosted memory systems (incl. gbrain's embeddings+Postgres+MCP — Atlas is the
+  deterministic substitute), Supabase/team brain server, telemetry upload, bun/60-skill
+  surface, continuous-WIP auto-commit, vibekit sandbox (revisit if untrusted code runs).
 
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,

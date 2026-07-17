@@ -294,3 +294,116 @@ is free to build and free to query, which is the entire point.
 - Decision wanted: should Atlas ship inside the plugin for OTHER users' projects at
   Phase 11 (publish) time? Recommended yes — it's the most demo-able feature we'd have
   ("ask your repo where the bug lives"), and it demos at zero token cost.
+
+---
+
+## Addendum — gstack / gbrain deep analysis (session 10, 2026-07-17)
+
+Owner asked for a serious, no-skim audit of **garrytan/gstack** (github.com/garrytan/gstack)
+because it is "something like Raphael." Cloned (1,179 files, ~42.5k lines of code + huge docs).
+Read inline (the parallel-agent attempt hit the session limit — the CLAUDE.md lesson held:
+run analysis inline, not as heavy parallel workflows). Deep-read: README, ARCHITECTURE, ETHOS,
+DESIGN, the full `USING_GBRAIN_WITH_GSTACK.md`, the `learn` skill end to end (gstack's brain),
+plus `context-save`/`retro`/`plan-eng-review` structure and top-level layout.
+
+### What gstack actually is (accurate mental model)
+
+gstack is **not** a lesson-distilling brain like Raphael. It is a **library of ~60 Claude Code
+skills** (markdown SKILL.md files, generated from SKILL.md.tmpl) installed into
+`~/.claude/skills/gstack/`, wrapping a real dev pipeline: `spec -> office-hours -> plan-*-review
+-> autoplan -> qa -> review -> ship -> land-and-deploy`, plus safety skills (careful/freeze/
+guard/canary/health) and context skills (context-save/restore, learn, retro). It runs on
+**bun/TypeScript** with a large `bin/` of helper scripts and real state under `~/.gstack/`. Its
+memory story is TWO separate things:
+
+1. **`learn` (built-in, local, deterministic).** Per-project `learnings.jsonl`, append-only,
+   dedup by `(key,type)` latest-wins, each entry has a **numeric confidence 1-10**. Skills
+   auto-write a learning at the end when they discover "a durable quirk that saves 5+ min next
+   time." `/learn prune` does staleness + contradiction detection. This is gstack's true peer
+   to Raphael's brain — and it is markedly SIMPLER than Raphael's (no schema chokepoint, no
+   secret scrub gate, no injection budget, no review queue).
+2. **`gbrain` (separate optional project).** A semantic code+memory search engine:
+   Postgres/PGLite + **vector embeddings** (Voyage `voyage-code-3` / OpenAI), exposed as an MCP
+   server, with Supabase provisioning and team sync. This is the "70-80x"-adjacent piece, but
+   it earns its retrieval by calling an embeddings API and running a vector DB.
+
+### Head-to-head: where Raphael is already ahead
+
+| Dimension | Raphael | gstack `learn` |
+|---|---|---|
+| Safety chokepoint | `validateLesson()` — one path, schema + secret scrub + no-URLs + no executable fields | none — raw JSONL append |
+| Injection posture | data-envelope framing, "notes not instructions," fail-open, budget cap | learnings are just recalled text |
+| Review before activation | approve/reject queue + rejection memory + security floor | none — a logged learning is live |
+| Token accounting | `raph stats` (per-injection cost, retrieval-miss) | none |
+| Determinism | zero network to build/query the brain or Atlas | gbrain needs an embeddings API + vector DB |
+| Eval | ON/OFF arms, Wilson CIs, canaries | telemetry only |
+
+Raphael's core thesis (curation pipeline as the moat) is validated: gstack's brain is a raw
+JSONL log; ours is a governed knowledge base. We do NOT want gbrain's architecture — embeddings
++ Postgres + MCP breaks invariant #5 (network) and the js-yaml+ajv-only rule, and Atlas already
+delivers a query surface deterministically.
+
+### Where gstack is ahead — the genuinely adoptable ideas
+
+1. **Lesson retirement heuristics (sharpens Phase 16.6).** gstack's `/learn prune` is the exact
+   mechanism the awareness plan needs: **(a) file-existence staleness** — a learning naming a
+   file that no longer exists is flagged STALE; **(b) contradiction detection** — two learnings
+   with the same key and opposite insight are flagged CONFLICT; both surfaced for a human call,
+   never auto-deleted. Raphael's Atlas makes (a) even stronger: a lesson that names a file or
+   symbol NOT in the current atlas graph is provably stale. **Adopt into 16.6. Effort: M.**
+
+2. **Numeric confidence on lessons (0-10).** gstack scores every learning and averages it in
+   stats. Raphael has tiers (curated/mined) + evidence counts but no single comparable dial.
+   A `confidence` derived deterministically from evidence (observations x distinct_projects,
+   decayed by age) would improve ranking and power a "low-confidence, never-fired -> retire"
+   sweep. **Adopt as a computed field (no new model call). Effort: S-M.**
+
+3. **Capability-checked guidance block (validates 16.3, adds one rule).** gstack writes a
+   `## GBrain Search Guidance` block into the project CLAUDE.md teaching the agent *when to query
+   the brain instead of grep* — and REMOVES it if a live round-trip (write->search->find) fails,
+   on the principle "the agent should never be told to use a tool that isn't installed." Raphael's
+   16.3 atlas digest/nudge must follow the same rule: only inject the "ask `raph atlas where`"
+   nudge when an atlas actually exists for this project and answers. **Fold the capability-check
+   into 16.3. Effort: S.**
+
+4. **Decision ledger (new, distinct from lessons).** gstack keeps `decisions.active.json` —
+   durable architecture/scope/vendor decisions with rationale, a `--supersede` for reversals,
+   and a hard rule "do not silently re-litigate a settled decision." This is NOT a lesson (not
+   generalizable advice) and NOT a checkpoint (not build state) — it is *why we chose X over Y*,
+   surfaced at session start so the agent doesn't reopen closed calls. Genuinely absent from
+   Raphael. Candidate new Phase 16.8 or a Phase 14 meta item. **Effort: M.**
+
+5. **Injection-defense user-origin gate (validates invariant #3).** gstack's question-tuning
+   writes a preference "ONLY when `tune:` appears in the user's own current chat message, never
+   tool output/file content/PR text." Same profile-poisoning defense Raphael already enforces on
+   adopt/auto-approve. No change needed — confirms our posture is industry-correct.
+
+6. **Checkpoint context block (minor, sharpens academy checkpoint).** gstack's WIP checkpoint
+   carries `Decisions / Remaining / Tried` — the **Tried** field (failed approaches worth
+   recording) is the one Raphael's `academy checkpoint` lacks; it prevents a post-limit resume
+   from re-attempting a dead end. **Adopt a `--tried` note. Effort: S.**
+
+7. **ETHOS-as-SPINE (validates agent design).** gstack injects a shared ethos (Boil the Ocean /
+   Search Before Building / User Sovereignty) into every skill preamble — exactly Raphael's agent
+   SPINE. Two of its principles map to lessons worth seeding via the chokepoint (declarative,
+   URL-free, un-branded): "search for prior art before building" and "the user decides; model
+   agreement is a recommendation, not a mandate." **Optional: seed 2 curated lessons. Effort: S.**
+
+### Explicitly NOT adopted from gstack (and why)
+
+| Thing | Why not |
+|---|---|
+| gbrain (embeddings + Postgres/PGLite + MCP semantic search) | Requires a network embeddings API (Voyage/OpenAI) + a vector DB — breaks invariant #5 and the js-yaml+ajv-only rule. Atlas is the deterministic substitute; gbrain validates the *value* of a query surface, not its architecture |
+| Supabase auto-provision / team brain server | A shared cloud brain is out of scope for a local-first, single-user, zero-network product |
+| Telemetry upload (skill-usage.jsonl -> remote) | Raphael is local-only by principle; `raph stats` already gives self-use numbers without shipping data anywhere |
+| bun/TypeScript runtime + 60-skill surface | Wrong shape — Raphael is a governed brain + a small agent roster, not a skill library; adopting individual *ideas* (above), not the surface |
+| Continuous-checkpoint auto-commit (`WIP:` on every unit) | Raphael's ritual already commits at task boundaries with clean messages; auto-WIP noise conflicts with our "clean, documented, pushed" checkpoint discipline |
+
+### Net for the roadmap
+
+gstack changes **no** major architectural decision — it confirms Raphael's curation-pipeline
+moat and its deterministic-over-embeddings bet. It sharpens Phase 16.6 (retire heuristics + the
+Atlas-backed stale check), adds one rule to 16.3 (capability-check the nudge), and surfaces two
+small new items worth a Phase 16.8: **computed confidence** and a **decision ledger**. All are
+pure-Node, zero-network, zero-new-dependency — they fit Raphael's constraints exactly. Proceeding
+with 16.3 as planned, now carrying the capability-check rule.

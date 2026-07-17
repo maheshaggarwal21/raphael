@@ -375,11 +375,23 @@ compaction (manual or automatic) can never lose progress.
   fixtures never outrank real origins), path (pkg hubs never waypoints), digest =
   the 16.3 injection block. Artifacts: brain/atlas/<name>.{json,md}. Live:
   raphael = 146 files/459 nodes/1481 edges; "E-SCHEMA" -> src/lib/validate.js #1.
+- GSTACK AUDIT DONE (session 10, owner ask "seriously audit garrytan/gstack"): cloned
+  (1,179 files/~42.5k LOC). 4 parallel analysis agents ALL hit the session limit ->
+  switched to inline reading (the CLAUDE.md lesson held). Read ETHOS, the full `learn`
+  skill (gstack's brain), USING_GBRAIN_WITH_GSTACK.md, context/retro/review structure.
+  Verdict: gstack is a ~60-skill dev-pipeline library, NOT a distilling brain; its memory
+  = `learn` (raw learnings.jsonl, no chokepoint/scrub/review) + `gbrain` (embeddings +
+  Postgres + MCP semantic search). Raphael is ahead on every governed-brain dimension;
+  the curation-moat + deterministic-over-embeddings bet is validated (Atlas = our answer
+  to gbrain). Changes NO architecture. Sharpened 16.3 (capability-check the nudge) + 16.6
+  (retire heuristics: atlas-provable staleness + contradiction) + added 16.8 (computed
+  confidence 0-10 + decision ledger + checkpoint --tried). Writeup: docs/atlas-upgrade-plan.md
+  addendum. 279/279.
 - Next: 16.3 query-first wiring (digest into inject + PreToolUse nudge hook +
-  driver stage prompts), then 16.4 bench / 16.5 export / 16.6 freshness / 16.7
-  adopt runs. Then Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar),
-  Phase 11 publish + hub (owner timing), doctor-to-lib extraction. Run builds
-  INLINE (parallel Workflows hit the limit fast).
+  driver stage prompts, now carrying the capability-check rule), then 16.4 bench / 16.5
+  export / 16.6 freshness / 16.7 adopt runs. Then Phase 14 meta layer or 13b. Parked:
+  Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib extraction.
+  Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
