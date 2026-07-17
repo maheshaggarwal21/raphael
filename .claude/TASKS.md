@@ -488,9 +488,18 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       Backfilled the three done projects (repo-keeper 41/3, onedesk 64/4,
       assay 59/4) and live-verified `raph portfolio` on the real brain: 164
       green tests / 11 lessons / recall honestly 0 (hooks never fired in them).
-- [ ] 14.2 `raph report weekly [--json]` — the board report: window over events +
-      portfolio + adoptions (shipped, lessons approved/rejected/auto, adoptions,
-      injection cost, retrieval misses, next actions); pure computeWeekly(now)
+- [x] 14.2 `raph report weekly [--days N] [--json]` (2026-07-17 session 09,
+      +3 tests -> 265/265): src/lib/report.js — computeWeekly({states, events,
+      adoptions, activeLessons, now, days}) pure (now is a parameter, so every
+      window is testable): build activity = checkpoint notes in-window per
+      project; brain changes = approved/auto/rejected/suppressed/adopt funnel
+      in-window; recall cost in-window; retrieval miss deliberately ALL-TIME
+      (a never-fired lesson is dead weight regardless of window); adoptions by
+      latest ledger ts; next/owner asks = non-done projects + boundary reasons.
+      readWeekly() disk wrapper + renderWeekly() + `raph report weekly` thin
+      printer (cli.js + help). Live on the real brain: the week's true story —
+      3 builds active, 43 activated + 2 rejected, 1 adoption (gstack, 8+1),
+      1,650 recall tokens over 5 sessions, 39/43 never fired (pre-RUN, honest).
 - [ ] 14.3 Console: Company tab (portfolio + weekly report) over the SAME lib fns
 - [ ] 14.4 Model policy table (Phase 12 item): task-kind -> model/effort lookup
 - [ ] 14.5 Limit-aware scheduler + autopilot driver design (Phase 12 items)

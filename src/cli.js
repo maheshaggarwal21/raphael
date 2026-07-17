@@ -24,6 +24,7 @@ const COMMANDS = {
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
+  report: () => import('./commands/report.js'),
   guard: () => import('./commands/guard.js'),
   stats: () => import('./commands/stats.js'),
   adopt: () => import('./commands/adopt.js'),
@@ -77,6 +78,8 @@ Commands:
               (raph academy start|status|resume|checkpoint|boundary|limit|list)
   portfolio   The company project table: every Academy build with status,
               tests, lessons written back, and recall cost (raph portfolio [--json])
+  report      The board report: builds, brain changes, recall cost, misses,
+              and what waits on the owner (raph report weekly [--days N] [--json])
   guard       Block commits that would leak secrets in YOUR projects
               (raph guard install|uninstall|scan [--staged|--all|<path...>])
   adopt       Digest external material (URL, file, repo, skill file) into

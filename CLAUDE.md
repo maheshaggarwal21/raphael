@@ -319,9 +319,13 @@ compaction (manual or automatic) can never lose progress.
   attribution would lie 0. Backfilled repo-keeper 41/3, onedesk 64/4, assay 59/4;
   live table = 164 tests / 11 lessons / 0 recall tokens (honest). readEvents()
   consolidated into lib/events.js (stats/why/web now share it).
-- Next: 14.2 `raph report weekly [--json]` (pure computeWeekly over events + portfolio
-  + adoptions) -> 14.3 console Company tab -> 14.4 model policy -> 14.5 scheduler +
-  autopilot. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
+- 14.2 SHIPPED (265/265): `raph report weekly [--days N] [--json]` = src/lib/report.js
+  computeWeekly (pure, `now` param): build activity (checkpoint notes in-window), brain
+  changes funnel, recall cost, retrieval miss (ALL-TIME on purpose), adoptions, next/
+  owner asks. Live: the real week rendered true (43 activated, gstack adoption, 1,650
+  recall tokens, 39/43 never fired pre-RUN).
+- Next: 14.3 console Company tab (portfolio + weekly report, same lib fns) -> 14.4
+  model policy -> 14.5 scheduler + autopilot. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
   hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows
   hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
