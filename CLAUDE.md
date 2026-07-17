@@ -418,11 +418,19 @@ compaction (manual or automatic) can never lose progress.
   (raised-by/mentioned-by = "where does E-SCHEMA come from"); index.md MOC (god-nodes by
   degree); atlas.canvas in JSON Canvas 1.0 (top-48 grid, file nodes open notes, test edges
   tinted). +7 tests. LIVE on raphael: 191 notes + 48-node/168-edge canvas, all valid.
-- Next: 16.6 freshness (OKM) lint + RETIRE heuristics (atlas-provable staleness + contradiction,
-  human-surfaced) / 16.7 adopt runs over the sweep's skills / 16.8 (computed confidence +
-  decision ledger + checkpoint --tried, from the gstack audit). Then Phase 14 meta layer or 13b.
-  Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib
-  extraction. Run builds INLINE (parallel Workflows hit the limit fast).
+- ATLAS 16.6 SHIPPED (session 11, 309/309, live-verified): freshness lint + retire.
+  16.6a src/lib/freshness.js (pure) + `raph lint` = FRESHNESS (dated/pointer, warn-only),
+  atlas-provable STALENESS (only for atlas-indexed file types — capability-check; skipped
+  with no atlas), conservative CONTRADICTION (directional polarity flip, negation binds to
+  its object). All advisory, never auto-delete. 16.6b retireRefs() in the review engine +
+  `raph retire <id|slug> --confirmed` = irreversible, refuses without --confirmed, tombstones
+  (180-day suppress) + removes + rebuilds index. Live-caught + fixed a staleness false-positive
+  class (.env/.json/bare hints) on the real brain; it now lints clean. +11 tests.
+- Next: 16.7 adopt runs over the sweep's skills / 16.8 (computed confidence + decision ledger +
+  checkpoint --tried, from the gstack audit; 16.8a confidence powers a low-confidence+never-fired
+  retire sweep reusing 16.6b). Then Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar),
+  Phase 11 publish + hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel
+  Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

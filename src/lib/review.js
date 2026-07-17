@@ -132,6 +132,52 @@ export function approveRefs(refs, { confirmed = false } = {}) {
   return { results, approved, failed };
 }
 
+// Retire a set of ACTIVE lessons by id or slug (Phase 16.6b) — the "this lesson
+// no longer holds" path, distinct from rejecting a candidate. Because it removes
+// something the human already approved, it is a heavyweight action: it needs an
+// explicit confirmation (mirrors the security-approve gate). Retiring tombstones
+// into rejection memory (so distill won't immediately resurface the same lesson)
+// and removes the active file. Returns { results, retired, failed }; outcomes are
+// retired | not-found | refused-unconfirmed.
+export function retireRefs(refs, { confirmed = false, reason } = {}) {
+  const results = [];
+  let retired = 0;
+
+  for (const ref of refs) {
+    const found = findActiveByRef(ref);
+    if (!found) {
+      results.push({ ref, outcome: 'not-found', message: `no active lesson matches "${ref}" (try raph search or raph lint)` });
+      continue;
+    }
+    if (!confirmed) {
+      results.push({ ref, outcome: 'refused-unconfirmed', slug: found.data.slug, message: `REFUSED "${ref}" — retiring an active lesson is irreversible; re-run with --confirmed to retire "${found.data.slug}" (${found.data.title})` });
+      continue;
+    }
+
+    const tombstone = {
+      text: `${found.data.title}\n${found.data.lesson}`,
+      slug: found.data.slug,
+      id: found.data.id,
+      reason: reason ?? 'retired',
+      rejected_at: new Date().toISOString(),
+      retired: true
+    };
+    mkdirSync(path.dirname(p.rejectedMemory()), { recursive: true });
+    appendFileSync(p.rejectedMemory(), JSON.stringify(tombstone) + '\n', 'utf8');
+    rmSync(found.file, { force: true });
+    logEvent({ event: 'retired', id: found.data.id, slug: found.data.slug, category: found.data.category, reason: reason ?? null });
+    retired++;
+    results.push({ ref, outcome: 'retired', slug: found.data.slug, message: `RETIRED  ${found.data.slug}${reason ? ` (${reason})` : ''} — removed from the active brain; similar lessons suppressed for 180 days` });
+  }
+
+  if (retired > 0) {
+    commitBrain(`retire: ${retired} active lesson(s)`);
+    try { buildIndex(); } catch { /* next loadIndex() rebuilds */ }
+  }
+  const failed = results.filter((r) => r.outcome !== 'retired').length;
+  return { results, retired, failed };
+}
+
 // Reject a set of refs. Returns { results, rejected, failed }; outcomes are
 // rejected | not-found. Every reject tombstones into rejection memory.
 export function rejectRefs(refs, { reason } = {}) {

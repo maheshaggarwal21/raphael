@@ -605,13 +605,24 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       file nodes that open their note, import/test edges (test edges tinted). Calls are
       deduped by (file,symbol) strongest-first. Default out = brain/atlas/<name>-vault.
       +7 tests. LIVE on raphael: 191 notes + 48-node/168-edge canvas, all valid.
-- [ ] 16.6 Freshness (OKM) lint + RETIRE HEURISTICS: timeless/dated/pointer rule for
-      lessons (warn-only first); retire-wrong-lessons path (reject-after-approve
-      tombstone). Adopt gstack's `/learn prune` mechanics (session 10): (a) FILE-EXISTENCE
-      STALENESS — a lesson naming a file/symbol NOT in the current atlas graph is flagged
-      STALE (Atlas makes this provable, stronger than gstack's plain fs check);
-      (b) CONTRADICTION DETECTION — two active lessons, same topic/key, opposite advice ->
-      flagged CONFLICT. Both surface for a human call, never auto-delete (security floor).
+- [x] 16.6 Freshness lint + RETIRE (session 11, 309/309, live-verified). Two parts:
+      16.6a DETECTION (read-only) — src/lib/freshness.js (pure) + `raph lint [--project
+      <path>] [--json]`: (i) FRESHNESS timeless/dated/pointer rule, warn-only (flags a
+      pinned version, a year, time-relative wording, line refs, TODO/FIXME); (ii)
+      ATLAS-PROVABLE STALENESS — a referenced file absent from the project's atlas graph
+      is STALE (only for file types the atlas actually indexes — .json/.yaml/bare hints
+      like ".env"/"config" are NOT checkable, so never falsely flagged; capability-check:
+      skipped honestly when no atlas); (iii) CONTRADICTION — conservative directional
+      polarity (marker→object within 2 words, negation dominates) over lessons sharing
+      ≥2 topic terms, "possible contradiction" surfaced for a human. All advisory, never
+      auto-delete. 16.6b RETIRE (mutation) — retireRefs() in the shared review engine
+      (§14 law) + `raph retire <id|slug...> [--reason] --confirmed`: irreversible, so it
+      REFUSES without --confirmed (shows what would go), then tombstones into rejection
+      memory (180-day suppress, retired:true) + removes the active file + logs 'retired'
+      + commits + rebuilds the index. LIVE: lint caught + I FIXED a false-positive class
+      on the real brain (unindexed-path staleness); retire refuse→confirm→gone verified.
+      +11 tests. Capability-check honored: lint only points at `raph retire` now that it
+      exists. OPEN (16.6 follow-on for 16.8): low-confidence+never-fired retire sweep.
 - [ ] 16.7 Adopt runs over the sweep's skills: fable-method (fit gate, TWIN CHECK ->
       also a Debugger spine line, AUTH gate), act-when-ready, effort-calibrator,
       karpathy-guidelines (4 principles: think-first/simplicity/surgical/goal-driven),

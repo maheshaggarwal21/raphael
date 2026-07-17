@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import approve from '../src/commands/approve.js';
 import reject from '../src/commands/reject.js';
+import retire from '../src/commands/retire.js';
+import { retireRefs } from '../src/lib/review.js';
 import { listCandidates, resolveRef, needsConfirmation } from '../src/lib/queue.js';
 import { writeCandidate } from '../src/lib/candidates.js';
 import { validateLesson } from '../src/lib/validate.js';
@@ -217,6 +219,48 @@ test('reject works WITHOUT --reason (regression: flag-index math ate the first r
     const tomb = JSON.parse(readFileSync(p.rejectedMemory(), 'utf8').trim());
     assert.equal(tomb.slug, 'webhook-idempotency');
     assert.equal(tomb.reason, null);
+  });
+});
+
+test('retire needs --confirmed, then removes the active lesson and tombstones it', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData());
+    await approve(['1']);
+    assert.equal(activeLessons().length, 1);
+
+    // unconfirmed: refused, nothing removed
+    const refused = retireRefs(['webhook-idempotency'], { confirmed: false });
+    assert.equal(refused.retired, 0);
+    assert.equal(refused.results[0].outcome, 'refused-unconfirmed');
+    assert.equal(activeLessons().length, 1);
+
+    // confirmed: removed + tombstoned + event logged
+    const done = retireRefs(['webhook-idempotency'], { confirmed: true, reason: 'superseded by team policy' });
+    assert.equal(done.retired, 1);
+    assert.equal(activeLessons().length, 0);
+    const tomb = JSON.parse(readFileSync(p.rejectedMemory(), 'utf8').trim());
+    assert.equal(tomb.slug, 'webhook-idempotency');
+    assert.equal(tomb.retired, true);
+    assert.equal(tomb.reason, 'superseded by team policy');
+    assert.ok(readFileSync(p.events(), 'utf8').includes('"retired"'));
+  });
+});
+
+test('retire an unknown ref is a clean not-found, not a crash', async () => {
+  await withSandbox(async () => {
+    const code = await retire(['no-such-lesson', '--confirmed']);
+    assert.equal(code, 1); // failed (not-found) -> non-zero
+  });
+});
+
+test('retired lesson drops out of the compiled index / recall', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData());
+    await approve(['1']);
+    retireRefs(['webhook-idempotency'], { confirmed: true });
+    const { loadIndex } = await import('../src/lib/compile.js');
+    const { lessons } = loadIndex();
+    assert.ok(!lessons.some((l) => l.slug === 'webhook-idempotency'));
   });
 });
 

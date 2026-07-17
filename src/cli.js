@@ -13,6 +13,7 @@ const COMMANDS = {
   queue: () => import('./commands/queue.js'),
   approve: () => import('./commands/approve.js'),
   reject: () => import('./commands/reject.js'),
+  retire: () => import('./commands/retire.js'),
   show: () => import('./commands/show.js'),
   inject: () => import('./commands/inject.js'),
   search: () => import('./commands/search.js'),
@@ -22,6 +23,7 @@ const COMMANDS = {
   eval: () => import('./commands/eval.js'),
   map: () => import('./commands/map.js'),
   atlas: () => import('./commands/atlas.js'),
+  lint: () => import('./commands/lint.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -61,6 +63,9 @@ Commands:
               items require single approval with --confirmed)
   reject      Remove candidates; similar ones auto-suppress for 180 days
               (raph reject <n...> [--reason "..."])
+  retire      Retire an ACTIVE lesson that no longer holds (irreversible; needs
+              --confirmed). Tombstones like reject (raph retire <id|slug...>
+              [--reason "..."] --confirmed)
   search      Find lessons the way the hooks would rank them
               (raph search <terms> [--audience <agent>] [--json])
   why         Show what got injected, matched on what, and the token cost
@@ -77,6 +82,9 @@ Commands:
   atlas       The project knowledge graph: build it free, then ask it where to look
               (raph atlas [where "<error>"|path A B|explain X|digest|bench|export]
                [--out <dir>] [--refresh] [--json])
+  lint        Advisory health check on active lessons: dated/pointer wording,
+              atlas-provable stale file paths, and possible contradictions —
+              nothing is changed (raph lint [--project <path>] [--json])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts
