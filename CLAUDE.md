@@ -482,10 +482,15 @@ compaction (manual or automatic) can never lose progress.
   phantom test). (2) consent trailing-separator test hardcoded C:\ paths (POSIX treats
   \ as a filename char) -> platform-native fixtures. All 6 matrix jobs green on be17c07;
   GitHub Release v0.1.0 created on that commit. Lesson written back -> brain 58 active.
+- LAUNCHED (2026-07-18): the owner ran `npm publish` — raphael-brain@0.1.0 is LIVE on the
+  npm registry (tag latest; `npm pkg fix` bin-path cleanup committed). End-user path
+  verified end to end: `npm install -g raphael-brain` from the public registry ->
+  `raph version` -> `raph doctor` healthy (cleared the old global-raph WARN). Raphael is
+  installable via npm, GitHub, and the plugin marketplace. PHASE 11 FULLY COMPLETE.
 - DEVELOPMENT COMPLETE per plan. Remaining items are OPERATIONAL / owner-timing, not code:
-  `npm publish` (the ONE owner action left — machine has no npm login; name raphael-brain
-  is free), Phase 10 self-use RUN (calendar), Phase 12 operational bits (wire mining into
-  a real Academy build, tokens ON/OFF recording, backlog finalize with owner).
+  Phase 10 self-use RUN (calendar), Phase 12 operational bits (wire mining into a real
+  Academy build, tokens ON/OFF recording, backlog finalize with owner), and launch
+  promotion (the handbook's posts are ready to publish when the owner chooses).
   Parked: doctor-to-lib extraction, Phase 5 inject latency (~390ms cold). Run builds INLINE
   (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

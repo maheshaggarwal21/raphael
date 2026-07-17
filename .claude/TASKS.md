@@ -258,9 +258,15 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
       fixture. All 6 matrix jobs (ubuntu+windows x Node 18/20/22) green on be17c07.
       Lesson written back + approved (brain -> 58). v0.1.0 GitHub RELEASE created
       on the green commit with install + highlights notes.
-- [ ] LAST OWNER ACTION: `npm publish` (needs `npm login` — machine is not
-      authenticated; name raphael-brain confirmed FREE on the registry).
-      Then the README's first install line goes live too.
+- [x] PUBLISHED TO NPM (2026-07-18, by the OWNER — the one credential action):
+      `npm publish` ran prepublishOnly (358/358 green in the publish log) and shipped
+      raphael-brain@0.1.0 (136 files, 263 kB) with tag latest. Registry verified
+      (`npm view raphael-brain` = 0.1.0/latest); `npm pkg fix` applied npm's bin-path
+      cleanup ("./bin/raph.js" -> "bin/raph.js"). END-USER PATH LIVE-VERIFIED:
+      `npm install -g raphael-brain` from the public registry -> `raph version` ->
+      `raph doctor` healthy (which also cleared the old "global raph not installed"
+      WARN). PHASE 11 FULLY COMPLETE — Raphael is publicly installable via npm,
+      GitHub, and the Claude Code plugin marketplace.
 
 ## Phase 12 — Self-training pipeline ("Raphael Academy") — ARCHITECTURE §12
 Depends on: subscription provider (done), agent layer (Phase 8), eval (Phase 6).
