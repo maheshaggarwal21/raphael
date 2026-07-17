@@ -548,8 +548,14 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       guarantee; single-project + counter-indication caveats auto-added). Drafts are STAGED
       (staged/skills/<slug>/SKILL.md), branded DRAFT, NEVER auto-installed (installing hands
       agents instructions — a human act). +7 tests. Mirrors adopt's skill-draft discipline.
-- [ ] Agent-maker (meta-agent): drafts roster entries as PROPOSALS, regenerates
-      plugin/agents; demand-driven only. Agent-manager = the Phase 12 autopilot driver.
+- [x] Agent-maker (session 11, 344/344): src/lib/agentmaker.js + `raph agent
+      [demand|propose <slug> …|list]`. validateAgentProposal() checks the entry against
+      the real roster schema (kebab slug, unique vs AGENTS, role/mission/output minima,
+      model enum, tools default). proposeAgentDraft() renders via the REAL renderAgent
+      generator + a PROPOSAL banner + the exact roster literal to paste; writeAgentProposal
+      stages it to staged/agents/<slug>.md — NEVER touches agents.js (adopting one is a
+      human self-upgrade). agentDemand() = lesson-category distribution vs the roster
+      (demand-driven only, informational). +6 tests. Agent-manager already = the 14.5 driver.
 - [x] Optimizer loop (session 11, 338/338): src/lib/optimizer.js (pure) + `raph optimize
       [--json]` = one actionable screen composing the health engines — retire candidates
       (the gated, security-exempt sweep), retrieval miss (never-fired non-security lessons +
@@ -558,8 +564,14 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       un-scoped lesson). Recommendations only, with the exact `raph retire … --confirmed`
       lines. +2 tests. (Agent-usage telemetry isn't collected, so agent pruning stays
       informational — honest capability-check, not a false claim.)
-- [ ] Self-upgrade rule enforced: changes to raphael's own code/agents go branch + tests
-      + eval run before merge (no measurement, no mutation)
+- [x] Self-upgrade rule ENFORCED (session 11, 348/348): src/lib/selfupgrade.js
+      evaluateSelfUpgrade({branch, testsPassed, evalPassed}) = the pure gate (default
+      branch main/master is blocked; tests + eval must be green) + `raph selfcheck
+      [--quick] [--json]` which gathers the facts (git branch, `npm test`, `raph eval run
+      --dry-run` canaries) and exits non-zero when BLOCKED. "No measurement, no mutation" —
+      it refuses to green-light, never merges (human does that). +4 tests. Live: on main it
+      correctly BLOCKS (exit 1). This closes the Phase 14 META LAYER (skills factory,
+      optimizer, agent-maker, self-upgrade all shipped).
 
 ## Phase 16 — Atlas: project knowledge graph (PROPOSED 2026-07-17 session 09;
 ## design = docs/atlas-upgrade-plan.md, from the owner's research sweep — graphify

@@ -27,6 +27,8 @@ const COMMANDS = {
   decide: () => import('./commands/decide.js'),
   skills: () => import('./commands/skills.js'),
   optimize: () => import('./commands/optimize.js'),
+  agent: () => import('./commands/agent.js'),
+  selfcheck: () => import('./commands/selfcheck.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -95,6 +97,10 @@ Commands:
               SKILL.md draft (never auto-installed) (raph skills [suggest|draft <id>|list])
   optimize    The pruning report: retire candidates, retrieval misses, confidence,
               and agent coverage in one screen — recommendations only (raph optimize [--json])
+  agent       The agent-maker: draft a new roster entry as a staged PROPOSAL (never
+              auto-installed) + a demand signal (raph agent [demand|propose <slug> …|list])
+  selfcheck   The self-upgrade gate: before merging a change to Raphael's OWN code,
+              verify branch + npm test + eval canaries are green (raph selfcheck [--quick])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts
