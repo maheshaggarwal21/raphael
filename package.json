@@ -11,6 +11,7 @@
   },
   "files": [
     "bin/",
+    "scripts/",
     "src/",
     "plugin/",
     "docs/",
@@ -40,7 +41,7 @@
     "url": "https://github.com/maheshaggarwal21/raphael/issues"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node scripts/run-tests.mjs",
     "prepublishOnly": "npm test"
   },
   "dependencies": {
