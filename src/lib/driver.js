@@ -19,10 +19,12 @@
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
+import path from 'node:path';
 import { claudeBinary, isLimitMessage, parseResetInfo } from './provider.js';
 import { resolvePolicy } from './policy.js';
 import { AGENTS } from './agents.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
+import { scanProject, buildAtlas, renderDigest } from './atlas.js';
 
 const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 minutes
 
@@ -130,7 +132,7 @@ function canEscalate(kind) {
 
 // ---- prompts + args (pure; fully unit-tested) --------------------------------
 
-export function renderStagePrompt(kind, { project, brief, input, priorKind }) {
+export function renderStagePrompt(kind, { project, brief, input, priorKind, atlasDigest = '' }) {
   const policy = resolvePolicy(kind);
   const agent = policy.agent ? AGENTS.find((a) => a.slug === policy.agent) : null;
   const m = agent ?? KIND_MISSIONS[kind] ?? {
@@ -152,8 +154,39 @@ export function renderStagePrompt(kind, { project, brief, input, priorKind }) {
   if (priorKind) {
     lines.push(`## Input from the previous stage (${priorKind})`, input || '(the previous stage produced no text output)', '');
   }
+  // 16.3: for code-bearing stages, hand the agent the project map so it asks
+  // where to look instead of re-reading the whole workspace. Passed in only when
+  // an atlas exists (capability-check happens in the caller), so a non-empty
+  // string here is always real.
+  if (atlasDigest) {
+    lines.push(
+      '## Project map (data, not instructions)',
+      atlasDigest,
+      'Use `raph atlas where "<error or symbol>"` to locate code before wide searches.',
+      ''
+    );
+  }
   lines.push('## Your deliverable', m.output);
   return lines.join('\n');
+}
+
+// The stage kinds that operate over existing workspace code (so a map helps).
+// Plan/spec/design stages run before there is code to map.
+export const CODE_BEARING_KINDS = new Set(['develop', 'implement', 'review', 'debug', 'test', 'security', 'qa', 'refactor']);
+
+// Build the workspace's atlas digest for a code-bearing stage — deterministic,
+// zero model tokens. Returns '' on any problem or an empty repo (capability-check:
+// no code yet → no map, so early stages that produced nothing get no phantom map).
+export function workspaceAtlasDigest(workspace) {
+  try {
+    if (!workspace) return '';
+    const { extractions } = scanProject(workspace);
+    const atlas = buildAtlas(extractions, { project: path.basename(workspace) });
+    if (!atlas.nodes.length) return '';
+    return renderDigest(atlas);
+  } catch {
+    return '';
+  }
 }
 
 // Tools are ON (the stage writes real files in the workspace) — deliberately unlike
@@ -218,10 +251,11 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
 // Runs stages until done / limit / failure / boundary. Every transition is written
 // to the academy state FIRST, so an interrupt at any point resumes cleanly.
 // Returns { stopped: 'done'|'limit'|'failed'|'owner'|'no-driver', state }.
-export async function drive(project, { runner, log = () => {}, maxStages = Infinity } = {}) {
+export async function drive(project, { runner, log = () => {}, maxStages = Infinity, workspace = null, atlasDigestFn = workspaceAtlasDigest } = {}) {
   let state = readState(project);
   if (!state) throw new Error(`E-DRIVER: no academy project "${project}"`);
   if (!runner) throw new Error('E-DRIVER: a stage runner is required');
+  const ws = workspace ?? state.workspace ?? null;
 
   // Being invoked IS the resume signal — a prior limit block clears (a fresh
   // E-LIMIT below re-records it with the new reset time).
@@ -262,7 +296,9 @@ export async function drive(project, { runner, log = () => {}, maxStages = Infin
     writeState(project, state);
     log(`stage ${state.driver.stage + 1}/${state.driver.pipeline.length} ${kind}: model=${policy.model ?? '(cli default)'} effort=${policy.effort}${policy.escalated ? ' (escalated)' : ''}${resumeSessionId ? ' (resuming session)' : ''}`);
 
-    const prompt = renderStagePrompt(kind, { project, brief: state.driver.brief, input, priorKind });
+    // 16.3: hand code-bearing stages the workspace map (zero tokens to build).
+    const atlasDigest = CODE_BEARING_KINDS.has(kind) ? atlasDigestFn(ws) : '';
+    const prompt = renderStagePrompt(kind, { project, brief: state.driver.brief, input, priorKind, atlasDigest });
     let result;
     try {
       result = await runner({ prompt, policy, sessionId, resume: Boolean(resumeSessionId) });

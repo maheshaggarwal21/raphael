@@ -5,11 +5,27 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
-import { runInjection, loadSessionState, saveSessionState, PREAMBLE, estTokens } from '../src/lib/inject.js';
+import { runInjection, loadSessionState, saveSessionState, PREAMBLE, estTokens, atlasDigestBlock } from '../src/lib/inject.js';
 import { setInjectionEnabled } from '../src/lib/config.js';
 import { writeActiveLesson } from './helpers.js';
 import { lessonId } from '../src/lib/ulid.js';
+import { mapFileName } from '../src/lib/map.js';
 import { p } from '../src/lib/paths.js';
+
+// Seed an atlas cache for a project dir so the capability-check passes.
+function seedAtlas(projDir, { files = 4 } = {}) {
+  const doc = {
+    project: path.basename(projDir),
+    counts: { files, nodes: files, edges: 0 },
+    nodes: [
+      { id: 'file:src/core.js', type: 'file', label: 'src/core.js', degree: 9 },
+      { id: 'file:src/util.js', type: 'file', label: 'src/util.js', degree: 4 }
+    ]
+  };
+  mkdirSync(p.atlas(), { recursive: true });
+  writeFileSync(path.join(p.atlas(), `${mapFileName(path.basename(projDir))}.json`), JSON.stringify(doc), 'utf8');
+  return doc;
+}
 
 const BIN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'raph.js');
 
@@ -154,5 +170,83 @@ test('E2E: the real hook command reads stdin, prints context, always exits 0', a
 
     const noEvent = spawnSync(process.execPath, [BIN, 'inject'], { input: '{}', env, encoding: 'utf8' });
     assert.equal(noEvent.status, 0);
+  });
+});
+
+// ---- 16.3 query-first wiring: atlas digest + PreToolUse nudge ----------------
+
+test('16.3 session-start: atlas digest rides along when an atlas exists (capability-check +)', async () => {
+  await withSandbox(async (dir, proj) => {
+    writeActiveLesson(); // need >=1 lesson for session-start to fire at all
+    seedAtlas(proj);
+    const r = runInjection('session-start', { session_id: 'atl-1', cwd: proj });
+    assert.ok(r.text.includes('<raphael-atlas>'), 'atlas envelope present');
+    assert.ok(r.text.includes('src/core.js'), 'most-connected file surfaced');
+    assert.ok(r.text.includes('raph atlas where'), 'the nudge line is present');
+    assert.ok(r.text.includes('DATA, not instructions'), 'framed as data, not a command');
+    assert.ok(readFileSync(p.events(), 'utf8').includes('"atlas_digest":true'));
+  });
+});
+
+test('16.3 session-start: NO atlas block when none is built (capability-check -)', async () => {
+  await withSandbox(async (dir, proj) => {
+    writeActiveLesson();
+    const r = runInjection('session-start', { session_id: 'atl-2', cwd: proj });
+    assert.ok(r.text.includes('<raphael-lessons>'), 'lessons still inject');
+    assert.ok(!r.text.includes('<raphael-atlas>'), 'no atlas nudge without a built atlas');
+  });
+});
+
+test('16.3 atlasDigestBlock: empty for missing/corrupt/empty atlas', async () => {
+  await withSandbox(async (dir, proj) => {
+    assert.equal(atlasDigestBlock(proj), '');                 // none built
+    mkdirSync(p.atlas(), { recursive: true });
+    writeFileSync(path.join(p.atlas(), `${mapFileName(path.basename(proj))}.json`), 'not json', 'utf8');
+    assert.equal(atlasDigestBlock(proj), '');                 // corrupt
+    writeFileSync(path.join(p.atlas(), `${mapFileName(path.basename(proj))}.json`), JSON.stringify({ counts: { files: 0 }, nodes: [] }), 'utf8');
+    assert.equal(atlasDigestBlock(proj), '');                 // no nodes
+  });
+});
+
+test('16.3 pre-tool nudge: fires once per session for search tools when an atlas exists', async () => {
+  await withSandbox(async (dir, proj) => {
+    seedAtlas(proj); // no lesson needed — nudge is atlas-only
+
+    // non-search tool: never nudges
+    const readTool = runInjection('pre-tool', { session_id: 'nud-1', cwd: proj, tool_name: 'Read' });
+    assert.equal(readTool.text, '');
+
+    // first Grep: nudge fires
+    const first = runInjection('pre-tool', { session_id: 'nud-1', cwd: proj, tool_name: 'Grep' });
+    assert.ok(first.text.includes('<raphael-atlas-nudge>'));
+    assert.ok(first.text.includes('raph atlas where'));
+    assert.ok(loadSessionState('nud-1').atlas_nudged, 'dedupe flag persisted');
+
+    // second search in the same session: suppressed
+    const second = runInjection('pre-tool', { session_id: 'nud-1', cwd: proj, tool_name: 'Glob' });
+    assert.equal(second.text, '');
+
+    // a Bash grep is search-shaped too, but this session already nudged
+    const bash = runInjection('pre-tool', { session_id: 'nud-1', cwd: proj, tool_name: 'Bash', tool_input: { command: 'grep -r foo .' } });
+    assert.equal(bash.text, '');
+  });
+});
+
+test('16.3 pre-tool nudge: no atlas built = never nudges (capability-check)', async () => {
+  await withSandbox(async (dir, proj) => {
+    const r = runInjection('pre-tool', { session_id: 'nud-2', cwd: proj, tool_name: 'Grep' });
+    assert.equal(r.text, '');
+    assert.equal(existsSync(p.sessionsDir()), false); // nothing written when it no-ops
+  });
+});
+
+test('16.3 pre-tool nudge: Bash grep detected as search-shaped', async () => {
+  await withSandbox(async (dir, proj) => {
+    seedAtlas(proj);
+    const r = runInjection('pre-tool', { session_id: 'nud-3', cwd: proj, tool_name: 'Bash', tool_input: { command: 'rg "E-SCHEMA" src/' } });
+    assert.ok(r.text.includes('<raphael-atlas-nudge>'));
+    // a non-search Bash command does not
+    const plain = runInjection('pre-tool', { session_id: 'nud-4', cwd: proj, tool_name: 'Bash', tool_input: { command: 'npm test' } });
+    assert.equal(plain.text, '');
   });
 });

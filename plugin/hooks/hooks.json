@@ -13,6 +13,14 @@
           { "type": "command", "command": "raph inject --event user-prompt" }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Grep|Glob",
+        "hooks": [
+          { "type": "command", "command": "raph inject --event pre-tool" }
+        ]
+      }
     ]
   }
 }

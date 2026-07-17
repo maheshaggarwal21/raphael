@@ -46,8 +46,13 @@ test('hooks.json auto-wires recall on session start and each prompt', () => {
 
   const start = flatten('SessionStart');
   const prompt = flatten('UserPromptSubmit');
+  const preTool = flatten('PreToolUse');
   assert.ok(start.some((c) => /raph inject .*session-start/.test(c)), 'SessionStart must call raph inject session-start');
   assert.ok(prompt.some((c) => /raph inject .*user-prompt/.test(c)), 'UserPromptSubmit must call raph inject user-prompt');
+  // 16.3: the atlas nudge fires before search-shaped tools, matched to Grep/Glob.
+  assert.ok(preTool.some((c) => /raph inject .*pre-tool/.test(c)), 'PreToolUse must call raph inject pre-tool');
+  const matcher = (hooks.hooks.PreToolUse || []).map((g) => g.matcher).find(Boolean);
+  assert.match(matcher || '', /Grep|Glob/, 'PreToolUse must match search-shaped tools');
 });
 
 test('the four /brain slash commands exist with a description', () => {

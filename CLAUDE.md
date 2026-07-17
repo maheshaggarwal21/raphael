@@ -387,11 +387,20 @@ compaction (manual or automatic) can never lose progress.
   (retire heuristics: atlas-provable staleness + contradiction) + added 16.8 (computed
   confidence 0-10 + decision ledger + checkpoint --tried). Writeup: docs/atlas-upgrade-plan.md
   addendum. 279/279.
-- Next: 16.3 query-first wiring (digest into inject + PreToolUse nudge hook +
-  driver stage prompts, now carrying the capability-check rule), then 16.4 bench / 16.5
-  export / 16.6 freshness / 16.7 adopt runs. Then Phase 14 meta layer or 13b. Parked:
-  Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib extraction.
-  Run builds INLINE (parallel Workflows hit the limit fast).
+- ATLAS 16.3 SHIPPED (session 10, 286/286, live-verified): query-first wiring, one rule =
+  capability-check (only ever point the agent at `raph atlas where` when an atlas is built).
+  (a) SessionStart: atlas digest in its own <raphael-atlas> data-envelope + 250-tok budget
+  (src/lib/inject.js atlasDigestBlock, ''-on-miss). (b) PreToolUse nudge: new `raph inject
+  --event pre-tool` (runPreToolNudge) fires once/session for search tools (Grep/Glob + Bash
+  grep/rg/find) when an atlas exists; plugin/hooks.json matcher Grep|Glob. (c) Driver:
+  renderStagePrompt carries the workspace map (workspaceAtlasDigest, zero tokens) for
+  CODE_BEARING_KINDS only. Live: raphael atlas (146 files) session-start block + Grep-once
+  nudge + Read-silent all confirmed; smoke artifacts cleaned from the real brain.
+- Next: 16.4 `raph atlas bench` (tokens-to-answer graph-vs-raw), then 16.5 Obsidian export /
+  16.6 freshness+retire heuristics / 16.7 adopt runs / 16.8 (computed confidence + decision
+  ledger + checkpoint --tried, from the gstack audit). Then Phase 14 meta layer or 13b.
+  Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib
+  extraction. Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

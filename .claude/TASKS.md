@@ -565,12 +565,16 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       `path A B` (BFS, pkg hubs are endpoints never waypoints) + `explain <x>` +
       `digest` (the 16.3 injection block). Live on raphael: "E-SCHEMA" ->
       src/lib/validate.js #1 (error text origin). 279/279 tests (+5).
-- [ ] 16.3 Query-first wiring: Atlas digest in inject budget + PreToolUse nudge hook
-      (plugin) + driver stage prompts carry the digest for debug/review/develop kinds.
-      CAPABILITY-CHECK RULE (from gstack's gbrain-guidance design, session 10): only
-      inject the "ask `raph atlas where`" nudge/digest when an atlas actually exists
-      for this project AND answers — never tell the agent to use a surface that isn't
-      built. Digest is empty-string when no atlas cache is present (fail-quiet).
+- [x] 16.3 Query-first wiring (session 10, 286/286 tests, live-verified): Atlas digest
+      in the inject SessionStart budget (own <raphael-atlas> envelope + 250-tok budget,
+      data-framed) + PreToolUse nudge hook (plugin/hooks.json matcher Grep|Glob, +Bash
+      grep/rg/find detection; ONCE per session via session-state atlas_nudged flag) +
+      driver stage prompts carry the workspace map for CODE_BEARING_KINDS only (zero
+      tokens to build). CAPABILITY-CHECK enforced everywhere (atlasDigestBlock/
+      workspaceAtlasDigest return '' when no atlas is built): never point the agent at a
+      surface that isn't there. Live: raphael atlas (146 files) -> session-start shows
+      most-connected files; Grep nudge fires once then silent; Read/npm-test silent.
+      inject.js + driver.js + plugin/hooks.json + docs/hooks.md + tests.
 - [ ] 16.4 `raph atlas bench`: tokens-to-answer graph-vs-raw, honest per-size caveats,
       feeds stats + weekly report
 - [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
