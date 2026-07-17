@@ -547,6 +547,30 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
 - [ ] Self-upgrade rule enforced: changes to raphael's own code/agents go branch + tests
       + eval run before merge (no measurement, no mutation)
 
+## Phase 16 — Atlas: project knowledge graph (PROPOSED 2026-07-17 session 09;
+## design = docs/atlas-upgrade-plan.md, from the owner's research sweep — graphify
+## et al. Zero-token deterministic graph; fixes owner awareness + 10-70x recall)
+- [ ] 16.1 Atlas core: src/lib/atlas.js — deterministic node/edge extraction
+      (files, exports, imports EXTRACTED, calls INFERRED w/ confidence rubric,
+      tests, E-codes, docs), degree=importance, groups, SHA256 incremental cache,
+      atlas.json + ATLAS.md, `raph atlas [--refresh]`
+- [ ] 16.2 Error router: `raph atlas where "<error|question>"` (ranked files + WHY,
+      1-2 hop subgraph, explainable like match.js) + `path A B` + `explain <x>`
+- [ ] 16.3 Query-first wiring: Atlas digest in inject budget + PreToolUse nudge hook
+      (plugin) + driver stage prompts carry the digest for debug/review/develop kinds
+- [ ] 16.4 `raph atlas bench`: tokens-to-answer graph-vs-raw, honest per-size caveats,
+      feeds stats + weekly report
+- [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
+      (plain md, no deps)
+- [ ] 16.6 Freshness (OKM) lint: timeless/dated/pointer rule for lessons (warn-only
+      first); retire-wrong-lessons path (reject-after-approve tombstone)
+- [ ] 16.7 Adopt runs over the sweep's skills: fable-method (fit gate, TWIN CHECK ->
+      also a Debugger spine line, AUTH gate), act-when-ready, effort-calibrator,
+      karpathy-guidelines, fable-skills handover format -> skills-factory template
+      ("honest limits" section mandatory). All via the normal adopt gauntlet.
+- NOT adopted (recorded in the plan doc): pxpipe image proxy, tree-sitter/embeddings,
+  hosted memory systems, vibekit sandbox (revisit if untrusted code ever runs).
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.

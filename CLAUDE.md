@@ -342,10 +342,31 @@ compaction (manual or automatic) can never lose progress.
   <p> --brief|--brief-file [--pipeline] [--dry-run] [--max-stages]`. LIVE-verified:
   real plan stage wrote spec.md in a sandbox, 541 tokens, boundary recorded.
   Closes Phase 12: driver, scheduler, per-stage session resume, boundary-in-code.
-- Next: Phase 14 meta layer (skills factory -> agent-maker -> optimizer -> self-
-  upgrade rule) or 13b (driver now exists). Parked: Phase 10 RUN (calendar), Phase 11 publish +
-  hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows
-  hit the limit fast).
+- 14.5 SHIPPED (274/274): src/lib/driver.js = the autopilot. Pure state machine
+  (driver state INSIDE academy state.json — all resume infra carries it; state
+  written BEFORE every spawn) + makeStageRunner (real `claude -p`, tools ON,
+  acceptEdits, workspace cwd, per-stage --session-id, API keys stripped) + drive()
+  loop. E-LIMIT -> recordLimit + exit 4; rerun resumes the SAME stage via --resume.
+  Fail -> one escalated retry (policy) else owner. Boundary IN CODE: no deploy kind
+  exists (E-POLICY), completion -> recordBoundary + blocked. `raph academy drive
+  <p> --brief|--brief-file [--pipeline] [--dry-run] [--max-stages]`. LIVE-verified:
+  real plan stage wrote spec.md in a sandbox, 541 tokens, boundary recorded.
+  Closes Phase 12: driver, scheduler, per-stage session resume, boundary-in-code.
+- RESEARCH SWEEP DONE (session 09, owner ask): 13 repos + 25 screenshots + PDF
+  analyzed end to end -> docs/atlas-upgrade-plan.md + TASKS Phase 16 (PROPOSED).
+  Headline: graphify's zero-LLM deterministic knowledge graph (71.5x fewer tokens
+  per query, audited) + the owner's awareness problem ("where do I look when it
+  breaks") are solved by ONE engine: Phase 16 "Atlas" — deterministic project graph
+  (16.1), `raph atlas where` error router (16.2), query-first inject/hook wiring
+  (16.3), honest bench (16.4), Obsidian-compatible export (16.5), OKM freshness
+  lint + lesson retirement (16.6), adopt runs over the sweep's skills incl.
+  fable-method's twin check (16.7). NOT adopted (recorded w/ reasons): pxpipe image
+  proxy, tree-sitter/embeddings, hosted memory, vibekit. URL fix: "fable-compiler/*"
+  repos don't exist — real sources kpab/claude-fable-5-skills + Sahir619/fable-method.
+- Next: owner go on Phase 16 Atlas (16.1+16.2 recommended first) vs Phase 14 meta
+  layer (skills factory -> agent-maker -> optimizer -> self-upgrade rule) or 13b.
+  Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing),
+  doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
