@@ -60,12 +60,42 @@ function looksBinary(buf) {
   return false;
 }
 
-// Basic, deterministic HTML -> text: drop script/style/head wholesale, strip
-// tags, decode the common entities, collapse blank runs. Good enough to feed
-// a distiller; never meant to render anything.
+const clampCodePoint = (cp) => {
+  try {
+    return Number.isFinite(cp) && cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ' ';
+  } catch {
+    return ' ';
+  }
+};
+
+// Defuddle-style (16.7) main-content extraction: prefer the largest <article> or
+// <main> (or a role="main" region), then <body>, then the whole string. Cuts the
+// chrome — nav/header/footer — before it ever reaches the distiller, so the
+// reviewer spends fewer tokens on boilerplate. Deterministic bounded regex, no DOM.
+export function mainRegion(html) {
+  const largest = (re) => {
+    let best = '';
+    let m;
+    const g = new RegExp(re, 'gi');
+    while ((m = g.exec(html)) !== null) if (m[1] && m[1].length > best.length) best = m[1];
+    return best;
+  };
+  const article = largest('<article\\b[^>]*>([\\s\\S]*?)<\\/article\\s*>');
+  if (article) return article;
+  const main = largest('<main\\b[^>]*>([\\s\\S]*?)<\\/main\\s*>');
+  if (main) return main;
+  const roleMain = largest('<(?:div|section)\\b[^>]*\\brole=["\']main["\'][^>]*>([\\s\\S]*?)<\\/(?:div|section)\\s*>');
+  if (roleMain) return roleMain;
+  const body = /<body\b[^>]*>([\s\S]*?)<\/body\s*>/i.exec(html);
+  return body ? body[1] : html;
+}
+
+// Deterministic HTML -> text: pull the main region, drop non-content elements
+// wholesale, strip remaining tags, decode entities (named + numeric), collapse
+// blank runs. Good enough to feed a distiller; never meant to render anything.
 export function htmlToText(html) {
-  let t = String(html ?? '');
-  t = t.replace(/<(script|style|head|noscript|template|svg)\b[\s\S]*?<\/\1\s*>/gi, ' ');
+  let t = mainRegion(String(html ?? ''));
+  t = t.replace(/<(script|style|head|noscript|template|svg|nav|header|footer|aside|form|button|iframe)\b[\s\S]*?<\/\1\s*>/gi, ' ');
   t = t.replace(/<!--[\s\S]*?-->/g, ' ');
   t = t.replace(/<(?:br|\/p|\/div|\/li|\/h[1-6]|\/tr)\b[^>]*>/gi, '\n');
   t = t.replace(/<[^>]+>/g, ' ');
@@ -75,7 +105,9 @@ export function htmlToText(html) {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#0?39;|&apos;/gi, "'");
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, d) => clampCodePoint(parseInt(d, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => clampCodePoint(parseInt(h, 16)));
   t = t.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').replace(/\n{3,}/g, '\n\n');
   return t.trim();
 }

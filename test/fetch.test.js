@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { checkUrl, htmlToText, fetchUrl } from '../src/lib/fetch.js';
+import { checkUrl, htmlToText, mainRegion, fetchUrl } from '../src/lib/fetch.js';
 
 // --- policy (checkUrl) --------------------------------------------------------
 
@@ -33,6 +33,34 @@ test('htmlToText strips scripts/styles/tags and decodes common entities', () => 
   assert.ok(!text.includes('alert'));
   assert.ok(!text.includes('color:red'));
   assert.ok(!text.includes('<p>'));
+});
+
+test('htmlToText (defuddle) keeps main content and drops nav/header/footer chrome', () => {
+  const html = `<!doctype html><html><body>
+    <header><nav>Home About <a href="/login">Login</a></nav></header>
+    <main><h1>Real Title</h1><p>The actual lesson body worth adopting.</p></main>
+    <aside>Ad: buy now</aside>
+    <footer>Copyright 2026 · privacy policy</footer>
+  </body></html>`;
+  const text = htmlToText(html);
+  assert.ok(text.includes('Real Title'));
+  assert.ok(text.includes('actual lesson body'));
+  assert.ok(!text.includes('Home About'), 'nav chrome dropped');
+  assert.ok(!text.includes('buy now'), 'aside dropped');
+  assert.ok(!text.includes('privacy policy'), 'footer dropped');
+});
+
+test('mainRegion prefers article/main, falls back to body then whole', () => {
+  assert.match(mainRegion('<html><body><nav>x</nav><article>KEEP ME</article></body></html>'), /KEEP ME/);
+  assert.match(mainRegion('<body><main>MAIN</main></body>'), /MAIN/);
+  assert.match(mainRegion('<body>BODY ONLY</body>'), /BODY ONLY/);
+  assert.equal(mainRegion('just a fragment'), 'just a fragment');
+});
+
+test('htmlToText decodes numeric + hex entities', () => {
+  const text = htmlToText('<body><p>caf&#233; &#x2014; done</p></body>');
+  assert.ok(text.includes('café'));
+  assert.ok(text.includes('—'));
 });
 
 // --- fetchUrl against a local server ------------------------------------------
