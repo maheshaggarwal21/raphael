@@ -5,6 +5,7 @@
 
 import path from 'node:path';
 import { lintLessons, renderLint, readActiveLessons, atlasFileLabels } from '../lib/freshness.js';
+import { readEvents } from '../lib/events.js';
 
 export default async function lint(args) {
   const asJson = args.includes('--json');
@@ -13,7 +14,7 @@ export default async function lint(args) {
 
   const lessons = readActiveLessons();
   const atlasFiles = atlasFileLabels(projectDir);
-  const rep = lintLessons(lessons, { atlasFiles });
+  const rep = lintLessons(lessons, { atlasFiles, events: readEvents() });
 
   if (asJson) {
     console.log(JSON.stringify(rep, null, 2));

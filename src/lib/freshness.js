@@ -19,6 +19,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { parseLessonFile } from './frontmatter.js';
+import { computeConfidence, confidenceBand, ageDays } from './confidence.js';
+import { readEvents } from './events.js';
 import { mapFileName } from './map.js';
 import { p } from './paths.js';
 
@@ -153,9 +155,41 @@ export function findContradictions(lessons) {
   return out;
 }
 
+// --- retire sweep (confidence + retrieval) --------------------------------
+
+// Thresholds for suggesting a lesson for retirement. Deliberately conservative —
+// this only ever SUGGESTS; retiring is always the human's explicit --confirmed act.
+const MIN_INJECTIONS = 20;  // need real retrieval history before "never fired" means anything
+const LOW_CONF = 4.0;       // below the medium band
+const MIN_AGE_DAYS = 30;    // a brand-new lesson hasn't had its chance yet
+
+// Suggest lessons to retire: low computed confidence AND never retrieved AND old
+// enough to have had a fair chance — only once the brain has been used enough for
+// "never fired" to be meaningful. Security lessons are EXEMPT (they guard rare
+// paths, so never-fired is expected, not a defect — honors the security floor).
+export function retireCandidates(lessons, { events = [], now = new Date() } = {}) {
+  const injected = events.filter((e) => e.event === 'injected');
+  if (injected.length < MIN_INJECTIONS) {
+    return { ready: false, reason: `only ${injected.length} injection(s) recorded — need ${MIN_INJECTIONS} before "never fired" is meaningful`, items: [] };
+  }
+  const firedIds = new Set(injected.flatMap((e) => (e.lessons ?? []).map((l) => l.id)));
+  const items = [];
+  for (const l of lessons) {
+    if (l.category === 'security') continue; // security floor: never auto-suggest retiring
+    if (firedIds.has(l.id)) continue;
+    const conf = computeConfidence(l, { now });
+    if (conf >= LOW_CONF) continue;
+    const age = ageDays(l, now);
+    if (age == null || age < MIN_AGE_DAYS) continue;
+    items.push({ id: l.id, slug: l.slug, category: l.category, confidence: conf, band: confidenceBand(conf), ageDays: age, why: 'low confidence and never retrieved despite a fair chance' });
+  }
+  items.sort((a, b) => a.confidence - b.confidence || a.slug.localeCompare(b.slug));
+  return { ready: true, items };
+}
+
 // --- combined report -------------------------------------------------------
 
-export function lintLessons(lessons, { atlasFiles = null } = {}) {
+export function lintLessons(lessons, { atlasFiles = null, events = null } = {}) {
   const perLesson = lessons.map((l) => {
     const findings = [...lintFreshness(l), ...lintStaleness(l, atlasFiles)];
     return { id: l.id, slug: l.slug, category: l.category, severity: l.severity, findings };
@@ -163,15 +197,24 @@ export function lintLessons(lessons, { atlasFiles = null } = {}) {
 
   const contradictions = findContradictions(lessons);
 
+  // Confidence distribution (always) + a conservative retire sweep (needs events).
+  const now = new Date();
+  const dist = { high: 0, medium: 0, low: 0 };
+  for (const l of lessons) dist[confidenceBand(computeConfidence(l, { now }))]++;
+  const retire = events ? retireCandidates(lessons, { events, now }) : { ready: false, reason: 'no injection log supplied', items: [] };
+
   return {
     lessonCount: lessons.length,
     atlasChecked: !!(atlasFiles && atlasFiles.length),
     lessons: perLesson,
     contradictions,
+    confidence: dist,
+    retire,
     counts: {
       freshness: perLesson.reduce((n, r) => n + r.findings.filter((f) => f.kind === 'freshness').length, 0),
       staleness: perLesson.reduce((n, r) => n + r.findings.filter((f) => f.kind === 'staleness').length, 0),
-      contradiction: contradictions.length
+      contradiction: contradictions.length,
+      retireCandidates: retire.items.length
     }
   };
 }
@@ -181,9 +224,12 @@ export function renderLint(rep) {
   L.push(`raph lint — freshness + staleness + contradiction over ${rep.lessonCount} active lesson(s)`);
   L.push(`  (advisory only — nothing is changed; retire a lesson yourself with "raph retire <id>")`);
 
-  if (!rep.lessons.length && !rep.contradictions.length) {
+  const confLine = rep.confidence ? `  confidence: ${rep.confidence.high} high · ${rep.confidence.medium} medium · ${rep.confidence.low} low` : null;
+
+  if (!rep.lessons.length && !rep.contradictions.length && !rep.retire?.items.length) {
     L.push('');
     L.push('  clean — no dated/pointer wording, no atlas-stale paths, no contradictions found.');
+    if (confLine) L.push(confLine);
     if (!rep.atlasChecked) L.push('  (staleness skipped: no atlas built for this project — run "raph atlas" to enable it.)');
     return L.join('\n');
   }
@@ -222,8 +268,23 @@ export function renderLint(rep) {
     }
   }
 
+  if (rep.retire?.items.length) {
+    L.push('');
+    L.push('Retire candidates (low confidence + never retrieved — suggestions, not actions)');
+    for (const it of rep.retire.items) {
+      L.push(`  ${it.slug}  [conf ${it.confidence}/10, ${it.category}, ${it.ageDays}d old]  — ${it.why}`);
+    }
+    L.push('  Review each, then: raph retire <slug> --confirmed. Security lessons are exempt on purpose.');
+  }
+
+  if (confLine) {
+    L.push('');
+    L.push('Confidence (computed from evidence, age-decayed)');
+    L.push(confLine);
+  }
+
   L.push('');
-  L.push(`Totals: ${rep.counts.staleness} stale/moved · ${rep.counts.freshness} freshness · ${rep.counts.contradiction} contradiction(s).`);
+  L.push(`Totals: ${rep.counts.staleness} stale/moved · ${rep.counts.freshness} freshness · ${rep.counts.contradiction} contradiction(s) · ${rep.counts.retireCandidates} retire candidate(s).`);
   L.push('Fix a stale trigger by editing the lesson, or retire a lesson that no longer holds: "raph retire <id|slug>".');
   return L.join('\n');
 }

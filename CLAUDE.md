@@ -426,11 +426,21 @@ compaction (manual or automatic) can never lose progress.
   `raph retire <id|slug> --confirmed` = irreversible, refuses without --confirmed, tombstones
   (180-day suppress) + removes + rebuilds index. Live-caught + fixed a staleness false-positive
   class (.env/.json/bare hints) on the real brain; it now lints clean. +11 tests.
-- Next: 16.7 adopt runs over the sweep's skills / 16.8 (computed confidence + decision ledger +
-  checkpoint --tried, from the gstack audit; 16.8a confidence powers a low-confidence+never-fired
-  retire sweep reusing 16.6b). Then Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar),
-  Phase 11 publish + hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel
-  Workflows hit the limit fast).
+- ATLAS 16.8 SHIPPED (session 11, 326/326, live-verified): three pure-Node additions from the
+  gstack audit. (a) COMPUTED CONFIDENCE (src/lib/confidence.js, 0-10 from evidence: breadth>
+  repetition, ~180d half-life decay, curated floors at 6, auto discounted) — separate from rank()
+  so ordering is unperturbed; powers the 16.6 retire sweep (retireCandidates: low-conf + never-
+  fired + aged, gated on >=20 injections, security-exempt) surfaced in `raph lint`. (b) DECISION
+  LEDGER (src/lib/decisions.js, append-only, monotonic supersede, secrets scrubbed) + `raph decide`
+  / `decide list`; surfaced at session start in a <raphael-decisions> envelope ("settled, do not
+  re-litigate"), capability-checked. (c) `academy checkpoint --tried "<dead end>"` -> state.tried,
+  shown in status so a resume won't repeat it. +21 tests.
+- Next: 16.7 adopt runs over the research sweep's skills (fable-method twin-check/fit-gate,
+  act-when-ready, effort-calibrator, karpathy 4 principles, fable-skills handover) via the normal
+  adopt gauntlet + a defuddle-style HTML->text cleanup in adopt fetch — this is the ONE remaining
+  Phase 16 milestone and it does LIVE adopt runs (subscription model spend, external fetch). Then
+  Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner
+  timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

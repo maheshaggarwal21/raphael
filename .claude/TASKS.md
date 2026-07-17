@@ -629,15 +629,21 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       fable-skills handover format -> skills-factory template ("honest limits"
       section mandatory). All via the normal adopt gauntlet. + defuddle idea:
       zero-dep HTML->text cleanup in adopt fetch (fewer reviewer tokens).
-- [ ] 16.8 (NEW, from the gstack audit, session 10 — docs/atlas-upgrade-plan.md addendum):
-      two pure-Node, zero-network, zero-dep additions gstack has that Raphael lacks —
-      (a) COMPUTED CONFIDENCE 0-10 per lesson, derived deterministically from evidence
-      (observations x distinct_projects, age-decayed); improves ranking + powers a
-      "low-confidence + never-fired -> retire candidate" sweep in 16.6. (b) DECISION LEDGER
-      — durable architecture/scope/vendor decisions with rationale + supersede + "don't
-      re-litigate" surfacing at session start; distinct from lessons (advice) and academy
-      checkpoints (build state). Also minor: `academy checkpoint --tried` (record dead-end
-      approaches so a post-limit resume doesn't repeat them).
+- [x] 16.8 SHIPPED (session 11, 326/326, live-verified): three pure-Node, zero-network
+      additions from the gstack audit. (a) COMPUTED CONFIDENCE — src/lib/confidence.js
+      computeConfidence(lesson) = deterministic 0-10 from evidence (breadth > repetition;
+      ~180d half-life age decay on the evidence part; curated floors at 6 and resists age;
+      auto discounted; human_edited +1). Kept SEPARATE from rank() (own bounded prior) so
+      ordering is unperturbed. Powers the 16.6 RETIRE SWEEP: retireCandidates() flags
+      low-confidence + never-retrieved + aged lessons, GATED on >=20 injections (so "never
+      fired" is meaningful) and SECURITY-EXEMPT (security floor); surfaced in `raph lint`
+      (+ confidence distribution). (b) DECISION LEDGER — src/lib/decisions.js (append-only
+      decisions.jsonl; supersede is monotonic, history kept; secrets scrubbed before
+      store/show) + `raph decide "<x>" [--why] [--supersedes] [--tag]` / `decide list`;
+      surfaced at session start in its own <raphael-decisions> envelope ("settled, do not
+      re-litigate"), capability-checked. (c) `academy checkpoint --tried "<dead end>"` —
+      records dead ends in state.tried; renderStatus shows "TRIED (do not repeat)" so a
+      post-limit resume won't loop. +21 tests. Live: decide/inject/lint/checkpoint all verified.
 - NOT adopted (recorded in the plan doc): pxpipe image proxy, tree-sitter/embeddings,
   hosted memory systems (incl. gbrain's embeddings+Postgres+MCP — Atlas is the
   deterministic substitute), Supabase/team brain server, telemetry upload, bun/60-skill

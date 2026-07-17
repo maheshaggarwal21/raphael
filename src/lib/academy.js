@@ -91,7 +91,8 @@ export function startProject(project, { title, workspace, milestones = [] } = {}
 
 // Merge a checkpoint patch. Recognized fields: milestone, step, next, status, note,
 // done (a milestone id to mark complete), tests (latest green test count), lessons
-// (lessons written back to the brain so far). Anything else is ignored on purpose.
+// (lessons written back to the brain so far), tried (a dead-end approach to record
+// so a post-limit resume does NOT repeat it). Anything else is ignored on purpose.
 export function checkpoint(project, patch = {}) {
   const state = readState(project);
   if (!state) throw new Error(`E-ACADEMY: no project "${project}" — start it first`);
@@ -112,6 +113,10 @@ export function checkpoint(project, patch = {}) {
   if (patch.done) {
     const m = state.milestones.find((x) => x.id === patch.done);
     if (m) m.done = true;
+  }
+  if (patch.tried) {
+    const note = String(patch.tried).trim();
+    if (note) state.tried = [...(state.tried || []), { at: now(), note }];
   }
   if (patch.note) state.log.push({ at: now(), note: patch.note });
   state.updated_at = now();
@@ -157,6 +162,10 @@ export function renderStatus(state) {
   if (state.lessons) lines.push(`  lessons:   ${state.lessons.count} written back to the brain`);
   lines.push(`  current:   ${state.current.milestone || '—'} · ${state.current.step}`);
   lines.push(`  NEXT:      ${state.current.next_action}`);
+  if (state.tried?.length) {
+    lines.push(`  TRIED (dead ends — do not repeat):`);
+    for (const t of state.tried) lines.push(`    - ${t.note}`);
+  }
   if (state.boundary) lines.push(`  BOUNDARY:  ${state.boundary.reason} (since ${state.boundary.at})`);
   if (state.status === 'blocked-limit' && state.limit) lines.push(`  LIMIT:     hit ${state.limit.at}, resets ${state.limit.reset_at || 'unknown'}`);
   lines.push(`  updated:   ${state.updated_at}`);

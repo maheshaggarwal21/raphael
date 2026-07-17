@@ -23,6 +23,7 @@ export const p = {
   distilledLedger: () => path.join(raphaelHome(), 'state', 'distilled.jsonl'),
   rejectedMemory: () => path.join(raphaelHome(), 'state', 'rejected.jsonl'),
   adoptionsLedger: () => path.join(raphaelHome(), 'state', 'adoptions.jsonl'),
+  decisionsLedger: () => path.join(raphaelHome(), 'state', 'decisions.jsonl'),
   skillDrafts: () => path.join(raphaelHome(), 'staged', 'skills'),
   episodesDir: () => path.join(raphaelHome(), 'state', 'episodes'),
   sessionsDir: () => path.join(raphaelHome(), 'state', 'sessions'),

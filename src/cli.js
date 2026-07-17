@@ -24,6 +24,7 @@ const COMMANDS = {
   map: () => import('./commands/map.js'),
   atlas: () => import('./commands/atlas.js'),
   lint: () => import('./commands/lint.js'),
+  decide: () => import('./commands/decide.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -83,8 +84,11 @@ Commands:
               (raph atlas [where "<error>"|path A B|explain X|digest|bench|export]
                [--out <dir>] [--refresh] [--json])
   lint        Advisory health check on active lessons: dated/pointer wording,
-              atlas-provable stale file paths, and possible contradictions —
-              nothing is changed (raph lint [--project <path>] [--json])
+              atlas-provable stale file paths, possible contradictions, and
+              low-confidence retire candidates (raph lint [--project <path>] [--json])
+  decide      Record/list durable decisions (architecture, scope, vendor) so
+              settled calls are surfaced at session start, not re-litigated
+              (raph decide "<decision>" [--why "..."] [--supersedes dec_x] | decide list)
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts

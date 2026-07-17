@@ -8,6 +8,7 @@ import path from 'node:path';
 import { runInjection, loadSessionState, saveSessionState, PREAMBLE, estTokens, atlasDigestBlock } from '../src/lib/inject.js';
 import { setInjectionEnabled } from '../src/lib/config.js';
 import { writeActiveLesson } from './helpers.js';
+import { recordDecision } from '../src/lib/decisions.js';
 import { lessonId } from '../src/lib/ulid.js';
 import { mapFileName } from '../src/lib/map.js';
 import { p } from '../src/lib/paths.js';
@@ -194,6 +195,25 @@ test('16.3 session-start: NO atlas block when none is built (capability-check -)
     const r = runInjection('session-start', { session_id: 'atl-2', cwd: proj });
     assert.ok(r.text.includes('<raphael-lessons>'), 'lessons still inject');
     assert.ok(!r.text.includes('<raphael-atlas>'), 'no atlas nudge without a built atlas');
+  });
+});
+
+test('16.8b session-start: standing decisions ride along, framed as settled data', async () => {
+  await withSandbox(async (dir, proj) => {
+    writeActiveLesson();
+    recordDecision({ title: 'Keep security lessons human-approved', rationale: 'security floor' });
+    const r = runInjection('session-start', { session_id: 'dec-1', cwd: proj });
+    assert.ok(r.text.includes('<raphael-decisions>'), 'decisions envelope present');
+    assert.ok(r.text.includes('Keep security lessons human-approved'), 'the decision surfaced');
+    assert.ok(r.text.includes('do not re-litigate'), 'framed as settled, not a command');
+  });
+});
+
+test('16.8b session-start: NO decisions block when none recorded (capability-check -)', async () => {
+  await withSandbox(async (dir, proj) => {
+    writeActiveLesson();
+    const r = runInjection('session-start', { session_id: 'dec-2', cwd: proj });
+    assert.ok(!r.text.includes('<raphael-decisions>'), 'no empty decisions ceremony');
   });
 });
 

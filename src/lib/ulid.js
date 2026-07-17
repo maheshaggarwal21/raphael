@@ -26,3 +26,7 @@ export function evidenceId(now) {
 export function adoptionId(now) {
   return `adp_${ulid(now)}`;
 }
+
+export function decisionId(now) {
+  return `dec_${ulid(now)}`;
+}

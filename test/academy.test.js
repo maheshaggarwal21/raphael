@@ -62,6 +62,24 @@ test('checkpoint advances state and marks milestones done', () => {
   }
 });
 
+test('checkpoint --tried records dead ends and status surfaces them (16.8c)', () => {
+  const dir = sandbox();
+  try {
+    startProject('p');
+    checkpoint('p', { tried: 'regex-based CSV parse — breaks on embedded newlines' });
+    checkpoint('p', { tried: 'in-memory only — loses state across the limit reset' });
+    const s = readState('p');
+    assert.equal(s.tried.length, 2);
+    assert.equal(s.tried[0].note, 'regex-based CSV parse — breaks on embedded newlines');
+    const text = renderStatus(s);
+    assert.match(text, /TRIED \(dead ends/);
+    assert.match(text, /in-memory only/);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('a plain checkpoint clears a prior limit block (we are running again)', () => {
   const dir = sandbox();
   try {
