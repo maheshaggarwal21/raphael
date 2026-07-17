@@ -26,6 +26,7 @@ const COMMANDS = {
   lint: () => import('./commands/lint.js'),
   decide: () => import('./commands/decide.js'),
   skills: () => import('./commands/skills.js'),
+  optimize: () => import('./commands/optimize.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -92,6 +93,8 @@ Commands:
               (raph decide "<decision>" [--why "..."] [--supersedes dec_x] | decide list)
   skills      The skills factory: package a broadly-firing lesson into a staged
               SKILL.md draft (never auto-installed) (raph skills [suggest|draft <id>|list])
+  optimize    The pruning report: retire candidates, retrieval misses, confidence,
+              and agent coverage in one screen — recommendations only (raph optimize [--json])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts

@@ -550,7 +550,14 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       agents instructions — a human act). +7 tests. Mirrors adopt's skill-draft discipline.
 - [ ] Agent-maker (meta-agent): drafts roster entries as PROPOSALS, regenerates
       plugin/agents; demand-driven only. Agent-manager = the Phase 12 autopilot driver.
-- [ ] Optimizer loop: stats -> retire never-firing lessons / unused agents (pruning)
+- [x] Optimizer loop (session 11, 338/338): src/lib/optimizer.js (pure) + `raph optimize
+      [--json]` = one actionable screen composing the health engines — retire candidates
+      (the gated, security-exempt sweep), retrieval miss (never-fired non-security lessons +
+      sample), confidence distribution, and AGENT COVERAGE (active lessons scoped per roster
+      role; zero-coverage flagged as informational, NOT a prune — an agent still sees every
+      un-scoped lesson). Recommendations only, with the exact `raph retire … --confirmed`
+      lines. +2 tests. (Agent-usage telemetry isn't collected, so agent pruning stays
+      informational — honest capability-check, not a false claim.)
 - [ ] Self-upgrade rule enforced: changes to raphael's own code/agents go branch + tests
       + eval run before merge (no measurement, no mutation)
 
