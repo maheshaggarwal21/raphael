@@ -105,9 +105,12 @@ test('getProjectConsent returns undefined for unregistered project', () => {
 
 test('consent lookup tolerates trailing separators and forward slashes', () => {
   withSandbox(() => {
-    setProjectConsent('C:\\Users\\Foo\\proj', true);
+    // native path per platform — trailing-separator semantics only apply to the
+    // platform's own separator (a backslash is a filename character on POSIX)
+    const base = process.platform === 'win32' ? 'C:\\Users\\Foo\\proj' : '/home/foo/proj';
+    setProjectConsent(base, true);
     const cfg = loadConfig();
-    assert.equal(getProjectConsent(cfg, 'C:\\Users\\Foo\\proj\\'), true);
+    assert.equal(getProjectConsent(cfg, base + (process.platform === 'win32' ? '\\' : '/')), true);
     if (process.platform === 'win32') {
       assert.equal(getProjectConsent(cfg, 'C:/Users/Foo/proj'), true);
     }
