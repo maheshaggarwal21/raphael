@@ -364,3 +364,50 @@ test('statusSummary shape stays CLI-derived (same lib, no web-only logic)', () =
     cleanup(home);
   }
 });
+
+test('console 14.3 e2e: Company tab data = the exact portfolio + weekly report engines', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  const H = { 'x-raphael-token': token };
+  const get = (p) => fetch(`${base}${p}`, { headers: H });
+  try {
+    const { startProject, checkpoint, parseMilestones } = await import('../src/lib/academy.js');
+    startProject('kit', { title: 'Kit', milestones: parseMilestones('M1:A,M2:B') });
+    checkpoint('kit', { done: 'M1', tests: 19, lessons: 2, note: 'M1 complete', next: 'ship M2' });
+    logEvent({ event: 'injected', project: 'kit', session_id: 's1', tokens: 250, lessons: [] });
+    logEvent({ event: 'approved', id: 'x', slug: 'y' });
+
+    // portfolio = readPortfolio verbatim
+    const pf = await (await get('/api/portfolio')).json();
+    assert.equal(pf.projects.length, 1);
+    assert.equal(pf.projects[0].project, 'kit');
+    assert.deepEqual(pf.projects[0].milestones, { done: 1, total: 2 });
+    assert.equal(pf.projects[0].tests, 19);
+    assert.equal(pf.projects[0].lessonsWritten, 2);
+    assert.deepEqual(pf.projects[0].recall, { injections: 1, tokens: 250 });
+    assert.equal(pf.projects[0].next, 'ship M2');
+
+    // report = readWeekly verbatim; the just-logged events are in this window
+    const r = await (await get('/api/report')).json();
+    assert.equal(r.window.days, 7);
+    assert.equal(r.builds.length, 1);
+    assert.equal(r.builds[0].latestNote, 'M1 complete');
+    assert.equal(r.brain.approved, 1);
+    assert.deepEqual(r.recall, { injections: 1, tokens: 250, sessions: 1, capHits: 0 });
+    assert.equal(r.next[0].project, 'kit');
+
+    // custom window + junk refused
+    assert.equal((await get('/api/report?days=30')).status, 200);
+    assert.equal((await get('/api/report?days=abc')).status, 400);
+    assert.equal((await get('/api/report?days=-2')).status, 400);
+
+    // the page ships the Company tab
+    const page = await (await get(`/?token=${token}`)).text();
+    assert.ok(page.includes('tab-company'));
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});

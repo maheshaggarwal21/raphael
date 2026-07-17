@@ -324,8 +324,10 @@ compaction (manual or automatic) can never lose progress.
   changes funnel, recall cost, retrieval miss (ALL-TIME on purpose), adoptions, next/
   owner asks. Live: the real week rendered true (43 activated, gstack adoption, 1,650
   recall tokens, 39/43 never fired pre-RUN).
-- Next: 14.3 console Company tab (portfolio + weekly report, same lib fns) -> 14.4
-  model policy -> 14.5 scheduler + autopilot. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
+- 14.3 SHIPPED (266/266): console Company tab (8th tab) = GET /api/portfolio +
+  /api/report[?days] calling readPortfolio/readWeekly verbatim; live-smoked on the
+  real brain, zero console errors, no backticks added to the page template.
+- Next: 14.4 model policy table -> 14.5 scheduler + autopilot. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
   hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows
   hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

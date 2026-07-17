@@ -28,6 +28,8 @@ import { getModelCaller } from './provider.js';
 import { scrubSecrets } from './scrub.js';
 import { parseLessonFile } from './frontmatter.js';
 import { readEvents } from './events.js';
+import { readPortfolio } from './portfolio.js';
+import { readWeekly, DEFAULT_DAYS } from './report.js';
 import { loadIndex } from './compile.js';
 import { computeStats } from './stats.js';
 import { rank, extractPaths } from './match.js';
@@ -407,6 +409,7 @@ function shellPage() {
   <button id="tab-lessons">Lessons</button>
   <button id="tab-adopt">Adopt</button>
   <button id="tab-activity">Activity</button>
+  <button id="tab-company">Company</button>
   <button id="tab-guard">Guard</button>
   <button id="tab-settings">Settings</button>
 </nav>
@@ -429,7 +432,7 @@ function api(path, opts) {
 var view = document.getElementById('view');
 var msg = document.getElementById('msg');
 var tab = 'dash';
-var TABS = ['dash', 'queue', 'lessons', 'adopt', 'activity', 'guard', 'settings'];
+var TABS = ['dash', 'queue', 'lessons', 'adopt', 'activity', 'company', 'guard', 'settings'];
 
 function flash(lines, isErr) {
   msg.innerHTML = '<div class="card ' + (isErr ? 'err' : 'ok') + '">' +
@@ -800,6 +803,79 @@ function renderGuard() {
   }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
 }
 
+// ---- company (portfolio + weekly report; same engines as raph portfolio / raph report weekly) ----
+function renderCompany() {
+  Promise.all([api('/api/portfolio'), api('/api/report')]).then(function (rs) {
+    var pf = rs[0], r = rs[1];
+    var h = '<h2>Portfolio (raph portfolio)</h2>';
+    if (!pf.projects.length) {
+      h += '<div class="card muted">no academy projects yet</div>';
+    } else {
+      h += '<table><tr><th>project</th><th>status</th><th>prog</th><th>tests</th><th>lessons</th><th>recall</th><th>updated</th></tr>';
+      pf.projects.forEach(function (x) {
+        h += '<tr><td><b>' + esc(x.project) + '</b></td><td>' + esc(x.status) + '</td>' +
+          '<td>' + esc(x.milestones.done + '/' + x.milestones.total) + '</td>' +
+          '<td>' + esc(x.tests == null ? '—' : x.tests) + '</td>' +
+          '<td>' + esc(x.lessonsWritten == null ? '—' : x.lessonsWritten) + '</td>' +
+          '<td>' + esc(x.recall.injections ? x.recall.tokens + ' tok / ' + x.recall.injections + 'x' : '—') + '</td>' +
+          '<td>' + esc((x.updated_at || '').slice(0, 10)) + '</td></tr>';
+        if (x.boundary) h += '<tr><td></td><td colspan="6" class="err">OWNER: ' + esc(x.boundary) + '</td></tr>';
+        if (x.next) h += '<tr><td></td><td colspan="6" class="muted">next: ' + esc(x.next) + '</td></tr>';
+      });
+      h += '</table><p class="muted">' + esc(pf.totals.projects) + ' project(s) — ' + esc(pf.totals.done) +
+        ' done · ' + esc(pf.totals.tests) + ' green tests recorded · ' + esc(pf.totals.lessonsWritten) +
+        ' lessons written back · ' + esc(pf.totals.recallTokens) + ' recall tokens spent in builds</p>';
+    }
+
+    h += '<h2>Weekly report (raph report weekly)</h2>' +
+      '<div class="muted">' + esc(r.window.from.slice(0, 10)) + ' to ' + esc(r.window.to.slice(0, 10)) + '</div>';
+    h += '<h3>Build activity</h3><div class="card">';
+    if (r.builds.length) {
+      r.builds.forEach(function (b) {
+        h += '<div class="row"><span class="title">' + esc(b.project) + '</span> [' + esc(b.status) + '] ' +
+          esc(b.notesInWindow) + ' checkpoint note(s)' +
+          (b.latestNote ? ' <span class="muted">latest: ' + esc(b.latestNote) + '</span>' : '') + '</div>';
+      });
+    } else { h += '<span class="muted">no academy checkpoints this window</span>'; }
+    h += '</div>';
+
+    h += '<h3>Brain changes</h3><div class="card">' +
+      'activated ' + esc(r.brain.approved) + ' by hand + ' + esc(r.brain.autoApproved) + ' auto (dial) · ' +
+      'rejected ' + esc(r.brain.rejected) + ' (+' + esc(r.brain.suppressed) + ' suppressed) · ' +
+      'adopt: ' + esc(r.brain.adopted) + ' run(s), ' + esc(r.brain.adoptBlocked) + ' blocked, ' + esc(r.brain.adoptRevoked) + ' revoked</div>';
+
+    h += '<h3>Recall cost</h3><div class="card">' +
+      (r.recall.injections
+        ? esc(r.recall.injections) + ' injection(s) across ' + esc(r.recall.sessions) + ' session(s) — ' +
+          esc(r.recall.tokens) + ' tokens, ' + esc(r.recall.capHits) + ' cap hit(s)'
+        : '<span class="muted">no injections this window</span>') + '</div>';
+
+    h += '<h3>Retrieval miss (all-time)</h3><div class="card">' +
+      esc(r.misses.neverFired) + '/' + esc(r.misses.active) + ' active lessons have never fired' +
+      (r.misses.sample.length ? ' <span class="muted">e.g. ' + esc(r.misses.sample.join(', ')) + '</span>' : '') + '</div>';
+
+    if (r.adoptions.length) {
+      h += '<h3>Adoptions this window</h3><div class="card">';
+      r.adoptions.forEach(function (a) {
+        h += '<div class="row">' + esc(a.kind) + ' ' + esc(a.status) + ' — ' + esc(a.lessons) +
+          ' lesson(s) + ' + esc(a.skills) + ' skill draft(s) <span class="muted">' + esc(a.source) + '</span></div>';
+      });
+      h += '</div>';
+    }
+
+    h += '<h3>Next / waiting on the owner</h3><div class="card">';
+    if (r.next.length) {
+      r.next.forEach(function (n) {
+        h += '<div class="row"><span class="title">' + esc(n.project) + '</span> [' + esc(n.status) + '] ' +
+          (n.boundary ? '<span class="err">OWNER: ' + esc(n.boundary) + '</span>' : esc(n.next || '')) + '</div>';
+      });
+    } else { h += '<span class="muted">all academy projects are done — pick the next build</span>'; }
+    h += '</div>';
+
+    view.innerHTML = h;
+  }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+}
+
 // ---- settings ----
 function renderSettings() {
   api('/api/settings').then(function (s) {
@@ -863,6 +939,7 @@ function render() {
   else if (tab === 'lessons') renderLessons();
   else if (tab === 'adopt') renderAdopt();
   else if (tab === 'activity') renderActivity();
+  else if (tab === 'company') renderCompany();
   else if (tab === 'guard') renderGuard();
   else renderSettings();
 }
@@ -946,6 +1023,16 @@ async function handle(req, res, token) {
     if (url.pathname === '/api/adoptions') return sendJson(res, 200, { items: adoptionsView() });
     if (url.pathname === '/api/settings') return sendJson(res, 200, settingsView());
     if (url.pathname === '/api/guard') return sendJson(res, 200, guardView());
+    if (url.pathname === '/api/portfolio') return sendJson(res, 200, readPortfolio());
+    if (url.pathname === '/api/report') {
+      const raw = url.searchParams.get('days');
+      let days = DEFAULT_DAYS;
+      if (raw !== null) {
+        days = Number(raw);
+        if (!Number.isInteger(days) || days < 1) return sendJson(res, 400, { error: 'E-WEB: days must be a positive integer' });
+      }
+      return sendJson(res, 200, readWeekly({ days }));
+    }
   }
 
   if (req.method === 'POST') {

@@ -500,7 +500,14 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       printer (cli.js + help). Live on the real brain: the week's true story —
       3 builds active, 43 activated + 2 rejected, 1 adoption (gstack, 8+1),
       1,650 recall tokens over 5 sessions, 39/43 never fired (pre-RUN, honest).
-- [ ] 14.3 Console: Company tab (portfolio + weekly report) over the SAME lib fns
+- [x] 14.3 Console: Company tab (2026-07-17 session 09, +1 e2e -> 266/266):
+      GET /api/portfolio = readPortfolio() verbatim; GET /api/report[?days=N] =
+      readWeekly() (junk days -> 400, same rule as the CLI); Company tab renders
+      the portfolio table (boundary rows in red as OWNER asks, next rows muted)
+      + the full weekly report sections. Console = 8 tabs. No backticks in the
+      page template (the known trap — held). e2e asserts the API returns the
+      exact engine output + the page ships tab-company; live browser smoke on
+      the real brain rendered the true table + report, zero console errors.
 - [ ] 14.4 Model policy table (Phase 12 item): task-kind -> model/effort lookup
 - [ ] 14.5 Limit-aware scheduler + autopilot driver design (Phase 12 items)
 - [ ] Skills factory: skill drafts from adopt + self-observation ("this lesson fires
