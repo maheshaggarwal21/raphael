@@ -361,9 +361,16 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
       --confirmed) -> brain 37 -> 43 ACTIVE. Found+fixed live: provider timeout too
       short for 60k-char extraction -> calls carry timeoutMs (provider passes through,
       +1 test), adopt uses 240s. README adopt section added.
-- [ ] 13b (DEFERRED until Phase 12 driver exists): read-understand-patch — patches to
-      raphael's own code; branch + tests + eval green BEFORE presentation; copyleft
-      near-verbatim ports blocked; chokepoint files heavyweight; never auto (§11.11)
+- [x] 13b self-patch GATE (session 11, 353/353): src/lib/selfpatch.js
+      evaluateSelfPatch({branch, testsPassed, evalPassed, changedFiles, chokepointAck,
+      licenseFamily}) + `raph selfpatch [--quick] [--confirm-chokepoint] [--license-family
+      fam]`. Composes the self-upgrade gate (branch+tests+eval) and adds the 13b-specific
+      safety: CHOKEPOINT_FILES (validate.js/scrub.js/frontmatter.js/lesson.schema.json) are
+      HEAVYWEIGHT — touching one blocks until --confirm-chokepoint; a copyleft/weak-copyleft
+      near-verbatim port is BLOCKED (same family gate as adopt). §11.11 in code: `present:
+      true` always, NEVER auto-applies — it green-lights a human presentation, never merges.
+      Command gathers changed files vs main via git. +5 tests. (The live model-driven code
+      GENERATION is the 14.5 driver's job; this is the safety gate every self-patch clears.)
 
 ## Phase 15 — Local web console `raph web` (PLANNED 2026-07-16; ARCHITECTURE §14 is
 ## the design; builds AFTER Phase 13 — the adopt inbox needs 13's engine)

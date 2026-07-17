@@ -29,6 +29,7 @@ const COMMANDS = {
   optimize: () => import('./commands/optimize.js'),
   agent: () => import('./commands/agent.js'),
   selfcheck: () => import('./commands/selfcheck.js'),
+  selfpatch: () => import('./commands/selfpatch.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -101,6 +102,9 @@ Commands:
               auto-installed) + a demand signal (raph agent [demand|propose <slug> …|list])
   selfcheck   The self-upgrade gate: before merging a change to Raphael's OWN code,
               verify branch + npm test + eval canaries are green (raph selfcheck [--quick])
+  selfpatch   The self-patch gate (§11.11): the self-upgrade checks + chokepoint-file
+              heavyweight + copyleft-port block; presents, never merges
+              (raph selfpatch [--quick] [--confirm-chokepoint] [--license-family fam])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts
