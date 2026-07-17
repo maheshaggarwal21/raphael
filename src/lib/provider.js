@@ -55,7 +55,7 @@ export function hasClaudeCli() {
 
 // Build the argv for a single contained extraction call. Prompt is NOT here —
 // it goes on stdin so adversarial episode text never touches the command line.
-export function buildCliArgs({ model, system, toolSchema }) {
+export function buildCliArgs({ model, effort, system, toolSchema }) {
   const args = [
     '-p',
     '--output-format', 'json',
@@ -65,6 +65,7 @@ export function buildCliArgs({ model, system, toolSchema }) {
     '--no-session-persistence'     // one-shot; nothing to resume
   ];
   if (model) args.push('--model', model);
+  if (effort) args.push('--effort', effort);
   if (system) args.push('--system-prompt', system);
   return args;
 }
@@ -156,10 +157,10 @@ export function parseCliResult({ stdout = '', stderr = '', status = 0 }) {
 // ---- the CLI caller (thin spawn wrapper; spawn is injectable for tests) ----
 
 export async function callModelCLI(
-  { model, system, prompt, toolSchema },
+  { model, effort, system, prompt, toolSchema },
   { spawn = spawnSync, bin = claudeBinary(), cwd = os.tmpdir(), timeout = CLI_TIMEOUT_MS } = {}
 ) {
-  const args = buildCliArgs({ model, system, toolSchema });
+  const args = buildCliArgs({ model, effort, system, toolSchema });
 
   // Force subscription auth: a stray ANTHROPIC_API_KEY in the environment would
   // silently switch billing to metered API usage — the exact thing to avoid.

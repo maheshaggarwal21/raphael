@@ -327,7 +327,12 @@ compaction (manual or automatic) can never lose progress.
 - 14.3 SHIPPED (266/266): console Company tab (8th tab) = GET /api/portfolio +
   /api/report[?days] calling readPortfolio/readWeekly verbatim; live-smoked on the
   real brain, zero console errors, no backticks added to the page template.
-- Next: 14.4 model policy table -> 14.5 scheduler + autopilot. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
+- 14.4 SHIPPED (270/270): src/lib/policy.js = 14 task kinds -> {model, effort,
+  escalate, why}; opus is escalation-only (never first-pass, tested); roster
+  alignment enforced (checkRosterAlignment — 'inherit' defers to policy);
+  `raph policy [<kind>] [--escalated] [--json]`; provider buildCliArgs/callModelCLI
+  forward --effort. distill stays model:null = CLI default.
+- Next: 14.5 scheduler + autopilot driver. Parked: 13b (needs driver), Phase 10 RUN (calendar), Phase 11 publish +
   hub (owner timing), doctor-to-lib extraction. Run builds INLINE (parallel Workflows
   hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.

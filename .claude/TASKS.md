@@ -508,7 +508,16 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
       page template (the known trap — held). e2e asserts the API returns the
       exact engine output + the page ships tab-company; live browser smoke on
       the real brain rendered the true table + report, zero console errors.
-- [ ] 14.4 Model policy table (Phase 12 item): task-kind -> model/effort lookup
+- [x] 14.4 Model policy table (2026-07-17 session 09, +4 tests -> 270\270):
+      src/lib/policy.js — POLICY = 14 task kinds -> {model, effort, escalate, why}
+      (cheap -> strong: haiku mechanical/route, sonnet the dev tier, opus NEVER
+      first-pass — escalation-only, enforced by test). resolvePolicy(kind,
+      {escalated, overrides}) validates everything (E-POLICY); resolveForAgent
+      maps roster slugs; checkRosterAlignment() = one definition of "which model
+      runs this stage" (policy may not contradict agents.js; roster 'inherit'
+      defers to policy — tested). `raph policy [<kind>] [--escalated] [--json]`
+      thin printer. buildCliArgs/callModelCLI now forward --effort (flag verified
+      on CLI v2.1.168). distill's model stays null = CLI default, shown honestly.
 - [ ] 14.5 Limit-aware scheduler + autopilot driver design (Phase 12 items)
 - [ ] Skills factory: skill drafts from adopt + self-observation ("this lesson fires
       everywhere -> package it as a skill"); one source of truth + generator, like agents.js

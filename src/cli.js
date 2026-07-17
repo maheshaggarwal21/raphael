@@ -25,6 +25,7 @@ const COMMANDS = {
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
   report: () => import('./commands/report.js'),
+  policy: () => import('./commands/policy.js'),
   guard: () => import('./commands/guard.js'),
   stats: () => import('./commands/stats.js'),
   adopt: () => import('./commands/adopt.js'),
@@ -80,6 +81,8 @@ Commands:
               tests, lessons written back, and recall cost (raph portfolio [--json])
   report      The board report: builds, brain changes, recall cost, misses,
               and what waits on the owner (raph report weekly [--days N] [--json])
+  policy      The model policy table: which model + effort runs each task kind
+              (raph policy [<kind>] [--escalated] [--json])
   guard       Block commits that would leak secrets in YOUR projects
               (raph guard install|uninstall|scan [--staged|--all|<path...>])
   adopt       Digest external material (URL, file, repo, skill file) into

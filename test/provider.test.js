@@ -23,6 +23,14 @@ test('buildCliArgs emits contained, structured, print-mode flags — never the p
   assert.equal(args[args.indexOf('--system-prompt') + 1], 'be terse');
   // the adversarial prompt must go on stdin, never the command line
   assert.equal(args.some((a) => a.includes('be terse') === false && a.length > 500), false);
+  // effort was not passed → the flag must be absent (CLI default applies)
+  assert.equal(args.includes('--effort'), false);
+});
+
+test('buildCliArgs forwards --effort when the policy asks for one', () => {
+  const args = buildCliArgs({ model: 'sonnet', effort: 'high', toolSchema: SCHEMA });
+  assert.equal(args[args.indexOf('--effort') + 1], 'high');
+  assert.equal(args[args.indexOf('--model') + 1], 'sonnet');
 });
 
 test('isLimitMessage + parseResetInfo recognize the real limit string', () => {
