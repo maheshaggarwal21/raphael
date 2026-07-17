@@ -247,6 +247,17 @@ mistakes that cause most real-world breaches. Distilled from 5 pro audit checkli
       printed) + description + 10 topics. VERIFIED: unauthenticated 200; `npm pack
       maheshaggarwal21/raphael` builds the tarball from the public repo — the
       GitHub install path in the README works for strangers today.
+- [x] CI GREEN ON THE PUBLIC REPO (run 3): first run failed on ALL Linux jobs —
+      two real cross-platform bugs found + fixed. (1) `node --test "test/*.test.js"`:
+      bash passes the quoted glob LITERALLY and Node 18/20 don't glob internally
+      (local Node 22 does — why it always passed here) -> scripts/run-tests.mjs
+      expands the list itself, identical everywhere; `node --test` no-arg discovery
+      rejected because it also runs test/helpers.js as a fake 359th test. (2) The
+      consent trailing-separator test hardcoded Windows paths — on POSIX a backslash
+      is a filename character, so the trailing `\` never strips -> platform-native
+      fixture. All 6 matrix jobs (ubuntu+windows x Node 18/20/22) green on be17c07.
+      Lesson written back + approved (brain -> 58). v0.1.0 GitHub RELEASE created
+      on the green commit with install + highlights notes.
 - [ ] LAST OWNER ACTION: `npm publish` (needs `npm login` — machine is not
       authenticated; name raphael-brain confirmed FREE on the registry).
       Then the README's first install line goes live too.

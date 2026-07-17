@@ -475,6 +475,13 @@ compaction (manual or automatic) can never lose progress.
   github.com/maheshaggarwal21/raphael public via API (cached GCM token) + topics.
   Verified: unauth 200; `npm pack maheshaggarwal21/raphael` builds from the public repo —
   the GitHub install path works for strangers. CI live on the public repo.
+- CI GREEN + v0.1.0 RELEASED (session 12): the first-ever Linux runs caught 2 real
+  cross-platform bugs. (1) npm test passed a quoted glob that bash keeps literal and
+  Node 18/20 don't expand (Node 21+ does — masked locally) -> scripts/run-tests.mjs
+  expands the list explicitly (no-arg discovery rejected: runs test/helpers.js as a
+  phantom test). (2) consent trailing-separator test hardcoded C:\ paths (POSIX treats
+  \ as a filename char) -> platform-native fixtures. All 6 matrix jobs green on be17c07;
+  GitHub Release v0.1.0 created on that commit. Lesson written back -> brain 58 active.
 - DEVELOPMENT COMPLETE per plan. Remaining items are OPERATIONAL / owner-timing, not code:
   `npm publish` (the ONE owner action left — machine has no npm login; name raphael-brain
   is free), Phase 10 self-use RUN (calendar), Phase 12 operational bits (wire mining into
