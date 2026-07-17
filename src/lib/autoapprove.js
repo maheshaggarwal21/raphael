@@ -43,6 +43,31 @@ export function dialCaps(cfg) {
   };
 }
 
+// Set the dial. The ONE place `raph auto` and the console's settings page both
+// write through — validates, mutates cfg.auto_approve, returns the new view.
+// Throws E-DIAL on bad input; the caller decides how to print it.
+export function setDial(cfg, { level, cap, dailyCap } = {}) {
+  let changed = false;
+  if (level !== undefined) {
+    if (!DIAL_LEVELS.includes(level)) {
+      throw new Error(`E-DIAL: unknown level "${level}" — use off, standard, or wide`);
+    }
+    cfg.auto_approve = { ...(cfg.auto_approve ?? {}), level };
+    changed = true;
+  }
+  if (cap !== undefined) {
+    if (!Number.isInteger(cap) || cap < 0) throw new Error('E-DIAL: cap needs a non-negative integer');
+    cfg.auto_approve = { ...(cfg.auto_approve ?? {}), cap };
+    changed = true;
+  }
+  if (dailyCap !== undefined) {
+    if (!Number.isInteger(dailyCap) || dailyCap < 0) throw new Error('E-DIAL: daily cap needs a non-negative integer');
+    cfg.auto_approve = { ...(cfg.auto_approve ?? {}), daily_cap: dailyCap };
+    changed = true;
+  }
+  return { changed, level: dialLevel(cfg), ...dialCaps(cfg) };
+}
+
 function walkLessons() {
   const out = [];
   const stack = [p.lessons()];

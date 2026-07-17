@@ -196,6 +196,29 @@ export function scanStaged(cwd, opts) {
   return results;
 }
 
+// Scan every TRACKED file (what `raph guard scan --all` runs; the console's
+// guard page calls this too). Allowlisted files are skipped — the caller must
+// surface `allowlist` so a security gate never narrows silently.
+export function scanTracked(cwd, opts) {
+  const top = gitTopLevel(cwd) || cwd;
+  const allow = loadAllowlist(top);
+  const results = listTrackedFiles(cwd)
+    .filter((f) => !allow.matches(f))
+    .map((f) => ({ file: f, findings: scanFile(path.join(top, f), opts) }))
+    .filter((r) => r.findings.length);
+  return { top, allowlist: allow.patterns, results };
+}
+
+// Is the raphael pre-commit guard installed in this repo?
+export function hookStatus(projectDir) {
+  const top = gitTopLevel(projectDir);
+  if (!top) return { isRepo: false, installed: false };
+  const hookPath = path.join(top, '.git', 'hooks', 'pre-commit');
+  if (!existsSync(hookPath)) return { isRepo: true, installed: false };
+  const foreign = !readFileSync(hookPath, 'utf8').includes(HOOK_MARKER);
+  return { isRepo: true, installed: !foreign, foreign, hookPath };
+}
+
 // --- hook install/uninstall ---------------------------------------------------
 
 function hookScript(binPath) {

@@ -302,10 +302,19 @@ compaction (manual or automatic) can never lose progress.
   adoptConfig/estimateAdoptTokens extracted to lib/adopt.js (shared knobs). Defense in
   depth: adoption-ledger text re-passes scrubSecrets before display (verdicts derive
   from external material) — tested. Adopt fetch fires only on the user's click (#5b).
-- Next (planner tasks #14-15): 15.4 settings (dial via `raph auto`, consent, guard
-  allowlist) + guard scan page + console docs in README + Phase 15 closeout ->
-  company-ops backlog (Phase 12/14). Run builds INLINE (parallel Workflows hit the
-  limit fast).
+- Console 15.4 SHIPPED -> PHASE 15 COMPLETE (session 08, 259/259): setDial extracted to
+  lib/autoapprove.js + scanTracked/hookStatus to lib/guard.js (commands now thin);
+  Settings tab (dial radios + caps via POST /api/auto, consent registry via
+  setProjectConsent) + Guard tab on the launch dir (hook install/uninstall, .raphallow
+  announced, scan-all w/ optional entropy; explicit paths skip the allowlist like the
+  CLI). Cross-face verified live: console click -> `raph auto` read back "standard".
+  README has "The console (raph web)". Onboarding wizard deferred to Phase 11 (it's
+  the install face). Console = 7 tabs, one engine.
+- Next (planner task #15): company-ops backlog (Phase 12/14) — autopilot driver,
+  limit-aware scheduler, model policy table, `raph report weekly`, portfolio registry,
+  skills factory, agent-maker/manager. Parked: 13b (needs driver), Phase 10 RUN
+  (calendar), Phase 11 publish + hub (owner timing), doctor-to-lib extraction. Run
+  builds INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

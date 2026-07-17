@@ -428,13 +428,38 @@ zero business logic in the web layer; no verb, no button.
       security + quarantined skipped at every level AND structurally backstopped by
       E-AUTOSEC (tested both ways). Wired into distill + adopt ([held] lines make
       every non-activation visible).
-- [ ] Console settings page exposes the dial (calls `raph auto` — no verb, no button);
-      optional quarantine delay still open
+- [x] 15.4 Settings + guard page + docs (2026-07-17 session 08, +1 e2e -> 259/259).
+      PREREQ REFACTORS (same pattern as 15.2): setDial() extracted to lib/autoapprove.js
+      (validates level/caps, E-DIAL on junk; `raph auto` is now a thin printer over it);
+      scanTracked() + hookStatus() extracted to lib/guard.js (guard scan --all uses
+      scanTracked). SETTINGS tab: dial radios w/ per-level descriptions + cap inputs
+      (POST /api/auto = setDial — live-verified: console click -> `raph auto` CLI
+      face read back "standard"), E-AUTOSEC floor note, injection/provider status,
+      consent registry with allow/withdraw buttons (POST /api/consent =
+      setProjectConsent, the same fn `raph mine` records through). GUARD tab (acts on
+      the LAUNCH directory, same repo `raph guard` would): hook status (installed /
+      foreign-hook honesty / install+uninstall buttons = installPreCommitHook),
+      .raphallow patterns shown when active (never silent), scan-all button w/
+      optional entropy pass (POST /api/guard/scan = scanTracked; explicit paths
+      variant always scans in full, same rule as the CLI). Live smoke on the real
+      raphael repo surfaced the known benign fixture/detector findings class —
+      correct display + .raphallow pointer in the banner. README: "The console
+      (raph web)" section (7 tabs + the no-verb-no-button law + security model).
+      Optional quarantine delay: still open, post-v1 (needs a timer concept the
+      brain deliberately doesn't have yet).
 - [x] XSS hard line (held through 15.2+15.3): all lesson/adopted text escaped at render
       (esc() on every value), strict inline-only CSP, zero external assets; adopted
       ledger/verdict text passes the scrubber again before display (tested)
-- [ ] Onboarding wizard (consent, starter pack, guard, auto-mode) — arise's face
-- [ ] Graceful no-model degradation; CLI/console write concurrency via atomic writes
+- [ ] Onboarding wizard (consent, starter pack, guard, auto-mode) — arise's face;
+      DEFERRED to distribution (Phase 11) — it is the install-time face, so it ships
+      with the install story, not before
+- [x] Graceful degradation + concurrency (audited at closeout): every console write
+      goes through the same atomic tmp+rename writers the CLI uses (files.js); no-model
+      paths degrade cleanly — adopt dry-run needs no model, E-LIMIT maps to 429 with
+      the reset message, and browse/queue/settings/guard never touch a model at all
+PHASE 15 CONSOLE MVP: COMPLETE (2026-07-17). 15.1-15.4 shipped + live-smoked; 259/259.
+Console = 7 tabs over the same engine; remaining Phase 15 ideas (projects portfolio,
+weekly report, agents gallery) fold into Phase 14 company-ops where their DATA comes from.
 
 ## Owner decisions — RESOLVED 2026-07-16 ("go with your recommendation")
 - [x] Security floor KEPT: security lessons + self-patches always pass a human (one

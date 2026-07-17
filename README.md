@@ -70,6 +70,31 @@ validation chokepoint as everything else → your review queue. Lessons land as 
 `staged/skills/`, never auto-installed. Sources, licenses, and verdicts are recorded in
 `state/adoptions.jsonl` — `revoke` walks that record and undoes it all.
 
+## The console (`raph web`)
+
+Everything above, in the browser — for the days the CLI feels like friction:
+
+```
+raph web            # prints a one-time URL and opens it
+```
+
+Seven tabs: **Dashboard** (status + self-use stats) · **Review queue** (batch
+approve/reject; security and quarantined items render in full and unlock a one-item
+"Approve --confirmed" only after an explicit "I read it" check) · **Lessons** (browse
+or search with the exact scorer the hooks use, toggle injection, see what got
+injected and why) · **Adopt** (paste a URL or path, dry-run or run the gauntlet,
+revoke any adoption in one click) · **Activity** (the audit log) · **Guard** (scan
+the launch repo for secrets, install the pre-commit hook) · **Settings** (the
+auto-approve dial and the per-project mining consent registry).
+
+The console holds zero business logic — every button calls the same functions as
+the CLI verb it mirrors, so nothing is possible in the browser that isn't possible
+(and tested) at the command line. Security model: binds `127.0.0.1` only, a fresh
+token every launch, and every request must pass Host + Origin checks (a hostile
+website cannot reach it even with the token) under a strict inline-only CSP.
+Everything rendered is treated as untrusted text and escaped; adoption verdicts
+re-pass the secret scrubber before display.
+
 ## Development
 
 ```

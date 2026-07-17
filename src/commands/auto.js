@@ -1,8 +1,9 @@
 // `raph auto` — read/set the auto-approve dial (ARCHITECTURE §9 + §13).
-// The console's settings page calls exactly this verb (no verb, no button).
+// Thin printer over lib/autoapprove.js setDial() — the console's settings
+// page calls exactly the same function (no verb, no button).
 
 import { loadConfig, saveConfig } from '../lib/config.js';
-import { dialLevel, dialCaps, DIAL_LEVELS, countAutoTier } from '../lib/autoapprove.js';
+import { setDial, dialLevel, dialCaps, countAutoTier } from '../lib/autoapprove.js';
 
 const HELP = `raph auto — the auto-approve dial
 
@@ -33,38 +34,22 @@ export default async function auto(args) {
     return 0;
   }
 
-  let changed = false;
-  if (level) {
-    if (!DIAL_LEVELS.includes(level)) {
-      console.error(`raph: unknown level "${level}" — use off, standard, or wide`);
-      return 1;
-    }
-    cfg.auto_approve = { ...(cfg.auto_approve ?? {}), level };
-    changed = true;
+  let result;
+  try {
+    result = setDial(cfg, {
+      level,
+      cap: capIdx >= 0 ? Number(args[capIdx + 1]) : undefined,
+      dailyCap: dailyIdx >= 0 ? Number(args[dailyIdx + 1]) : undefined
+    });
+  } catch (err) {
+    console.error(`raph: ${err.message.replace(/^E-DIAL: /, '')}`);
+    return 1;
   }
-  if (capIdx >= 0) {
-    const n = Number(args[capIdx + 1]);
-    if (!Number.isInteger(n) || n < 0) {
-      console.error('raph: --cap needs a non-negative integer');
-      return 1;
-    }
-    cfg.auto_approve = { ...(cfg.auto_approve ?? {}), cap: n };
-    changed = true;
-  }
-  if (dailyIdx >= 0) {
-    const n = Number(args[dailyIdx + 1]);
-    if (!Number.isInteger(n) || n < 0) {
-      console.error('raph: --daily-cap needs a non-negative integer');
-      return 1;
-    }
-    cfg.auto_approve = { ...(cfg.auto_approve ?? {}), daily_cap: n };
-    changed = true;
-  }
-  if (changed) saveConfig(cfg);
+  if (result.changed) saveConfig(cfg);
 
   const now = dialLevel(cfg);
   const caps = dialCaps(cfg);
-  console.log(`auto-approve: ${now}${changed ? '  (saved)' : ''}`);
+  console.log(`auto-approve: ${now}${result.changed ? '  (saved)' : ''}`);
   console.log(`  auto tier: ${countAutoTier()}/${caps.cap} lesson(s)  ·  adopted daily cap: ${caps.dailyCap}`);
   if (now === 'wide') {
     console.log('  wide is on: adopted lessons that pass the reviewer activate WITHOUT you.');

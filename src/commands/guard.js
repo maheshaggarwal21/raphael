@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {
-  installPreCommitHook, uninstallPreCommitHook, scanStaged, scanFile,
-  listTrackedFiles, gitTopLevel, isGitRepo, loadAllowlist, ALLOWLIST_FILE
+  installPreCommitHook, uninstallPreCommitHook, scanStaged, scanTracked,
+  scanFile, gitTopLevel, isGitRepo, loadAllowlist, ALLOWLIST_FILE
 } from '../lib/guard.js';
 
 const HELP = `raph guard — block commits that would leak secrets
@@ -88,12 +88,8 @@ export default async function guard(args = []) {
       results = scanStaged(cwd, { entropy });
     } else if (flag(rest, '--all')) {
       const cwd = process.cwd();
-      const top = gitTopLevel(cwd) || cwd;
-      const allow = announceAllowlist(top);
-      results = listTrackedFiles(cwd)
-        .filter((f) => !allow.matches(f))
-        .map((f) => ({ file: f, findings: scanFile(path.join(top, f), { entropy }) }))
-        .filter((r) => r.findings.length);
+      announceAllowlist(gitTopLevel(cwd) || cwd);
+      results = scanTracked(cwd, { entropy }).results;
     } else {
       const paths = rest.filter((a) => !a.startsWith('--'));
       if (paths.length === 0) {

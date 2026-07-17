@@ -17,8 +17,9 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { loadConfig, isInjectionEnabled, setInjectionEnabled } from './config.js';
-import { dialLevel, dialCaps, autoApproveStaged } from './autoapprove.js';
+import { loadConfig, saveConfig, isInjectionEnabled, setInjectionEnabled, setProjectConsent } from './config.js';
+import { dialLevel, dialCaps, setDial, countAutoTier, autoApproveStaged, DIAL_LEVELS } from './autoapprove.js';
+import { scanTracked, scanFile, hookStatus, installPreCommitHook, uninstallPreCommitHook, loadAllowlist, gitTopLevel, ALLOWLIST_FILE } from './guard.js';
 import { listCandidates, resolveRef, needsConfirmation } from './queue.js';
 import { approveRefs, rejectRefs } from './review.js';
 import { listAdoptions } from './provenance.js';
@@ -261,6 +262,36 @@ export function eventsFeed(limit = 50) {
   return readEvents().slice(-Math.max(1, limit)).reverse();
 }
 
+// Settings page data: the dial, the injection switch, and the consent registry
+// — all read through the same config the CLI reads.
+export function settingsView() {
+  const cfg = loadConfig();
+  return {
+    autoApprove: { level: dialLevel(cfg), ...dialCaps(cfg), autoTier: countAutoTier(), levels: DIAL_LEVELS },
+    injectionEnabled: isInjectionEnabled(cfg),
+    modelProvider: cfg.model?.provider ?? 'auto',
+    consent: Object.entries(cfg.projects ?? {}).map(([project, v]) => ({
+      project, consent: v?.consent === true, registered: v?.registered ?? null
+    }))
+  };
+}
+
+// Guard page data for the directory `raph web` was launched from — the same
+// repo `raph guard scan` would act on there.
+export function guardView() {
+  const cwd = process.cwd();
+  const hook = hookStatus(cwd);
+  return {
+    dir: cwd,
+    isRepo: hook.isRepo,
+    hookInstalled: hook.installed,
+    foreignHook: hook.foreign === true,
+    allowlistFile: ALLOWLIST_FILE,
+    // patterns only — the scan itself runs on demand (it reads every tracked file)
+    allowlist: hook.isRepo ? loadAllowlist(gitTopLevel(cwd) || cwd).patterns : []
+  };
+}
+
 // The provenance ledger for display. Reviewer summaries/risks derive from
 // EXTERNAL material, so everything passes the scrubber again before rendering
 // (defense in depth — the pipeline scrubbed the material, not the verdict).
@@ -386,6 +417,8 @@ function shellPage() {
   <button id="tab-lessons">Lessons</button>
   <button id="tab-adopt">Adopt</button>
   <button id="tab-activity">Activity</button>
+  <button id="tab-guard">Guard</button>
+  <button id="tab-settings">Settings</button>
 </nav>
 <div id="view" class="card">loading…</div>
 <script>
@@ -406,7 +439,7 @@ function api(path, opts) {
 var view = document.getElementById('view');
 var msg = document.getElementById('msg');
 var tab = 'dash';
-var TABS = ['dash', 'queue', 'lessons', 'adopt', 'activity'];
+var TABS = ['dash', 'queue', 'lessons', 'adopt', 'activity', 'guard', 'settings'];
 
 function flash(lines, isErr) {
   msg.innerHTML = '<div class="card ' + (isErr ? 'err' : 'ok') + '">' +
@@ -724,12 +757,124 @@ function renderActivity() {
   }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
 }
 
+// ---- guard page ----
+function renderGuard() {
+  api('/api/guard').then(function (g) {
+    if (!g.isRepo) {
+      view.innerHTML = '<p class="muted">' + esc(g.dir) + ' is not a git repository — the guard is per-repo. ' +
+        'Start the console from a project directory to scan it.</p>';
+      return;
+    }
+    var hookLine = g.hookInstalled ? '<span class="ok">pre-commit guard installed</span>'
+      : g.foreignHook ? '<span class="err">a different pre-commit hook is present — raphael leaves it alone (install from the CLI with --force after backing it up)</span>'
+      : '<span class="muted">pre-commit guard not installed</span>';
+    var h = '<h2>Secret guard — ' + esc(g.dir) + '</h2>' +
+      '<div class="card">' + hookLine + '<div class="actions">' +
+      (g.hookInstalled
+        ? '<button class="act danger" id="ghook" data-install="no">Uninstall hook</button>'
+        : (g.foreignHook ? '' : '<button class="act primary" id="ghook" data-install="yes">Install pre-commit hook</button>')) +
+      '</div></div>' +
+      (g.allowlist.length
+        ? '<div class="card"><b>Allowlist active</b> (' + esc(g.allowlistFile) + ') — matching files are skipped:<br>' +
+          '<span class="muted">' + g.allowlist.map(esc).join(' · ') + '</span></div>'
+        : '<div class="card muted">no ' + esc(g.allowlistFile) + ' allowlist — every tracked file is scanned</div>') +
+      '<div class="actions"><button class="act primary" id="gscan">Scan every tracked file</button>' +
+      '<label><input type="checkbox" id="gentropy"> include the noisier high-entropy pass</label></div>' +
+      '<div id="gres"></div>';
+    view.innerHTML = h;
+    var hookBtn = document.getElementById('ghook');
+    if (hookBtn) hookBtn.onclick = function () {
+      api('/api/guard/hook', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ install: hookBtn.dataset.install === 'yes' }) })
+        .then(function () { flash([hookBtn.dataset.install === 'yes' ? 'guard installed — commits are now scanned' : 'guard removed']); renderGuard(); })
+        .catch(function (e) { flash([e.message], true); });
+    };
+    document.getElementById('gscan').onclick = function () {
+      var res = document.getElementById('gres');
+      res.innerHTML = '<div class="card muted">scanning every tracked file…</div>';
+      api('/api/guard/scan', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ entropy: document.getElementById('gentropy').checked }) })
+        .then(function (r) {
+          if (!r.results.length) { res.innerHTML = '<div class="card ok">clean — no secrets found in tracked files</div>'; return; }
+          var rows = '';
+          r.results.forEach(function (f) {
+            f.findings.forEach(function (x) {
+              rows += '<tr><td>' + esc(f.file) + ':' + esc(x.line) + '</td><td>' + esc(x.type) + '</td></tr>';
+            });
+          });
+          res.innerHTML = '<div class="card err"><b>secrets detected</b> — move them to env vars or a secrets manager. ' +
+            'Genuine fixtures/detector sources belong in ' + esc('.raphallow') + '.</div><table>' + rows + '</table>';
+        })
+        .catch(function (e) { res.innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+    };
+  }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+}
+
+// ---- settings ----
+function renderSettings() {
+  api('/api/settings').then(function (s) {
+    var a = s.autoApprove;
+    var radios = a.levels.map(function (lv) {
+      var desc = lv === 'off' ? 'nothing activates without you (curator default)'
+        : lv === 'standard' ? 'your own MINED lessons that pass every gate activate into the capped auto tier'
+        : 'plus ADOPTED lessons that passed the reviewer agent (daily-capped, revocable by source)';
+      return '<label style="display:block;margin:.25rem 0"><input type="radio" name="dial" value="' + esc(lv) + '"' +
+        (a.level === lv ? ' checked' : '') + '> <b>' + esc(lv) + '</b> — <span class="muted">' + esc(desc) + '</span></label>';
+    }).join('');
+    var h = '<h2>Auto-approve dial (raph auto)</h2><div class="card">' + radios +
+      '<div class="actions">auto-tier cap <input type="text" id="scap" size="5" value="' + esc(a.cap) + '">' +
+      'adopted daily cap <input type="text" id="sdaily" size="5" value="' + esc(a.dailyCap) + '">' +
+      '<button class="act primary" id="ssave">Save</button>' +
+      '<span class="muted">auto tier now: ' + esc(a.autoTier) + '/' + esc(a.cap) + '</span></div>' +
+      '<p class="muted">At every level, security-category lessons and anything quarantined still wait for you — ' +
+      'that floor is enforced in code (E-AUTOSEC) and is not configurable.</p></div>' +
+      '<h2>Injection</h2><div class="card">recall is <b>' + (s.injectionEnabled ? 'ON' : 'OFF') +
+      '</b> <span class="muted">(toggle on the Lessons tab, or raph on/off)</span> · model provider: ' + esc(s.modelProvider) + '</div>' +
+      '<h2>Mining consent (per project)</h2><div class="card" id="sconsent">' +
+      (s.consent.length ? '' : '<span class="muted">no projects registered — "raph mine" registers them with your consent</span>');
+    s.consent.forEach(function (c) {
+      h += '<div class="row"><span class="title">' + esc(c.project) + '</span>' +
+        '<span class="' + (c.consent ? 'ok' : 'err') + '">' + (c.consent ? 'allowed' : 'denied') + '</span>' +
+        '<button class="act" data-consent="' + esc(c.project) + '" data-next="' + (c.consent ? 'false' : 'true') + '">' +
+        (c.consent ? 'Withdraw consent' : 'Allow mining') + '</button></div>';
+    });
+    h += '</div>';
+    view.innerHTML = h;
+
+    document.getElementById('ssave').onclick = function () {
+      var lv = view.querySelector('input[name="dial"]:checked');
+      var payload = { level: lv ? lv.value : undefined,
+        cap: parseInt(document.getElementById('scap').value, 10),
+        dailyCap: parseInt(document.getElementById('sdaily').value, 10) };
+      if (isNaN(payload.cap)) delete payload.cap;
+      if (isNaN(payload.dailyCap)) delete payload.dailyCap;
+      api('/api/auto', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) {
+          flash(['auto-approve: ' + r.level + ' (cap ' + r.cap + ', daily ' + r.dailyCap + ')' +
+            (r.level === 'wide' ? ' — adopted lessons that pass the reviewer now activate without you; security still waits' : '')]);
+          renderSettings();
+        })
+        .catch(function (e) { flash([e.message], true); });
+    };
+    view.querySelectorAll('[data-consent]').forEach(function (b) {
+      b.onclick = function () {
+        api('/api/consent', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ project: b.dataset.consent, consent: b.dataset.next === 'true' }) })
+          .then(function () { flash(['consent updated']); renderSettings(); })
+          .catch(function (e) { flash([e.message], true); });
+      };
+    });
+  }).catch(function (e) { view.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+}
+
 function render() {
   if (tab === 'dash') renderDash();
   else if (tab === 'queue') renderQueue();
   else if (tab === 'lessons') renderLessons();
   else if (tab === 'adopt') renderAdopt();
-  else renderActivity();
+  else if (tab === 'activity') renderActivity();
+  else if (tab === 'guard') renderGuard();
+  else renderSettings();
 }
 render();
 </script>`;
@@ -809,6 +954,8 @@ async function handle(req, res, token) {
     if (url.pathname === '/api/why') return sendJson(res, 200, whySummary(Number(url.searchParams.get('last')) || 10));
     if (url.pathname === '/api/events') return sendJson(res, 200, { items: eventsFeed(Number(url.searchParams.get('limit')) || 50) });
     if (url.pathname === '/api/adoptions') return sendJson(res, 200, { items: adoptionsView() });
+    if (url.pathname === '/api/settings') return sendJson(res, 200, settingsView());
+    if (url.pathname === '/api/guard') return sendJson(res, 200, guardView());
   }
 
   if (req.method === 'POST') {
@@ -860,6 +1007,56 @@ async function handle(req, res, token) {
       } catch (err) {
         return sendJson(res, 404, { error: String(err.message ?? err) });
       }
+    }
+
+    // `raph auto [level] [--cap] [--daily-cap]` — the dial, via the SAME setDial.
+    if (url.pathname === '/api/auto') {
+      const cfg = loadConfig();
+      try {
+        const r = setDial(cfg, { level: body.level, cap: body.cap, dailyCap: body.dailyCap });
+        if (r.changed) saveConfig(cfg);
+        return sendJson(res, 200, { ...r, autoTier: countAutoTier() });
+      } catch (err) {
+        return sendJson(res, 400, { error: String(err.message ?? err) });
+      }
+    }
+
+    // The consent registry — the same setProjectConsent `raph mine` records.
+    if (url.pathname === '/api/consent') {
+      if (typeof body.project !== 'string' || !body.project.trim() || typeof body.consent !== 'boolean') {
+        return sendJson(res, 400, { error: 'E-WEB: body needs project (string) and consent (boolean)' });
+      }
+      setProjectConsent(body.project.trim(), body.consent);
+      return sendJson(res, 200, settingsView());
+    }
+
+    // `raph guard scan` — --all over the launch repo, or explicit paths
+    // (explicit paths are always scanned in full, allowlist or not — same rule
+    // as the CLI).
+    if (url.pathname === '/api/guard/scan') {
+      const entropy = body.entropy === true;
+      if (Array.isArray(body.paths) && body.paths.length) {
+        const results = body.paths
+          .filter((f) => typeof f === 'string' && f.trim())
+          .map((f) => ({ file: f, findings: scanFile(path.resolve(f), { entropy }) }))
+          .filter((r) => r.findings.length);
+        return sendJson(res, 200, { mode: 'paths', results });
+      }
+      const scan = scanTracked(process.cwd(), { entropy });
+      return sendJson(res, 200, { mode: 'all', allowlist: scan.allowlist, results: scan.results });
+    }
+
+    // `raph guard install|uninstall` on the launch repo.
+    if (url.pathname === '/api/guard/hook') {
+      if (body.install === true) {
+        const r = installPreCommitHook(process.cwd(), { force: false });
+        return sendJson(res, r.ok ? 200 : 409, r);
+      }
+      if (body.install === false) {
+        const r = uninstallPreCommitHook(process.cwd());
+        return sendJson(res, r.ok ? 200 : 409, r);
+      }
+      return sendJson(res, 400, { error: 'E-WEB: body.install must be true or false' });
     }
   }
 

@@ -292,6 +292,67 @@ test('console 15.3 e2e: lessons browser, injection toggle, adopt dry-run + ledge
   }
 });
 
+// --- 15.4: settings (dial + consent) and the guard page --------------------------
+
+test('console 15.4 e2e: settings dial via setDial, consent registry, guard scan', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  const opts = (extra = {}) => ({ headers: { 'x-raphael-token': token, 'content-type': 'application/json', ...extra.headers }, ...extra });
+  const post = (path, body) => fetch(`${base}${path}`, opts({ method: 'POST', body: JSON.stringify(body) }));
+  try {
+    // settings: fresh sandbox = dial off, defaults, empty consent registry
+    let s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.autoApprove.level, 'off');
+    assert.deepEqual(s.autoApprove.levels, ['off', 'standard', 'wide']);
+    assert.deepEqual(s.consent, []);
+
+    // the dial: same setDial as `raph auto` — set, verify, refuse junk
+    const set = await (await post('/api/auto', { level: 'standard', cap: 25 })).json();
+    assert.equal(set.level, 'standard');
+    assert.equal(set.cap, 25);
+    s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.autoApprove.level, 'standard');
+    assert.equal(s.autoApprove.cap, 25);
+    assert.equal((await post('/api/auto', { level: 'yolo' })).status, 400);
+    assert.equal((await post('/api/auto', { cap: -3 })).status, 400);
+
+    // consent registry: same setProjectConsent `raph mine` records
+    await post('/api/consent', { project: 'C:\\fake\\projectA', consent: true });
+    s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.consent.length, 1);
+    assert.equal(s.consent[0].consent, true);
+    await post('/api/consent', { project: 'C:\\fake\\projectA', consent: false });
+    s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.consent[0].consent, false);
+    assert.equal((await post('/api/consent', { project: 'x', consent: 'yes' })).status, 400);
+
+    // guard status is shaped for the launch dir; explicit-path scan finds a
+    // planted key (paths are always scanned in full, same rule as the CLI)
+    const g = await (await fetch(`${base}/api/guard`, opts())).json();
+    assert.equal(typeof g.isRepo, 'boolean');
+    assert.ok(Array.isArray(g.allowlist));
+
+    const hot = path.join(home, 'leaky.txt');
+    writeFileSync(hot, 'aws_key = "AKIAABCDEFGHIJKLMNOP"\n', 'utf8');
+    const found = await (await post('/api/guard/scan', { paths: [hot] })).json();
+    assert.equal(found.mode, 'paths');
+    assert.equal(found.results.length, 1);
+    assert.ok(found.results[0].findings.some((f) => f.type.includes('aws')));
+
+    const clean = path.join(home, 'clean.txt');
+    writeFileSync(clean, 'nothing to see here\n', 'utf8');
+    const none = await (await post('/api/guard/scan', { paths: [clean] })).json();
+    assert.equal(none.results.length, 0);
+
+    assert.equal((await post('/api/guard/hook', {})).status, 400);
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});
+
 test('statusSummary shape stays CLI-derived (same lib, no web-only logic)', () => {
   const home = sandbox();
   try {
