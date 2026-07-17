@@ -15,6 +15,7 @@ export const p = {
   quarantine: () => path.join(raphaelHome(), 'brain', 'quarantine'),
   evidence: () => path.join(raphaelHome(), 'brain', 'evidence'),
   maps: () => path.join(raphaelHome(), 'brain', 'maps'),
+  atlas: () => path.join(raphaelHome(), 'brain', 'atlas'),
   candidates: () => path.join(raphaelHome(), 'candidates'),
   state: () => path.join(raphaelHome(), 'state'),
   events: () => path.join(raphaelHome(), 'state', 'events.jsonl'),

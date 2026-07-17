@@ -89,9 +89,15 @@ is isolated unless it lands where you already work — hence the Obsidian export
   implementers; five-part spec contract for context-free delegation. Our driver (14.5)
   already routes by policy; the adoptable idea is *token-volume routing* stated as a
   law: **expensive model = fewest emitted tokens**.
-- **multica-ai/andrej-karpathy-skills** — behavioral guardrails (think before coding,
-  simplicity first, surgical changes, goal-driven execution). Good lesson-pack raw
-  material; overlaps heavily with lessons we already have.
+- **multica-ai/andrej-karpathy-skills** — one skill, four behavioral principles from
+  Karpathy's LLM-pitfalls post: (1) *think before coding* — state assumptions, present
+  interpretations instead of picking silently, push back when a simpler approach
+  exists; (2) *simplicity first* — no speculative abstractions, "if 200 lines could be
+  50, rewrite"; (3) *surgical changes* — every changed line traces to the request;
+  clean up only orphans YOUR change created; (4) *goal-driven execution* — turn tasks
+  into verifiable goals ("fix the bug" → "write a test that reproduces it, make it
+  pass"). Good lesson-pack raw material for 16.7; partially overlaps lessons we
+  already have (dedupe in curation).
 
 ### The memory-vault repos
 
@@ -106,8 +112,18 @@ is isolated unless it lands where you already work — hence the Obsidian export
   claim about a changeable fact with no date is the "sentence that becomes a lie next
   Tuesday." Enforced by a lint (FRESH-1..4). **Directly adoptable for our lessons and
   for Atlas** — staleness is the main long-term threat to a brain.
-- **kepano/obsidian-skills** — reference skills for Obsidian markdown/canvas/bases
-  formats. Useful only if/when we ship the Atlas Obsidian export; keep as a pointer.
+- **kepano/obsidian-skills** — five reference skills, two of which matter beyond the
+  export use case:
+  - *defuddle*: "extract clean markdown from web pages, removing clutter **to save
+    tokens**" — the idea (not the npm dependency) upgrades `raph adopt`: strip
+    HTML tags/nav/boilerplate to plain text before the reviewer model reads a fetched
+    page. Fewer input tokens per adoption, zero new deps. → folded into 16.7.
+  - *json-canvas*: the JSON Canvas 1.0 spec (`.canvas`: nodes/edges arrays, 16-char
+    hex ids) — a precise, zero-dep target format for the Atlas visual export, plus
+    the exact Obsidian wikilink/frontmatter rules for the markdown notes. → 16.5 now
+    specifies both formats.
+  - *obsidian-markdown / bases / cli*: format references; keep as pointers (a
+    `lessons.base` table view over an exported brain is a cute later idea, not now).
 
 ### The outlier: teamchong/pxpipe
 
@@ -216,8 +232,11 @@ recall (the token fix).
 
 **16.5 — The Obsidian-compatible export (owner awareness, human face)**
 - `raph atlas export --vault <dir>`: one markdown note per node group + per god node,
-  wikilinks for edges, every note carrying `source: <file>:<line>` back-references;
-  `atlas.canvas` optional. Works in Obsidian but is just plain markdown — no new deps.
+  wikilinks for edges (Obsidian Flavored Markdown per kepano's reference: `[[Name]]`
+  resolves by name, frontmatter properties for type/source), every note carrying
+  `source: <file>:<line>` back-references; plus an `atlas.canvas` per the JSON Canvas
+  1.0 spec (plain JSON: nodes/edges, 16-hex ids — zero deps). Works in Obsidian but
+  is just plain markdown + JSON.
 - This is the "map only exists inside Graphify / stuck in its own bubble" catch from
   the slides, solved the same way: put the map where the human already looks.
 
@@ -244,6 +263,9 @@ recall (the token fix).
 - The twin check deserves special mention: it becomes both a lesson AND a Debugger-agent
   spine line ("after any fix, search the project for the same pattern; report a TWINS
   line"). Measured 5x completeness gain on cheap models in fable-method's evals.
+- Defuddle's idea lands here too: a zero-dep HTML→text cleanup pass in the adopt
+  fetcher (strip tags/scripts/nav boilerplate before the reviewer model reads a page)
+  — fewer reviewer input tokens per adoption, no new dependency.
 
 ### Explicitly NOT adopted (and why)
 

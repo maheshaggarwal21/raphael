@@ -363,10 +363,23 @@ compaction (manual or automatic) can never lose progress.
   fable-method's twin check (16.7). NOT adopted (recorded w/ reasons): pxpipe image
   proxy, tree-sitter/embeddings, hosted memory, vibekit. URL fix: "fable-compiler/*"
   repos don't exist — real sources kpab/claude-fable-5-skills + Sahir619/fable-method.
-- Next: owner go on Phase 16 Atlas (16.1+16.2 recommended first) vs Phase 14 meta
-  layer (skills factory -> agent-maker -> optimizer -> self-upgrade rule) or 13b.
-  Parked: Phase 10 RUN (calendar), Phase 11 publish + hub (owner timing),
-  doctor-to-lib extraction. Run builds INLINE (parallel Workflows hit the limit fast).
+- ATLAS 16.1+16.2 SHIPPED (session 09, owner go "continue, your recommendations";
+  279/279 tests): src/lib/atlas.js = deterministic project knowledge graph, zero
+  model tokens to build or query. Nodes files/symbols/packages/error-codes; edges
+  imports/tests (EXTRACTED), calls (INFERRED 0.65-0.95 rubric, multi-exporter =
+  AMBIGUOUS surfaced in report), raises/mentions (E-code origins incl. quoted
+  no-throw lines), degree=importance, SHA256 cache w/ ATLAS_VERSION invalidation
+  (live-found bug: extractor change + hash-keyed cache = stale reuse). `raph atlas
+  [where|path|explain|digest]` (commands/atlas.js): where = the owner's error
+  router (ranked files + reasons; test x0.4 / doc x0.6 query-time weights so
+  fixtures never outrank real origins), path (pkg hubs never waypoints), digest =
+  the 16.3 injection block. Artifacts: brain/atlas/<name>.{json,md}. Live:
+  raphael = 146 files/459 nodes/1481 edges; "E-SCHEMA" -> src/lib/validate.js #1.
+- Next: 16.3 query-first wiring (digest into inject + PreToolUse nudge hook +
+  driver stage prompts), then 16.4 bench / 16.5 export / 16.6 freshness / 16.7
+  adopt runs. Then Phase 14 meta layer or 13b. Parked: Phase 10 RUN (calendar),
+  Phase 11 publish + hub (owner timing), doctor-to-lib extraction. Run builds
+  INLINE (parallel Workflows hit the limit fast).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

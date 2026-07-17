@@ -550,24 +550,35 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
 ## Phase 16 — Atlas: project knowledge graph (PROPOSED 2026-07-17 session 09;
 ## design = docs/atlas-upgrade-plan.md, from the owner's research sweep — graphify
 ## et al. Zero-token deterministic graph; fixes owner awareness + 10-70x recall)
-- [ ] 16.1 Atlas core: src/lib/atlas.js — deterministic node/edge extraction
-      (files, exports, imports EXTRACTED, calls INFERRED w/ confidence rubric,
-      tests, E-codes, docs), degree=importance, groups, SHA256 incremental cache,
-      atlas.json + ATLAS.md, `raph atlas [--refresh]`
-- [ ] 16.2 Error router: `raph atlas where "<error|question>"` (ranked files + WHY,
-      1-2 hop subgraph, explainable like match.js) + `path A B` + `explain <x>`
+- [x] 16.1 Atlas core: src/lib/atlas.js — deterministic node/edge extraction
+      (files, exports, imports EXTRACTED, calls INFERRED w/ graphify's confidence
+      rubric 0.65-0.95, AMBIGUOUS multi-exporter calls surfaced in the report,
+      tests/raises/mentions/uses edges, E-code origins incl. quoted-no-throw
+      lines, degree=importance, top-level-dir groups, SHA256 incremental cache
+      WITH extractor-version invalidation (found live: --refresh after an
+      extractor fix reused every stale extraction), atlas.json + <name>.md under
+      brain/atlas/, `raph atlas [--refresh] [--json]`. (2026-07-17 session 09)
+- [x] 16.2 Error router: `raph atlas where "<error|question>"` — ranked files w/
+      explainable reasons (error-text origin +5, defines-symbol +4, file-name +3,
+      mentions +1; test files x0.4 + docs x0.6 at query time so fixtures never
+      outrank the real origin), 1-hop expansion to callers/importers/tests;
+      `path A B` (BFS, pkg hubs are endpoints never waypoints) + `explain <x>` +
+      `digest` (the 16.3 injection block). Live on raphael: "E-SCHEMA" ->
+      src/lib/validate.js #1 (error text origin). 279/279 tests (+5).
 - [ ] 16.3 Query-first wiring: Atlas digest in inject budget + PreToolUse nudge hook
       (plugin) + driver stage prompts carry the digest for debug/review/develop kinds
 - [ ] 16.4 `raph atlas bench`: tokens-to-answer graph-vs-raw, honest per-size caveats,
       feeds stats + weekly report
 - [ ] 16.5 Obsidian-compatible export: markdown notes + wikilinks + source backrefs
-      (plain md, no deps)
+      (plain md, no deps) + atlas.canvas per JSON Canvas 1.0 (kepano spec)
 - [ ] 16.6 Freshness (OKM) lint: timeless/dated/pointer rule for lessons (warn-only
       first); retire-wrong-lessons path (reject-after-approve tombstone)
 - [ ] 16.7 Adopt runs over the sweep's skills: fable-method (fit gate, TWIN CHECK ->
       also a Debugger spine line, AUTH gate), act-when-ready, effort-calibrator,
-      karpathy-guidelines, fable-skills handover format -> skills-factory template
-      ("honest limits" section mandatory). All via the normal adopt gauntlet.
+      karpathy-guidelines (4 principles: think-first/simplicity/surgical/goal-driven),
+      fable-skills handover format -> skills-factory template ("honest limits"
+      section mandatory). All via the normal adopt gauntlet. + defuddle idea:
+      zero-dep HTML->text cleanup in adopt fetch (fewer reviewer tokens).
 - NOT adopted (recorded in the plan doc): pxpipe image proxy, tree-sitter/embeddings,
   hosted memory systems, vibekit sandbox (revisit if untrusted code ever runs).
 

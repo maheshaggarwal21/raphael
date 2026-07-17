@@ -21,6 +21,7 @@ const COMMANDS = {
   off: () => import('./commands/off.js'),
   eval: () => import('./commands/eval.js'),
   map: () => import('./commands/map.js'),
+  atlas: () => import('./commands/atlas.js'),
   pack: () => import('./commands/pack.js'),
   academy: () => import('./commands/academy.js'),
   portfolio: () => import('./commands/portfolio.js'),
@@ -73,6 +74,8 @@ Commands:
               (raph eval run [--quick] [--dry-run] [--scenario id] [--trials N])
   map         Generate/refresh the cached project map agents read instead of the repo
               (raph map [--refresh] [--project path] [--summary])
+  atlas       The project knowledge graph: build it free, then ask it where to look
+              (raph atlas [where "<error>"|path A B|explain X|digest] [--refresh] [--json])
   pack        Seed a curated lesson pack into the brain as reviewable candidates
               (raph pack list | raph pack add security [--dry-run]) — cold-start value
   academy     Drive/resume an autonomous Academy build across limits + restarts
