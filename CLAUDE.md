@@ -549,6 +549,11 @@ compaction (manual or automatic) can never lose progress.
   + packed tarball verified the entire journey and CAUGHT a real bug: spawn
   cwd=project killed the detached pulse child silently on bad paths — cwd removed).
   Mode default for existing brains unchanged (curator) until they run arise/auto full.
+  CLOSEOUT: CI run 1 failed (plugin/marketplace manifests still 0.1.0 vs the version-
+  lock test; missed locally because `npm test | tail -3` cut the `# fail` line) ->
+  fixed, `# fail 0` asserted explicitly, ALL 6 CI JOBS GREEN -> GitHub Release v0.2.0
+  "Autopilot". The miss became lesson 59 (truncated-test-output-hides-failures) via
+  note+approve. Remaining owner switch: `npm publish` for raphael-brain@0.2.0.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
