@@ -493,6 +493,21 @@ compaction (manual or automatic) can never lose progress.
   promotion (the handbook's posts are ready to publish when the owner chooses).
   Parked: doctor-to-lib extraction, Phase 5 inject latency (~390ms cold). Run builds INLINE
   (parallel Workflows hit the limit fast).
+- Session 13 (2026-07-18) — owner flagged the MAJOR FLAW: the lifecycle is mostly manual
+  (9 of 11 steps — mine/distill/approve/atlas/etc.), which will lose users; wants one-time
+  install + one consent, then fully automatic operation INCLUDING security-lesson approval;
+  user should only notice fewer tokens + better code. Proposal delivered:
+  docs/autopilot-vision.md + TASKS Phase 17 (PROPOSED). Design = machine curator (existing
+  gates + adopt's reviewer screen fail-closed + dry-run canary gate w/ batch rollback +
+  probation confidence + auto-retire + git audit + one-click undo) replaces the human queue;
+  `raph pulse` (only new verb) on a SessionEnd hook (detached, fail-open, budgeted,
+  E-LIMIT-aware, no daemon); global consent + mode:autopilot + dial FULL; in-chat one-time
+  onboarding -> `raph arise --autopilot`; ≤150-token weekly digest (7-day throttle, silent
+  when empty). Security auto-approval = recorded reversal of §11.11 (-> §11.13 at build
+  time); ONE floor kept: quarantined injection-suspect content never machine-activates
+  (silent, 30-day tombstone — no nagging either). Curator mode preserved as opt-in;
+  adopt/contribute stay user-initiated (invariants #5b/#6). Build order 17.1->17.6 with
+  17.2 (curator) strictly before 17.3 (unattended loop). NOT built — awaiting owner go.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

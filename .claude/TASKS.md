@@ -737,6 +737,41 @@ agent-maker, optimizer). Pure-logic, headlessly verifiable items lead.
   deterministic substitute), Supabase/team brain server, telemetry upload, bun/60-skill
   surface, continuous-WIP auto-commit, vibekit sandbox (revisit if untrusted code runs).
 
+## Phase 17 — Autopilot: zero-touch Raphael (PROPOSED 2026-07-18, session 13; design in docs/autopilot-vision.md)
+Owner directive: the manual work (mine/distill/approve/atlas/commands) is the product's
+biggest flaw — users want one-time install + one consent, then everything automatic,
+SECURITY LESSONS INCLUDED; the user should only notice reduced tokens + better code.
+Design move: don't delete curation, AUTOMATE it (machine curator = existing gates +
+reviewer screen + dry-run canary gate + probation confidence + auto-retire + git audit
+trail + one-click undo). Principle: ask once, act always, show weekly, undo anytime.
+- [ ] 17.1 Consent + mode substrate: `mode: autopilot|curator` in config, global consent
+      (`consent: all` + ignore list), auto-approve dial FULL, `raph auto full`.
+      ARCHITECTURE amendments: invariant #4 mode-conditional; §11.13 records the owner's
+      REVERSAL of §11.11 (security floor human-always -> machine-curated in autopilot).
+      One floor kept: QUARANTINED (injection-suspect) content never machine-activates —
+      sits silent, digest-counted, 30-day tombstone (machine-approving content whose
+      defining property is "tried to manipulate the machine" is circular).
+- [ ] 17.2 Machine curator (build BEFORE the unattended loop exists): reviewer screen
+      over distilled candidates (reuse adopt's contained reviewer, malformed verdict =
+      fail-closed), canary-gated batch activation (eval --dry-run canaries; any failure
+      = batch rollback), probation confidence for auto lessons, stricter security rubric,
+      quarantine tombstone. All in the shared review engine, console-visible.
+- [ ] 17.3 `raph pulse` + SessionEnd hook: the heartbeat. Hook fires `pulse --async`
+      (detached spawn, <50ms return); child takes a lock, then mine (watermark) ->
+      budget/E-LIMIT check (autopilot.daily_calls) -> distill -> machine-curate ->
+      auto-commit -> pulse event. EVERY step fails open (exit 0, touch nothing).
+- [ ] 17.4 Atlas-in-pulse: auto-build/refresh per consented project when stale
+      (mtime + git HEAD check), zero tokens.
+- [ ] 17.5 Onboarding + digest: first-SessionStart onboarding envelope (agent asks the
+      ONE consent question in-chat -> `raph arise --autopilot`), weekly digest block
+      (≤150 tokens, honest numbers, 7-day throttle, silent on empty weeks, security
+      lessons always highlighted).
+- [ ] 17.6 Flip + docs + e2e: autopilot default for fresh installs (existing brains keep
+      mode), README/manual rewritten around "install and forget", full live loop verified
+      (session -> pulse -> active lesson -> next-session injection -> digest), v0.2.0.
+Stays manual on purpose: adopt (user-initiated fetch, #5b), contribute (opt-in, #6),
+guard install (asked once at onboarding), curator mode preserved as opt-in.
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.
