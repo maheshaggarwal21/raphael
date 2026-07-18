@@ -744,13 +744,16 @@ SECURITY LESSONS INCLUDED; the user should only notice reduced tokens + better c
 Design move: don't delete curation, AUTOMATE it (machine curator = existing gates +
 reviewer screen + dry-run canary gate + probation confidence + auto-retire + git audit
 trail + one-click undo). Principle: ask once, act always, show weekly, undo anytime.
-- [ ] 17.1 Consent + mode substrate: `mode: autopilot|curator` in config, global consent
-      (`consent: all` + ignore list), auto-approve dial FULL, `raph auto full`.
-      ARCHITECTURE amendments: invariant #4 mode-conditional; §11.13 records the owner's
-      REVERSAL of §11.11 (security floor human-always -> machine-curated in autopilot).
-      One floor kept: QUARANTINED (injection-suspect) content never machine-activates —
-      sits silent, digest-counted, 30-day tombstone (machine-approving content whose
-      defining property is "tried to manipulate the machine" is circular).
+- [x] 17.1 SHIPPED (session 13, 364/364): config.js getMode/setMode (fail-closed to
+      curator) + hasConsent (precedence: explicit registry answer > ignore-subtree >
+      scope:all > undefined-ask) + setConsentScope('all'|'registered', {ignore}) —
+      mine.js now consents via hasConsent so the global grant covers NEW projects.
+      DIAL_LEVELS + 'full' (adopted rides at full; security NEVER rides the plain dial
+      at any level — at full its skip message points to the machine-curator path;
+      quarantined never anywhere). `raph auto full` = autopilot ON (mode+dial coupled);
+      `raph auto manual|off|standard|wide` = curator mode. Console levels list picks up
+      'full' automatically (derived from DIAL_LEVELS). ARCHITECTURE §11.13 written
+      (supersedes §11.11 in autopilot; quarantine floor survives). +6 tests.
 - [ ] 17.2 Machine curator (build BEFORE the unattended loop exists): reviewer screen
       over distilled candidates (reuse adopt's contained reviewer, malformed verdict =
       fail-closed), canary-gated batch activation (eval --dry-run canaries; any failure

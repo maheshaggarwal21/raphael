@@ -305,7 +305,7 @@ test('console 15.4 e2e: settings dial via setDial, consent registry, guard scan'
     // settings: fresh sandbox = dial off, defaults, empty consent registry
     let s = await (await fetch(`${base}/api/settings`, opts())).json();
     assert.equal(s.autoApprove.level, 'off');
-    assert.deepEqual(s.autoApprove.levels, ['off', 'standard', 'wide']);
+    assert.deepEqual(s.autoApprove.levels, ['off', 'standard', 'wide', 'full']);
     assert.deepEqual(s.consent, []);
 
     // the dial: same setDial as `raph auto` — set, verify, refuse junk

@@ -645,6 +645,19 @@ baselines + ablation, checkpoint/resume machinery, TUI review, trusted co-review
     community pack registry + the §9 GitHub-PR contribution flow, served statically
     (no accounts, no server-side user data). A full hosted app is a later, separate
     decision.
+13. **Autopilot: the machine curator replaces the human queue (owner directive,
+    2026-07-18) — SUPERSEDES §11.11 in autopilot mode.** The owner judged the manual
+    lifecycle the product's biggest adoption risk and directed full automation,
+    security lessons INCLUDED. In `mode: autopilot` with the dial at `full`,
+    candidates that pass the machine-curation path — the distill gates, a contained
+    reviewer screen (fail-closed on malformed verdicts), a dry-run canary gate with
+    whole-batch rollback, and probation confidence — activate without a human,
+    carrying `provenance.tier: machine`. Curator mode (and §11.11's one-click human
+    floor) remains fully available as the opt-in alternative. ONE floor survives in
+    every mode: QUARANTINED (injection-suspect) content never machine-activates —
+    machine-approving content whose defining property is that it tried to manipulate
+    the machine is circular; it waits silently and tombstones after 30 days
+    unreviewed. Design + rollout: docs/autopilot-vision.md, TASKS Phase 17.
 
 ---
 

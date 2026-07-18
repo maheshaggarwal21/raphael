@@ -56,6 +56,68 @@ export function getProjectConsent(cfg, projectPath) {
   return undefined;
 }
 
+// ---------- Phase 17: mode + global consent ----------
+
+export const MODES = ['curator', 'autopilot'];
+
+// Fail closed: anything unknown reads as curator (the human-review mode).
+export function getMode(cfg) {
+  return cfg?.mode === 'autopilot' ? 'autopilot' : 'curator';
+}
+
+export function setMode(mode) {
+  if (!MODES.includes(mode)) {
+    throw new Error(`E-CONFIG: unknown mode "${mode}" — use curator or autopilot`);
+  }
+  const cfg = loadConfig();
+  cfg.mode = mode;
+  saveConfig(cfg);
+  return cfg;
+}
+
+function underPath(child, parent) {
+  const rc = path.resolve(child);
+  const rp = path.resolve(parent);
+  const a = process.platform === 'win32' ? rc.toLowerCase() : rc;
+  const b = process.platform === 'win32' ? rp.toLowerCase() : rp;
+  return a === b || a.startsWith(b + path.sep);
+}
+
+// The one consent question (permission #1). Precedence, most specific first:
+//   1. an explicit per-project registry answer (true OR false) always wins
+//   2. a consent.ignore entry blocks the project (and everything under it)
+//   3. consent.scope 'all' grants everything else
+//   4. otherwise undefined — the caller must ask (curator-era behavior)
+export function hasConsent(cfg, projectPath) {
+  const explicit = getProjectConsent(cfg, projectPath);
+  if (explicit !== undefined) return explicit;
+  const consent = cfg?.consent;
+  if (consent?.scope === 'all') {
+    for (const entry of consent.ignore ?? []) {
+      if (underPath(projectPath, entry)) return false;
+    }
+    return true;
+  }
+  return undefined;
+}
+
+export function setConsentScope(scope, { ignore } = {}) {
+  if (scope !== 'all' && scope !== 'registered') {
+    throw new Error(`E-CONFIG: unknown consent scope "${scope}" — use all or registered`);
+  }
+  if (ignore !== undefined && (!Array.isArray(ignore) || ignore.some((x) => typeof x !== 'string' || !x.trim()))) {
+    throw new Error('E-CONFIG: consent ignore list must be an array of paths');
+  }
+  const cfg = loadConfig();
+  cfg.consent = {
+    scope,
+    granted: new Date().toISOString().slice(0, 10),
+    ...(ignore?.length ? { ignore: ignore.map((x) => path.resolve(x)) } : {})
+  };
+  saveConfig(cfg);
+  return cfg;
+}
+
 // Injection kill switch (`raph on` / `raph off`). Absent = enabled: the hooks
 // are already a no-op until the first lesson is approved, so the default is safe.
 export function isInjectionEnabled(cfg) {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { projectTranscriptDir, listSessionFiles, contentHash } from '../lib/transcripts.js';
-import { loadConfig, getProjectConsent, setProjectConsent } from '../lib/config.js';
+import { loadConfig, hasConsent, setProjectConsent } from '../lib/config.js';
 import { parseSessionLines, detectEpisodes } from '../lib/episodes.js';
 import { loadLedger, hasProcessed, appendLedger } from '../lib/ledger.js';
 import { ulid } from '../lib/ulid.js';
@@ -14,10 +14,12 @@ const MINER = 'raphael/miner@0.1.0';
 
 async function ensureConsent(project, yes) {
   const cfg = loadConfig();
-  const consent = getProjectConsent(cfg, project);
+  // hasConsent covers both the per-project registry AND the global grant
+  // (consent.scope 'all' + ignore list) from autopilot onboarding (§2.2).
+  const consent = hasConsent(cfg, project);
   if (consent === true) return true;
   if (consent === false) {
-    console.error(`raph: mining is disabled for ${project} (consent was declined; edit config.yaml to change)`);
+    console.error(`raph: mining is disabled for ${project} (consent was declined or the path is on the ignore list; edit config.yaml to change)`);
     return false;
   }
   if (yes) {

@@ -4,11 +4,15 @@
 //   off       (curator default)  nothing activates without a human
 //   standard  (arise default)    own MINED lessons that passed every gate
 //   wide                          + ADOPTED lessons that passed the reviewer
+//   full      (autopilot, §11.13) + security lessons — but ONLY through the
+//             machine-curator path (lib/curator.js: reviewer screen + canary
+//             gate + probation), never through this plain dial
 //
-// Outside the dial at every level: security-category candidates and anything
-// quarantined — those always wait for a human. This module skips them, and the
-// chokepoint's E-AUTOSEC (tier auto + category security = validation error)
-// backs that structurally even if this code were wrong.
+// Outside THIS dial function at every level: security-category candidates and
+// anything quarantined. Security rides only the curator's tier-'machine' path
+// (the chokepoint's E-AUTOSEC blocks tier auto + security structurally even if
+// this code were wrong); quarantined content never machine-activates anywhere
+// — that is the one floor that survives §11.13.
 //
 // Blast-radius controls (§9 table): activated lessons carry provenance.tier
 // 'auto' (visible, filterable, first to prune), a hard cap on total auto-tier
@@ -25,7 +29,7 @@ import { commitBrain } from './braingit.js';
 import { buildIndex } from './compile.js';
 import { p } from './paths.js';
 
-export const DIAL_LEVELS = ['off', 'standard', 'wide'];
+export const DIAL_LEVELS = ['off', 'standard', 'wide', 'full'];
 const DEFAULT_CAP = 30;
 const DEFAULT_DAILY_CAP = 10;
 
@@ -50,7 +54,7 @@ export function setDial(cfg, { level, cap, dailyCap } = {}) {
   let changed = false;
   if (level !== undefined) {
     if (!DIAL_LEVELS.includes(level)) {
-      throw new Error(`E-DIAL: unknown level "${level}" — use off, standard, or wide`);
+      throw new Error(`E-DIAL: unknown level "${level}" — use off, standard, wide, or full`);
     }
     cfg.auto_approve = { ...(cfg.auto_approve ?? {}), level };
     changed = true;
@@ -117,7 +121,7 @@ export function autoApproveStaged(staged, { origin, config = {}, project = null,
   const level = dialLevel(config);
   const result = { level, activated: [], skipped: [] };
   if (!staged?.length || level === 'off') return result;
-  if (origin === 'adopted' && level !== 'wide') return result;
+  if (origin === 'adopted' && level !== 'wide' && level !== 'full') return result;
 
   const { cap, dailyCap } = dialCaps(config);
   let autoCount = countAutoTier();
@@ -133,9 +137,14 @@ export function autoApproveStaged(staged, { origin, config = {}, project = null,
     }
     const { data, body } = parsed;
 
-    // the floor (§11.11): security + quarantined never ride the dial
+    // Security never rides THIS plain dial at any level — at 'full' it goes
+    // through the machine curator (reviewer + canary + probation) instead
+    // (§11.13); below 'full' it waits for a human (§11.11 behavior).
     if (data.category === 'security') {
-      result.skipped.push({ slug: data.slug, why: 'security-category — human review always (the dial never covers it)' });
+      const why = level === 'full'
+        ? 'security-category — rides the machine-curator path, not the plain dial'
+        : 'security-category — human review always (the dial never covers it)';
+      result.skipped.push({ slug: data.slug, why });
       continue;
     }
     if (item.quarantined || data.status === 'quarantined') {
