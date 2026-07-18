@@ -554,6 +554,9 @@ compaction (manual or automatic) can never lose progress.
   fixed, `# fail 0` asserted explicitly, ALL 6 CI JOBS GREEN -> GitHub Release v0.2.0
   "Autopilot". The miss became lesson 59 (truncated-test-output-hides-failures) via
   note+approve. Remaining owner switch: `npm publish` for raphael-brain@0.2.0.
+- v0.2.0 LAUNCHED (owner ran npm publish): registry = 0.2.0/latest; end-user path
+  verified from the PUBLIC registry (install -> arise --autopilot -> 26 seeded ->
+  doctor healthy). PHASE 17 FULLY COMPLETE. Raphael is zero-touch for strangers today.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
