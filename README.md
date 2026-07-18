@@ -55,7 +55,7 @@ Proof, not vibes — every number below is measured by the code in this repo:
 |---|---|
 | **147.9× fewer tokens** | to answer "where do I look?" using the Atlas knowledge graph vs. grep-and-read — measured on this very repo: 174,324 tokens down to 1,179 across 10 real questions (per-question range 55×–385×). Zero model tokens spent to measure it. |
 | **≤ 1,200 tokens/session** | the hard cap on everything recall may inject in one session. Typical prompts cost **0** (injection requires a trigger hit). `raph why` itemizes every token. |
-| **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart, before it has learned a single thing from you. |
+| **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart before it has learned a single thing from you. And that brain is community-fed by design: contributed lessons, scrubbed and human-reviewed, ship to every install via a weekly hash-verified sync. |
 | **41 CLI verbs · 10 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
 | **415 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
 | **2 runtime dependencies** | `ajv` and `js-yaml`. That's the whole supply chain. No frameworks, no daemons, no cloud. |
@@ -232,20 +232,44 @@ human queue:
    machine-activates, at any dial level, in any mode.** After 30 days it is silently
    tombstoned. This is the one rule autopilot cannot override.
 
-## 4 · 🌍 The global brain — your agent starts smart
+## 4 · 🌍 The two-brain model — yours, and everyone's
 
-A brand-new brain isn't empty. At install, Raphael seeds it from the **global brain**:
-a curated, human-reviewed lesson set shipped *inside the npm package* (v1: **26
-security lessons** — secrets in env vars, slow KDFs for passwords, rotate anything that
-ever touched git, IDOR checks, server-side price recomputation, and friends).
+Raphael's knowledge grows along **two paths at once** — and the second one is built
+to get better with every developer who joins.
 
-- Seeding is **zero-network** — it copies from the package you already installed.
-- Weekly, the pulse checks for updates from exactly **two pinned HTTPS URLs** in this
-  repo — nothing else — with a per-lesson **SHA-256** check that catches corruption and
-  partial fetches.
-- Every global lesson still passes the same validation chokepoint as everything else.
-  Invariant #1 has no exceptions, including for the project's own curated set.
-- **Local always wins.** A global lesson never overwrites or duplicates yours.
+**Brain #1 — your local brain.** Private by construction. It learns from *your*
+sessions, lives in `~/.raphael` on your disk, and never leaves the machine. Every
+lesson in it is yours alone: your mistakes, your fixes, your decisions.
+
+**Brain #2 — the global brain.** The community's shared, human-curated lesson set —
+distilled scar tissue from real projects, reviewed by a human before it ships to
+anyone. A brand-new install isn't empty: it seeds from the copy *inside the npm
+package* (zero network), so your agent starts with the community's hard-won judgment
+— at v1, **26 security lessons**: secrets in env vars, slow KDFs for passwords,
+rotate anything that ever touched git, IDOR checks, server-side price recomputation,
+and friends. Cold start: solved.
+
+**The two brains flow into each other — carefully, in both directions:**
+
+- **Down (everyone → you):** weekly, the pulse checks exactly **two pinned HTTPS
+  URLs** in this repo — nothing else — verifies every lesson against a per-lesson
+  **SHA-256** manifest, and runs each one through the same validation chokepoint as
+  everything else. Invariant #1 has no exceptions, including for the project's own
+  curated set. **Local always wins** — a global lesson never overwrites or
+  duplicates yours — and lesson IDs are fixed forever, so every user's copy of a
+  community lesson shares one identity.
+- **Up (you → everyone):** when your brain learns something broadly useful, the
+  contribution pipe can carry it back. Local traces stripped (project names, path
+  globs, machine-local evidence), every text field **re-scrubbed** for secrets, the
+  result **re-validated** through the chokepoint — a lesson that fails is *refused*,
+  never silently "fixed." Bundles only ever **stage locally** (min 3 lessons, at
+  most weekly); sending is always your own explicit action; and a human reviews
+  every contribution before it ships to the community.
+
+That's the compounding loop: **one developer's 2 a.m. incident becomes every
+developer's day-one immunity.** Your brain stays private. The community brain grows
+with each contribution that clears the gauntlet. And every new install starts
+smarter than the last.
 
 Prefer to seed manually? `raph pack add security` stages the same 26 lessons as
 ordinary reviewable candidates.
@@ -553,8 +577,14 @@ Lessons are useful beyond one machine — but nothing should leave yours by acci
 - The full body is **re-scrubbed** for secrets (belt and suspenders — it was scrubbed
   on the way in) and **re-validated** through the chokepoint. A lesson that fails
   after scrubbing is *refused*, not silently "fixed."
-- Bundles only ever **stage locally**. Sending is always your own action. Consent is
-  one toggle: `raph contribute on|off`, or the console's Settings tab.
+- Bundles only ever **stage locally**. On autopilot with the grant on, the pulse
+  batches eligible lessons into a local bundle (min 3, at most weekly) — staged,
+  visible, and inert until you send it. Sending is always your own action. Consent
+  is one toggle: `raph contribute on|off`, or the console's Settings tab.
+
+This is the up-pipe of the two-brain model (§4): a lesson that clears it gets a
+human review, and — if it ships — makes every Raphael install after that start a
+little smarter, with your machine's traces stripped and your secrets nowhere in it.
 
 ## 15 · 📈 Proof & upkeep — the brain audits itself
 
