@@ -1,5 +1,10 @@
 # Autopilot — zero-touch Raphael (vision + architecture + change plan)
 
+> **STATUS: BUILT (2026-07-18, session 13, v0.2.0).** All eight Phase 17
+> milestones shipped and verified from an outside user's perspective (clean
+> install → onboarding → autopilot loop → digest). This document is the design
+> record; the living details are in TASKS.md Phase 17 and docs/manual.md §0.
+
 Date: 2026-07-18 (session 13). Owner directive: "install one-time, grant permissions
 once, then everything runs on its own — mining, distilling, approving (security lessons
 included), atlas, all of it. The user should only notice the RESULT: fewer tokens,
