@@ -355,7 +355,8 @@ nothing ever leaves the device.
 *This is what almost every user should experience. Meet Arjun, a developer who
 just heard about Raphael.*
 
-1. 🧑 `npm install -g raphael-brain`, then in Claude Code:
+1. 🧑 In his **terminal**: `npm install -g raphael-brain`. Then **inside Claude
+   Code**, typed as chat input:
    `/plugin marketplace add maheshaggarwal21/raphael` and
    `/plugin install raphael-brain@raphael`.
 2. 🧑 His next Claude Code session opens with three questions, asked exactly once:
@@ -388,12 +389,12 @@ deliberately human-in-the-loop.*
 
 ### Day 1 — install (10 minutes)
 
-1. 🧑 Priya installs the CLI: `npm install -g raphael-brain`.
-2. 🧑 In Claude Code she runs two lines:
+1. 🧑 Priya installs the CLI in her **terminal**: `npm install -g raphael-brain`.
+2. 🧑 **Inside Claude Code** she types two slash commands as chat input:
    `/plugin marketplace add maheshaggarwal21/raphael` then
    `/plugin install raphael-brain@raphael`.
 3. 🧑 At the three-question onboarding she picks **manual**, then runs
-   `raph arise --pack --guard`. This creates her brain at `~/.raphael`, stages the
+   `raph arise --pack --guard` in her terminal. This creates her brain at `~/.raphael`, stages the
    26-lesson security pack for review, installs the commit guard in her current
    repo, and prints what to do next. Nothing has activated yet — the pack arrived
    as *candidates*.

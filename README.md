@@ -34,23 +34,40 @@ Your coding agent forgets everything between sessions. You don't have to.
 
 ## Install (and forget)
 
-```
-# 1. the raph CLI (the engine — the plugin's hooks call it)
-npm install -g raphael-brain        # or, from GitHub: npm install -g maheshaggarwal21/raphael
+Two steps, in two different places:
 
-# 2. the Claude Code plugin (auto-wires recall + adds the /brain commands)
+**Step 1 — in your terminal** (PowerShell, cmd, or any shell — anywhere on your
+system; needs [Node.js](https://nodejs.org) 18+):
+
+```
+npm install -g raphael-brain        # or, from GitHub: npm install -g maheshaggarwal21/raphael
+```
+
+This installs the `raph` CLI — the engine. Check it worked: `raph version`.
+
+**Step 2 — inside Claude Code** (open Claude Code and type these as chat input —
+they are slash commands, not shell commands):
+
+```
 /plugin marketplace add maheshaggarwal21/raphael
 /plugin install raphael-brain@raphael
 ```
 
+This installs the plugin, which auto-wires recall into your sessions and adds the
+`/brain` commands and the 10 agents.
+
 That's the whole install. **Your next Claude Code session asks you three questions
 once** (may Raphael learn from your work · contribute scrubbed lessons to the
-community · autopilot or manual) and runs the setup itself. Prefer the terminal?
+community · autopilot or manual) and runs the setup itself — just answer in chat.
+Prefer to set up by hand? Run one of these **in your terminal**:
 
 ```
 raph arise --autopilot            # zero-touch: consent + seed + autopilot in one command
 raph arise --pack --guard         # or the manual (curator) setup — you review everything
 ```
+
+From here on: every `raph …` command in this README runs **in your terminal**;
+everything starting with `/` (like `/brain`) is typed **inside Claude Code**.
 
 `arise --autopilot` seeds your brain with the global brain's curated lessons
 (active immediately — cold-start solved) and turns on the background loop. Run

@@ -8,6 +8,14 @@ right moment. The result: your agent stops repeating mistakes you already paid f
 This manual explains every command: what it does, **when** to reach for it, and how
 to run it. Plain language throughout. Jargon is explained the first time it appears.
 
+**Where commands run — the one rule to remember:**
+
+| Command looks like… | Type it in… |
+|---|---|
+| `raph …` (e.g. `raph status`) | your **terminal** (PowerShell, cmd, bash — any shell) |
+| `/…` (e.g. `/brain`, `/plugin install`) | the **Claude Code chat input** — slash commands |
+| "use the raphael-… agent" | the **Claude Code chat input** — plain words |
+
 Quick vocabulary:
 
 - **Brain** — a folder (`~/.raphael`) holding your lessons, kept in its own git repo.
@@ -67,8 +75,16 @@ raph web              # the console: activity feed, lessons, one-click undo
 
 ## 1. Getting started
 
+### Installing (before any `raph` command exists)
+**In your terminal** (needs Node.js 18+): `npm install -g raphael-brain` — this
+gives you the `raph` CLI. **Then inside Claude Code**, type
+`/plugin marketplace add maheshaggarwal21/raphael` and
+`/plugin install raphael-brain@raphael` as chat input — this wires the hooks,
+agents, and `/brain` commands. Details in §10.
+
 ### `raph arise` — the one-command first run
-**When:** you just installed Raphael and want everything set up in one go.
+**When:** you just installed Raphael and want everything set up in one go
+(the in-chat onboarding runs this for you if you let it).
 **What (autopilot):** records the three permissions, seeds your brain from the
 global brain's curated lessons (active immediately), turns on the background loop.
 **What (manual):** creates the brain, optionally stages the security pack for your
@@ -390,7 +406,9 @@ never merges its own code. "No measurement, no mutation."
 
 ## 10. The Claude Code plugin surface
 
-Installed with two lines:
+Installed with two lines — typed **inside Claude Code as chat input** (they are
+slash commands, not terminal commands; the `raph` CLI from §1 must already be
+installed in your terminal first):
 ```
 /plugin marketplace add maheshaggarwal21/raphael
 /plugin install raphael-brain@raphael
