@@ -557,6 +557,13 @@ compaction (manual or automatic) can never lose progress.
 - v0.2.0 LAUNCHED (owner ran npm publish): registry = 0.2.0/latest; end-user path
   verified from the PUBLIC registry (install -> arise --autopilot -> 26 seeded ->
   doctor healthy). PHASE 17 FULLY COMPLETE. Raphael is zero-touch for strangers today.
+- DOCS PASS for outside users (session 13 round 4, owner ask): README + manual §10 now
+  carry a full AGENTS GUIDE (invoke by name in Claude Code, per-agent what-to-give-it
+  table, recipes, flagship order); manual §2/§4/§11 corrected to the autopilot-era
+  truth (auto full/manual, mode-conditional security, quarantine floor, 3-item network
+  list); handbook updated end to end for v0.2.0 (new 2.18 Autopilot + 2.19 Two brains,
+  Journey A autopilot-first, marketing posts lead with "install once, runs itself",
+  402/40 numbers). 402/402 green.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

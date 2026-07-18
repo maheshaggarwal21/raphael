@@ -101,7 +101,10 @@ and the plugin wiring, and tells you the exact fix for anything wrong.
 
 ## 2. The learning loop (how lessons get made)
 
-The loop is: **mine → distill → review → active**. You are the gate in the middle.
+The loop is: **mine → distill → review → active**. In manual (curator) mode, **you**
+are the gate in the middle — this section is how you work it. On autopilot the same
+loop runs itself after every session (§0), with the machine curator holding the gate;
+these commands still work and still matter when you want to intervene by hand.
 
 ### `raph mine` — read your own history
 **When:** after a few real working sessions in a project, or weekly.
@@ -220,15 +223,21 @@ auto-installed. `raph adopt list` shows the provenance ledger (source, license,
 verdict, what it produced); `raph adopt revoke <id>` undoes an entire adoption in one
 command — staged candidates removed, activated lessons retired, drafts deleted.
 
-### `raph auto` — the auto-approve dial
-**When:** you trust the pipeline enough to skip some clicking.
+### `raph auto` — the auto-approve dial (and the autopilot switch)
+**When:** you want to choose how much clicking you do.
 ```
-raph auto off        # everything waits for you (default)
+raph auto off        # everything waits for you
 raph auto standard   # your OWN mined lessons may activate into a restricted tier
 raph auto wide       # + adopted material too (capped per day)
+raph auto full       # = AUTOPILOT: mode + dial together, the machine curator takes over
+raph auto manual     # back to curator mode — you review everything again
 ```
-Security lessons **always** wait for a human, at every dial setting. That floor is
-enforced in code (`E-AUTOSEC`), not by convention.
+On the plain dial (off/standard/wide), security lessons **always** wait for a human —
+enforced in code (`E-AUTOSEC`), not by convention. At `full` (autopilot), security
+lessons may activate too, but **only** through the machine curator's stricter path:
+a contained reviewer screen with a security addendum, then the canary gate, with
+whole-batch rollback on any failure. Quarantined (injection-suspect) content never
+machine-activates at **any** setting, in any mode.
 
 ### `raph contribute` — share a lesson, on purpose
 **When:** a lesson is good enough to give to a teammate or the community.
@@ -406,10 +415,43 @@ onboarding (the three permission questions, §0).
 before risky changes (deploys, migrations, auth, payments) — complementing the
 automatic *push* of the hooks.
 
-**10 agents** (Planner, Architect, Developer, Reviewer, Debugger, Security, Critique,
-Design, Deployer, Manager) — each wired to consult the brain before acting, with
-4 recipes (debug, review, pre-deploy, security-audit) that chain them. The
-pre-deploy recipe runs the security audit first, always.
+### The 10 agents — who they are and how to use them
+
+The plugin ships ten specialist agents. What makes them different from generic
+personas is the shared **spine** baked into each one, in this order:
+1. **Brain first** — pull the relevant lessons (`raph search`) before doing anything.
+2. **Free checks before paid checks** — linters, grep, git stats cost zero tokens.
+3. **Map, not the whole repo** — read the project map / atlas, open only what's needed.
+4. **Cheap → strong** — sweep with a cheap model, escalate only survivors.
+5. **Write back** — durable findings become `raph note` candidates. Using the
+   agents feeds the brain.
+
+**Invoking one:** ask for it by name in plain words — *"Use the raphael-debugger
+agent on this stack trace"* — or let Claude Code auto-delegate when your request
+matches an agent's description. `/agents` (in Claude Code) lists them.
+
+**What to hand each agent** (the better the input, the better the output):
+
+| Agent | Job | Give it |
+|---|---|---|
+| `raphael-planner` ★ | turns a vague idea into a finalized, buildable spec | the raw idea + constraints (time, stack, budget, must/must-not) |
+| `raphael-architect` ★ | designs a production-grade architecture from a spec | the finalized spec; stack preferences; expected scale |
+| `raphael-developer` | implements in small verifiable diffs, lessons in hand | the plan or task + the files/dirs in scope |
+| `raphael-reviewer` ★ | reviews a diff like a senior engineer new to the codebase | the diff: branch, commit range, or "my uncommitted changes" |
+| `raphael-security` | audits for secrets, injection, authn/authz mistakes | repo path + one line on what the app does |
+| `raphael-debugger` ★ | root-cause finder, production-incident style | the exact error text + reproduction steps/environment |
+| `raphael-design` | UI/UX consistency against your recorded design decisions | the screens/components in question |
+| `raphael-deployer` | pre-ship checks: migrations, env vars, rollback plan | the target platform — it prepares everything and **stops before deploying** |
+| `raphael-critique` | adversarial pass over another agent's output | that output verbatim (it reads only the output + cited evidence) |
+| `raphael-manager` | routes multi-step work to the right specialists | just the goal |
+
+★ flagship — deepest polish, covered by eval scenarios first. From-scratch build
+order: planner → architect → developer (+ design) → reviewer + security →
+deployer, with critique over anything you want double-checked.
+
+**4 recipes** (short playbooks in `plugin/recipes/` the agents follow when you ask
+— *"follow the pre-deploy recipe"*): `debug`, `review`, `pre-deploy`, and
+`security-audit`. Pre-deploy runs the security audit first, always.
 
 ---
 
@@ -420,11 +462,21 @@ pre-deploy recipe runs the security audit first, always.
 2. **Secrets scrubbed twice:** before any model sees mined text, and again on output.
 3. **Lessons are data:** they advise; they cannot command. Canary probes in the eval
    harness re-prove this continuously.
-4. **Security lessons never activate machine-only.** Enforced in code.
-5. **Network:** model calls (subscription CLI or API) and user-initiated, read-only
-   adopt fetches. Nothing else. The brain repo blocks pushes by default.
-6. **Local by default:** everything mined stays on your machine; sharing is
-   per-lesson opt-in (`raph contribute`).
+4. **Security lessons are mode-gated.** In manual (curator) mode they never
+   activate without you — enforced in code (`E-AUTOSEC`). In autopilot they
+   activate only through the machine curator: a stricter reviewer screen, then
+   the canary gate, with whole-batch rollback on failure. **Quarantined**
+   (injection-suspect) content never machine-activates in ANY mode — it expires
+   silently after 30 days.
+5. **Network:** exactly three things — model calls (subscription CLI or API),
+   user-initiated read-only adopt fetches, and the weekly global-brain down-sync
+   (two pinned HTTPS URLs, hash-verified, every lesson still through the
+   chokepoint, local lessons always win). Nothing else. The brain repo blocks
+   pushes by default.
+6. **Local by default:** everything mined stays on your machine unless you granted
+   contribution at install — and even then, bundles are stripped, re-scrubbed,
+   re-validated, staged locally, and only ever *sent* by your own action
+   (`raph contribute`).
 
 Sandbox anything: `RAPHAEL_HOME=<scratch dir> raph <cmd>` runs against a throwaway
 brain, never your real one.

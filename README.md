@@ -56,6 +56,18 @@ raph arise --pack --guard         # or the manual (curator) setup — you review
 (active immediately — cold-start solved) and turns on the background loop. Run
 `raph doctor` any time to check health; `raph pulse` shows the last heartbeat.
 
+### Your first session — what to expect
+
+- **Right after install:** your next Claude Code session shows the three setup
+  questions, once. Answer them (or run `raph arise --autopilot` yourself) and
+  you're done forever.
+- **From then on:** sessions just start with a small block of relevant lessons
+  (and your project's map, once built). You don't run anything.
+- **Wondering if it's on?** `raph status` (one-line picture), `raph why` (what got
+  injected into your last sessions and what it cost), `raph pulse` (what the last
+  background heartbeat learned).
+- **Want it quiet?** `raph off` stops injection instantly; `raph on` resumes.
+
 ## The loop (autopilot)
 
 ```
@@ -75,6 +87,49 @@ In manual mode the same loop runs through your hands: `raph mine` → `raph dist
 → `raph queue/approve`. Add lessons by hand with `raph note`, or seed curated packs
 with `raph pack add security`. Distillation uses your **Claude Code subscription**
 by default (fixed price, no API key, model contained with zero tools).
+
+## The agents — 10 specialists that share your brain
+
+The plugin ships ten ready-made agents. They are not generic personas: every one
+**consults your brain first** (`raph search` for the task's keywords), runs **free
+checks before paid ones** (linters, grep, git — zero tokens), reads the **project
+map instead of the whole repo**, and **writes back** anything durable it learned
+(`raph note`). Using the agents literally feeds the brain — that's the flywheel.
+
+**How to run one — just ask for it by name in Claude Code:**
+
+> "Use the **raphael-reviewer** agent to review my last commit."
+> "Use the **raphael-planner** agent — I want to build a habit tracker."
+
+Claude Code will also pick one automatically when your request matches an agent's
+job description. Run `/agents` in Claude Code to see them all listed.
+
+| Agent | Reach for it when… | What to give it |
+|---|---|---|
+| **raphael-planner** ★ | you have a fuzzy idea and want a sharp, buildable spec | the idea in a few sentences + your constraints (time, stack, must-haves) |
+| **raphael-architect** ★ | the spec is done and you need the technical design | the planner's spec (or your own), stack preferences, expected scale |
+| **raphael-developer** | it's time to write the code | the architect's plan or the concrete task + which files/dirs are in scope |
+| **raphael-reviewer** ★ | before you merge anything | the diff — a branch name, commit, or "review my uncommitted changes" |
+| **raphael-security** | before shipping anything touching auth, payments, or user data | the repo path + one line on what the app does (it scans the rest itself) |
+| **raphael-debugger** ★ | something is broken and you don't know why | the exact error text + how to reproduce it (command, input, environment) |
+| **raphael-design** | the UI feels off or inconsistent | the screens/components to look at + any design decisions you've recorded |
+| **raphael-deployer** | you're about to ship | the target platform; it produces the checklist and **stops** — it never deploys |
+| **raphael-critique** | you want any other agent's output stress-tested | that output, verbatim — it reads only the output and its cited evidence |
+| **raphael-manager** | multi-step work and you don't want to route it yourself | the goal; it picks the specialists and merges their answers |
+
+★ = flagship (deepest polish, covered by eval scenarios). For a from-scratch build
+the natural order is **planner → architect → developer → reviewer + security →
+deployer**, with critique on anything you're unsure about.
+
+**Recipes** — four short playbooks the agents follow, in
+[plugin/recipes/](plugin/recipes/): `debug`, `review`, `pre-deploy` (always runs
+`security-audit` first), `security-audit`. Ask for one in plain words: *"follow the
+pre-deploy recipe for this repo."*
+
+**Slash commands** — guided flows: `/brain` (hub + status), `/brain-learn` (mine +
+distill this project), `/brain-review` (the queue, `1y 2n 3e` batch grammar),
+`/brain-eval` (the ON/OFF proof). On autopilot you rarely need them — they're the
+manual-mode and power-user surface.
 
 ## Beyond the loop
 
@@ -125,8 +180,8 @@ Three products built by Raphael's own autonomous Academy while training itself:
 
 ```
 npm install
-npm test                  # 400+ tests, node:test, no frameworks
-node bin/raph.js help     # the full CLI surface (41 verbs)
+npm test                  # 402 tests, node:test, no frameworks
+node bin/raph.js help     # the full CLI surface (40 verbs)
 ```
 
 Point `RAPHAEL_HOME` at a scratch directory to sandbox any command. CI runs the test

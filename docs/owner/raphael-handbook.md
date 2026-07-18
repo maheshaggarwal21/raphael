@@ -1,6 +1,7 @@
 # The Raphael Handbook
 
-*For Mahesh. Written 2026-07-18, at development-complete. Five parts: the pitch, the
+*For Mahesh. Written 2026-07-18 at development-complete; updated same day for
+v0.2.0 "Autopilot" (live on npm as `raphael-brain`). Five parts: the pitch, the
 features, the user journey, the interview prep, and the launch marketing.*
 
 ---
@@ -29,8 +30,13 @@ over collection**.
    from the web — must pass one validation chokepoint. Schema-checked. No URLs. No
    executable content. Secrets scrubbed twice. There is no second door, and the test
    suite proves it.
-2. **A human gate.** Nothing activates without review. Security-related lessons can
-   *never* be auto-approved — that's enforced in code, not policy.
+2. **A gate on everything.** In manual mode a human reviews every lesson, and
+   security lessons take a heavyweight one-at-a-time path — enforced in code, not
+   policy. In autopilot (the default since v0.2.0) the click is replaced by a
+   *machine curator*: a contained reviewer screen, a canary gate that must pass
+   or the whole batch rolls back byte-identically, and probation confidence with
+   self-retirement. One floor survives every mode: quarantined
+   (injection-suspect) content never machine-activates, period.
 3. **Deterministic retrieval.** Lessons are matched by an explainable scorer
    (keywords, stack, task kind) — you can always ask "why did this fire?" and get a
    real answer. No embedding black box.
@@ -42,6 +48,12 @@ over collection**.
 
 ## The highlight reel
 
+- **Install once, it runs itself.** v0.2.0's autopilot: one install, three
+  questions answered once in-chat, and a budgeted background heartbeat
+  (`raph pulse`) mines, distills, curates, and indexes after every session —
+  silently, fail-open, on the user's existing Claude subscription. New brains
+  are seeded from a curated **global brain** (26 lessons active on day one) that
+  down-syncs weekly, hash-verified; local learning always wins.
 - **It trained itself.** Raphael's "Academy" autonomously built three real, public,
   tested products — repo-keeper (repo health), onedesk (money engine), assay (data
   vetting) — and wrote 11+ lessons from those builds back into its own brain.
@@ -55,7 +67,8 @@ over collection**.
   one-command undo.
 - **A real product surface.** 40 CLI commands, an 8-tab localhost console, a Claude
   Code plugin (hooks, 4 slash commands, a recall skill, 10 specialist agents),
-  a commit guard for secrets, and 358 automated tests.
+  a commit guard for secrets, and 402 automated tests — live on npm as
+  `raphael-brain`, CI-green on Linux + Windows across Node 18/20/22.
 - **Self-governing.** Raphael can propose patches to its own code but can never merge
   them: branch + tests + eval canaries must be green, chokepoint files trigger a
   heavyweight review, and a human always clicks merge.
@@ -186,15 +199,19 @@ nothing.
 
 ## 2.9 The auto-approve dial
 
-**What:** three settings. **Off** (default): everything waits for you. **Standard:**
-your own mined lessons may auto-activate into a restricted tier. **Wide:** adopted
-material may too, with daily caps.
+**What:** four settings. **Off:** everything waits for you. **Standard:** your own
+mined lessons may auto-activate into a restricted tier. **Wide:** adopted material
+may too, with daily caps. **Full:** autopilot — the machine curator takes over the
+whole queue (this is what the default install sets).
 
-**Inside:** the floor is absolute — security lessons always wait for a human,
-enforced by a coded error (`E-AUTOSEC`), and auto-activated lessons are discounted in
-confidence until they prove out.
+**Inside:** on off/standard/wide, security lessons always wait for a human,
+enforced by a coded error (`E-AUTOSEC`). At full, security lessons go only through
+the machine curator's stricter path (reviewer screen with a security addendum +
+canary gate + batch rollback). Quarantined content never auto-activates at any
+setting. All auto-activated lessons are discounted in confidence until they prove
+out, and self-retire if they never help.
 
-**Use:** `raph auto standard`, or Settings in the console.
+**Use:** `raph auto full` / `raph auto manual`, or Settings in the console.
 
 ## 2.10 The Atlas (the project graph)
 
@@ -236,12 +253,21 @@ Company, Guard, Settings.
 
 ## 2.13 The plugin (agents, hooks, slash commands)
 
-**What:** the Claude Code integration. Hooks wire recall automatically; `/brain`,
+**What:** the Claude Code integration. Hooks wire recall automatically (SessionStart
++ per-prompt injection, the atlas nudge, and SessionEnd's autopilot pulse); `/brain`,
 `/brain-learn`, `/brain-review`, `/brain-eval` give guided flows; a `brain-recall`
-skill lets the agent *ask* the brain mid-task; and 10 specialist agents (Planner,
-Architect, Developer, Reviewer, Debugger, Security, Critique, Design, Deployer,
-Manager) each consult the brain before acting, with 4 recipes chaining them
-(pre-deploy always runs the security audit first).
+skill lets the agent *ask* the brain mid-task.
+
+**The 10 agents:** Planner, Architect, Developer, Reviewer, Debugger, Security,
+Critique, Design, Deployer, Manager — each consults the brain before acting, runs
+free checks before spending tokens, reads the map instead of the repo, and writes
+findings back as `raph note` candidates. Users invoke them by name in plain words
+("use the raphael-reviewer agent on my last commit") or let Claude Code
+auto-delegate. What to hand each one — the idea for Planner, the spec for
+Architect, the diff for Reviewer, the exact error + repro for Debugger, another
+agent's output for Critique — is tabled in the README and manual §10. 4 recipes
+chain them (pre-deploy always runs the security audit first), and Deployer
+structurally stops before any actual deploy.
 
 ## 2.14 The Academy (how Raphael trains itself)
 
@@ -286,27 +312,94 @@ silently "fixing." There is deliberately no `--all` — sharing is a per-lesson 
 
 **Use:** `raph contribute <slug> --out ./to-share`.
 
+## 2.18 Autopilot (v0.2.0 — the default)
+
+**What:** install once, answer three questions once, and Raphael runs the entire
+learning loop itself. The user only ever notices fewer tokens, better code, and one
+short digest line a week.
+
+**Inside:** a SessionEnd hook fires `raph pulse --async` — a detached, budgeted,
+fail-open heartbeat (it can never block or slow a session). Each pulse mines the
+finished session (zero tokens), distills under caps (8 episodes/pulse, 3 distill
+runs/day), passes every candidate — security included — through the **machine
+curator** (contained reviewer screen, fail-closed; canary gate; whole-batch
+byte-identical rollback on any failure), syncs the global brain weekly, refreshes
+the project atlas when the repo moved, and self-retires machine lessons that never
+help. Every activation is a git commit in the brain repo, so everything is
+undoable. Curator (manual) mode remains fully supported via `raph auto manual`.
+
+**Use:** nothing — that's the point. `raph pulse` shows the last heartbeat;
+`raph web` shows and undoes everything.
+
+## 2.19 The two brains (global + local)
+
+**What:** the **global brain** lives in the GitHub repo — a curated, owner-reviewed
+lesson set (26 at v1). Every new install seeds its **local brain** as a copy of it
+(active immediately — no cold start), then learns locally on top.
+
+**Inside:** the seed ships inside the npm package (zero network at install). A
+weekly down-sync fetches exactly two pinned HTTPS URLs (manifest + bundle),
+verifies per-lesson sha256 hashes, and still routes every lesson through the
+chokepoint — local lessons always win conflicts. Upstream is strictly opt-in:
+with the second install permission granted, non-curated active lessons are
+stripped, re-scrubbed, re-validated, and staged as a local bundle — *sending* is
+always the user's own action (`raph contribute send`). Deny the permission and
+nothing ever leaves the device.
+
 ---
 
 # Part 3 — A new user's journey, step by step
 
-*Meet Priya, a full-stack developer who uses Claude Code daily. Here is her first
-month with Raphael. Every point where a human must act is marked 🧑 — this is a
-human-in-the-loop tool by design.*
+## Journey A — the default (autopilot): three minutes, then nothing
 
-## Day 1 — install (10 minutes)
+*This is what almost every user should experience. Meet Arjun, a developer who
+just heard about Raphael.*
+
+1. 🧑 `npm install -g raphael-brain`, then in Claude Code:
+   `/plugin marketplace add maheshaggarwal21/raphael` and
+   `/plugin install raphael-brain@raphael`.
+2. 🧑 His next Claude Code session opens with three questions, asked exactly once:
+   may Raphael learn from his work (required) · contribute scrubbed lessons to the
+   community brain (optional) · autopilot or manual (autopilot recommended). He
+   answers, the agent runs `raph arise --autopilot` for him, and **26 curated
+   lessons from the global brain are active immediately** — the brain is useful
+   before it has seen a single line of his code.
+3. That's the last thing he ever *has* to do. He codes normally. After each
+   session, a background pulse mines, distills, and machine-curates; sessions
+   start with a small block of relevant lessons and the project map; when he
+   greps, a one-time nudge points him at the atlas.
+4. About once a week he sees one line: *"Raphael this week: learned 8 lessons
+   (1 security); recalled into 6 sessions for ~1,400 tokens."* If he's ever
+   curious or suspicious: `raph why`, `raph pulse`, or `raph web` — where one
+   click undoes anything the curator did.
+5. 🧑 When he wants more, he asks for it by name: *"use the raphael-reviewer agent
+   on this branch"*, *"use the raphael-debugger agent on this stack trace"*,
+   *"follow the pre-deploy recipe."* The agents read his brain first, so their
+   advice carries his own history.
+
+**Human actions in month one: the install and the three answers.** Everything
+else is optional curiosity.
+
+## Journey B — manual (curator) mode, for those who want control
+
+*Meet Priya, a full-stack developer who prefers to review everything herself.
+Every point where a human must act is marked 🧑 — in this mode, Raphael is
+deliberately human-in-the-loop.*
+
+### Day 1 — install (10 minutes)
 
 1. 🧑 Priya installs the CLI: `npm install -g raphael-brain`.
 2. 🧑 In Claude Code she runs two lines:
    `/plugin marketplace add maheshaggarwal21/raphael` then
    `/plugin install raphael-brain@raphael`.
-3. 🧑 She runs `raph arise --pack --guard`. This creates her brain at `~/.raphael`,
-   stages the 26-lesson security pack for review, installs the commit guard in her
-   current repo, and prints what to do next. Nothing has activated yet — the pack
-   arrived as *candidates*.
+3. 🧑 At the three-question onboarding she picks **manual**, then runs
+   `raph arise --pack --guard`. This creates her brain at `~/.raphael`, stages the
+   26-lesson security pack for review, installs the commit guard in her current
+   repo, and prints what to do next. Nothing has activated yet — the pack arrived
+   as *candidates*.
 4. `raph doctor` says healthy.
 
-## Day 1, ten minutes later — the first review session
+### Day 1, ten minutes later — the first review session
 
 5. 🧑 She runs `raph web`. The console opens. The Review tab shows 26 candidates.
 6. 🧑 She batch-approves the ones she agrees with. For each *security* candidate, the
@@ -320,7 +413,7 @@ human-in-the-loop tool by design.*
    client-side prices fires. She runs `raph why` and sees exactly which keywords
    matched and that it cost 130 tokens.
 
-## Week 1 — the brain starts learning *her*
+### Week 1 — the brain starts learning *her*
 
 8. She works normally. Nothing to do — Raphael's hooks are passive and budgeted.
 9. 🧑 Friday, she runs `/brain-learn` (or `raph mine --yes && raph distill --yes`).
@@ -332,7 +425,7 @@ human-in-the-loop tool by design.*
 11. Monday, the agent avoids the exact Prisma migration mistake it made last week.
     That's the product working.
 
-## Week 2 — outside knowledge and the graph
+### Week 2 — outside knowledge and the graph
 
 12. 🧑 She finds a great blog post on webhook reliability. Instead of bookmarking it:
     `raph adopt https://…`. The gauntlet fetches, scrubs, license-checks, and the
@@ -345,7 +438,7 @@ human-in-the-loop tool by design.*
 14. The session-start hook now includes a tiny atlas digest, and when she greps
     manually, a one-time nudge reminds her the graph already knows.
 
-## Week 3 — trust grows, clicking shrinks
+### Week 3 — trust grows, clicking shrinks
 
 15. 🧑 Comfortable with the pipeline's quality, she sets `raph auto standard`: her
     *own mined* lessons may now activate into a restricted tier without a click.
@@ -354,7 +447,7 @@ human-in-the-loop tool by design.*
 16. 🧑 She records a settled decision: `raph decide "We use Postgres, not MongoDB"
     --why "team expertise + relational data"`. Agents stop re-proposing Mongo.
 
-## Month 1 — proof and upkeep
+### Month 1 — proof and upkeep
 
 17. 🧑 She runs `/brain-eval` (`raph eval run --quick`). Same tasks, brain ON vs
     OFF, real agents: the ON arm avoids the seeded mistakes; the canary gate (which
@@ -366,12 +459,13 @@ human-in-the-loop tool by design.*
     exports a scrubbed, portable file. She chose *this one lesson* to share —
     nothing else ever leaves her machine.
 
-**Where humans are required, in summary:** installing; consenting to mining per
-project; every approve/reject/edit; anything security-flavored (always, one at a
-time, after reading); adoption reviews and skill-draft installs; turning the
-auto-approve dial; retiring lessons; sharing lessons; and — if she ever runs the
-Academy — every deploy, sign-in, or spend. Everything else runs itself, quietly and
-under budget.
+**Where humans are required in manual mode, in summary:** installing; consenting to
+mining per project; every approve/reject/edit; anything security-flavored (always,
+one at a time, after reading); adoption reviews and skill-draft installs; turning
+the auto-approve dial; retiring lessons; sharing lessons; and — in either mode —
+every deploy, sign-in, or spend. On autopilot (Journey A) that list shrinks to:
+installing, the three answers, and deploys/sign-ins/spends. Sending contribution
+bundles is a human click in both modes.
 
 ---
 
@@ -389,8 +483,9 @@ read session history, a distiller that calls a contained model through four qual
 gates, a human review queue, a deterministic retrieval engine with hard token
 budgets, and surfaces — a 40-verb CLI, a localhost web console, and a Claude Code
 plugin. Storage is plain markdown in a git repo; the only network access is model
-calls and user-initiated read-only fetches. *(Probing: can you describe your own
-system crisply, and did it have a real design center?)*
+calls, user-initiated read-only fetches, and a weekly hash-verified down-sync of
+the curated community seed from two pinned URLs. *(Probing: can you describe your
+own system crisply, and did it have a real design center?)*
 
 **Q2. Why deterministic keyword retrieval instead of embeddings? Isn't that less
 powerful?**
@@ -427,7 +522,7 @@ failure.)*
 
 **Q5. How do you test a system whose core behavior involves an LLM?**
 **A.** Separate the deterministic from the stochastic. Everything deterministic —
-gates, scrubbing, validation, ranking, state machines — is pure-function tested: 358
+gates, scrubbing, validation, ranking, state machines — is pure-function tested: 402
 node:test cases, no mocking frameworks. The model boundary is one module, so tests
 inject fake callers. For the stochastic part, the eval harness runs real agents on
 seeded tasks, brain ON vs OFF, with Wilson confidence intervals, plus a 100%-pass
@@ -458,8 +553,11 @@ community packs need moderation and a registry — the same review discipline at
 community scale. Second, warm-resident injection: the cold hook is ~300–390ms on
 Windows; fine once per session, but a daemon would make per-prompt recall free.
 Third, retrieval at corpus scale: past a few thousand lessons I'd add an index layer
-— still explainable, maybe hybrid. What I *wouldn't* change: the human gate on
-security, ever. *(Probing: can you see beyond v1 without gold-plating v1?)*
+— still explainable, maybe hybrid. What I *wouldn't* change: the quarantine floor.
+Even after we shipped autopilot — where a machine curator with a canary gate and
+batch rollback now handles approvals, security included — content that looks like a
+prompt-injection attempt never machine-activates, in any mode. That floor is
+structural. *(Probing: can you see beyond v1 without gold-plating v1?)*
 
 ## Behavioral questions
 
@@ -519,21 +617,26 @@ longitudinal numbers is still running. I'd rather name that than oversell it.
 > relevant ones back into your agent's context at exactly the right moment.
 >
 > What makes it different is the discipline, not the demo:
+> ▪ Zero-touch — install once, answer three questions once. It mines, distills,
+> curates, and injects on its own; you notice fewer tokens and better code, plus
+> one digest line a week.
 > ▪ One validation chokepoint — every lesson is schema-checked, secret-scrubbed,
-> URL-free. No exceptions, including imports.
-> ▪ Human-gated — nothing activates without review; security lessons can never be
-> auto-approved (enforced in code).
+> URL-free. No exceptions, including imports and the community seed.
+> ▪ Trust-gated — a machine curator with a contained reviewer screen, a canary
+> gate, and full-batch rollback (or classic manual review, your choice);
+> injection-suspect content never auto-activates, in any mode.
 > ▪ Budgeted + explainable — ≤1,200 tokens/session, and `raph why` shows exactly
 > what fired and why. No embedding black box.
 > ▪ Measured — a built-in eval runs identical tasks brain-ON vs brain-OFF. Its
 > deterministic code graph answered "where does this error come from?" with 147.9×
 > fewer tokens than grep-and-read.
 > ▪ Self-trained — it autonomously built three real, public, tested products and
-> learned from its own builds.
+> learned from its own builds. And it ships 10 specialist agents (planner,
+> architect, reviewer, debugger…) that all read the brain before acting.
 >
-> Local-first, MIT-licensed, 358 tests, zero-dependency core (Node + two libraries).
+> Local-first, MIT-licensed, 402 tests, zero-dependency core (Node + two libraries).
 >
-> `npm install -g raphael-brain` → `raph arise`
+> `npm install -g raphael-brain` → `raph arise --autopilot`
 >
 > I'd genuinely value feedback from people building with coding agents — what would
 > make you trust an always-on memory layer?
@@ -549,14 +652,15 @@ longitudinal numbers is still running. I'd rather name that than oversell it.
 > Single. Day.
 >
 > So I built Raphael — a brain that:
-> 🔁 learns from your real coding sessions
-> ✅ asks YOU before it believes anything
+> 🔁 learns from your real coding sessions — automatically, after every session
+> 🧠 starts smart: 26 curated lessons active the moment you install
 > 🎯 whispers the right lesson at the right moment
 > 🔒 keeps everything on your machine
 >
-> It even taught itself by building 3 real apps. Autonomously. 🤯
+> Install it once. Forget it exists. Watch your agent stop repeating last
+> Tuesday's bug. It even taught itself by building 3 real apps. Autonomously. 🤯
 >
-> One command: `raph arise` ✨
+> One command: `raph arise --autopilot` ✨
 > Link in bio. Free + open source.
 >
 > #coding #ai #developer #programmerlife #techtok #buildinpublic #opensource
@@ -567,16 +671,17 @@ longitudinal numbers is still running. I'd rather name that than oversell it.
 
 > your AI coding agent forgets everything between sessions.
 >
-> so I built it a brain.
+> so I built it a brain. one that runs itself.
 >
-> Raphael mines your real sessions → distills mistakes into reviewed lessons →
-> injects them back at the right moment. local-first, human-gated, ≤1.2k
-> tokens/session, fully explainable retrieval.
+> install once, answer 3 questions once. Raphael mines your real sessions →
+> distills mistakes into lessons → machine-curates them (canary-gated, rollback
+> on failure) → injects them back at the right moment. local-first, ≤1.2k
+> tokens/session, fully explainable retrieval, one digest line a week.
 >
 > it even trained itself — autonomously shipping 3 real products and learning from
 > its own builds.
 >
-> MIT licensed. `npm i -g raphael-brain && raph arise`
+> MIT licensed. `npm i -g raphael-brain && raph arise --autopilot`
 >
 > 🧵 how the six-layer trust pipeline works ↓
 >
@@ -593,14 +698,17 @@ link.)*
 > think about [topic].
 >
 > I just open-sourced something I think sits exactly in your lane: **Raphael**, a
-> learning layer ("brain") for AI coding agents. It mines your real sessions,
-> distills mistakes into lessons you review, and injects the relevant ones back —
-> budgeted, explainable, local-first, with the security-sensitive parts always
-> human-gated in code. It also trained itself by autonomously building three real
-> public products, which makes for a fun story.
+> learning layer ("brain") for AI coding agents. Install it once and it runs
+> itself: it mines your real sessions, distills mistakes into lessons, curates
+> them through a canary-gated machine reviewer (or full manual review if you
+> prefer), and injects the relevant ones back — budgeted, explainable,
+> local-first, with injection-suspect content never auto-activated. It also
+> trained itself by autonomously building three real public products, which makes
+> for a fun story.
 >
-> No ask beyond: would you try it for a week? `npm i -g raphael-brain && raph arise`
-> — two minutes to a working setup. If it earns a mention, great; if it doesn't,
+> No ask beyond: would you try it for a week?
+> `npm i -g raphael-brain && raph arise --autopilot` — two minutes to a working
+> setup, 26 curated lessons active immediately, then nothing to manage. If it earns a mention, great; if it doesn't,
 > your blunt criticism would honestly be just as valuable — there's a built-in eval
 > (`raph eval`) so claims can be checked, not vibed.
 >
