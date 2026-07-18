@@ -21,14 +21,61 @@ Quick vocabulary:
 
 ---
 
+## 0. Autopilot — the default way to run Raphael
+
+Install once, answer three questions once, and Raphael runs itself. This is the
+recommended mode for almost everyone.
+
+### The three questions (asked once, in your first chat session)
+The first Claude Code session after installing the plugin, the agent asks you:
+1. **May Raphael learn from your coding sessions on this machine?** (required —
+   this is the whole point; "no" leaves Raphael dormant)
+2. **Contribute your anonymized, scrubbed lessons to the community brain?**
+   (optional — nothing ever leaves your machine without this grant)
+3. **Autopilot or manual?** (autopilot recommended)
+It then runs `raph arise --autopilot [--contribute]` for you. Never asks again.
+
+### What autopilot does after every session (`raph pulse`)
+A background heartbeat, budgeted and fail-open — it can never block or slow you:
+- **mines** the session you just finished (zero tokens, incremental)
+- **distills** episodes into candidate lessons (your Claude subscription,
+  capped at 8 episodes/pulse and 3 distill runs/day)
+- **machine-curates**: every candidate — security included — passes a contained
+  reviewer screen, then the whole batch faces the canary gate (the chokepoint
+  canaries must still block + the index must rebuild) or it ALL rolls back
+- **syncs the global brain** weekly (new curated lessons flow in, hash-verified;
+  your local lessons always win any conflict)
+- **stages a contribution bundle** (only with grant #2, weekly, local-only —
+  sending is always your own click)
+- **refreshes the project atlas** when the repo changed (zero tokens)
+- **self-retires** machine-activated lessons that never help (probation)
+
+### What you see
+One short line, at most once a week, only when something happened:
+> Raphael this week: learned 12 lessons (2 security); recalled into 9 sessions
+> for ~2,100 tokens total. Inspect or undo anything: raph web.
+
+Useful verbs while on autopilot:
+```
+raph pulse            # the last heartbeat: what ran, what it learned
+raph auto             # current mode + dial
+raph auto manual      # step down to curator mode (you review everything)
+raph web              # the console: activity feed, lessons, one-click undo
+```
+
+---
+
 ## 1. Getting started
 
 ### `raph arise` — the one-command first run
 **When:** you just installed Raphael and want everything set up in one go.
-**What:** creates the brain, optionally seeds the security lesson pack and installs the
-commit guard, then prints the plugin wiring steps and your first five minutes.
+**What (autopilot):** records the three permissions, seeds your brain from the
+global brain's curated lessons (active immediately), turns on the background loop.
+**What (manual):** creates the brain, optionally stages the security pack for your
+review and installs the commit guard, then prints your first five minutes.
 ```
-raph arise --pack --guard     # brain + 26 security lessons to review + commit guard
+raph arise --autopilot                # zero-touch (add --contribute to share up)
+raph arise --pack --guard             # manual: 26 security lessons to review + guard
 ```
 
 ### `raph init` — create the brain
@@ -343,7 +390,11 @@ Installed with two lines:
 **Hooks (automatic):** SessionStart + UserPromptSubmit run `raph inject` — recall
 with the budgets and envelopes described in §3. A PreToolUse nudge fires once per
 session when you grep/search a project that has an atlas built: "the graph already
-knows — try `raph atlas where`."
+knows — try `raph atlas where`." SessionEnd runs `raph pulse --async` — the
+autopilot heartbeat (§0): it returns in milliseconds and does the mining,
+distilling, curating, and atlas upkeep in a detached background process. On a
+fresh install, the very first SessionStart instead delivers the one-time
+onboarding (the three permission questions, §0).
 
 **Slash commands:**
 - `/brain` — the hub: onboarding on first run, status + next best action after.

@@ -48,10 +48,12 @@ export default async function pulse(args) {
       const project = path.resolve(projectArg ?? payload.cwd ?? process.cwd());
       mkdirSync(p.logs(), { recursive: true });
       const fd = openSync(path.join(p.logs(), 'pulse.log'), 'a');
+      // No cwd option on purpose: the project travels via --project, and a
+      // bad/vanished cwd would make the detached child die SILENTLY (spawn
+      // ENOENT) — found by the 17.8 outside-user test.
       const child = spawn(process.execPath, [raphBin(), 'pulse', '--run', '--project', project], {
         detached: true,
         stdio: ['ignore', fd, fd],
-        cwd: project,
         env: process.env,
         windowsHide: true
       });

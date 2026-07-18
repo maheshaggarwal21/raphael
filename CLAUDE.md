@@ -519,6 +519,36 @@ compaction (manual or automatic) can never lose progress.
   (existing contribute pipeline; v0 staged+one-click send, v1 owner ingest endpoint ->
   submission PRs owner curates; invariant #6 amendment: opt-in at install), 17.8 flip+
   e2e+v0.2.0 (~8 sessions). Still awaiting owner go to build.
+- PHASE 17 BUILT END TO END (session 13 round 3, owner go "build it end to end... test
+  from other user perspective"). ALL EIGHT MILESTONES SHIPPED IN ONE SESSION, 402/402
+  tests (358 -> 402), v0.2.0:
+  17.1 mode+consent substrate (getMode/hasConsent/setConsentScope; dial FULL; `raph auto
+  full` = autopilot on; §11.13 written; BONUS: fixed pre-existing auto.js level-parse bug).
+  17.2 machine curator (lib/curator.js: reviewer screen fail-closed + security addendum,
+  tier 'machine' [schema enum + only-writer], canary gate w/ whole-batch byte-identical
+  rollback, quarantine floor + 30-day sweepQuarantine, probation confidence, shared cap;
+  distill/adopt call curateStaged).
+  17.3 `raph pulse` (lib/pulse.js + SessionEnd hook: --async detached spawn -> logs/
+  pulse.log; lock w/ stale steal; budget 8 episodes/pulse + 3 distill runs/day; every
+  step fail-open; probationRetire machine/auto tiers only, max 3).
+  17.4 atlas-in-pulse (lib extraction, gitHead stamped, refreshAtlasIfStale;
+  live: 186 files, 116 cache-reused, 0 tokens).
+  17.5 onboarding + digest (one-time onboarding envelope w/ marker [3 permissions asked
+  in-chat -> arise], weeklyDigestBlock <=150 tok / 7-day throttle / silent-empty;
+  arise --autopilot [--contribute] [--guard]).
+  17.6 global brain (global-brain/ lessons.json 26 fixed-id lessons + manifest v1
+  per-lesson sha256 [EOL-proof]; seedGlobalBrain zero-network from the npm package —
+  fresh install = 26 active curated in one command; syncGlobalBrain weekly, 2 pinned
+  URLs, local wins; invariant #5c in CLAUDE.md).
+  17.7 contribution bundles (permission #2 gate; eligible = active non-curated
+  unbundled; export pipeline per lesson, failures skipped never raw; stage-only, no
+  network in pulse; `raph contribute bundle|send`; digest mentions).
+  17.8 flip+docs+e2e (README/manual/hooks.md rewritten for autopilot; bare `arise`
+  stays manual ON PURPOSE — a CLI default must never grant consent silently, the
+  plugin onboarding is the autopilot funnel; OUTSIDE-USER E2E from a clean npm prefix
+  + packed tarball verified the entire journey and CAUGHT a real bug: spawn
+  cwd=project killed the detached pulse child silently on bad paths — cwd removed).
+  Mode default for existing brains unchanged (curator) until they run arise/auto full.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

@@ -47,6 +47,16 @@ Then run `/brain` for the first-five-minutes setup. Nothing else to wire.
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/Mahesh/Desktop/Projects/raphael/bin/raph.js pulse --async"
+          }
+        ]
+      }
     ]
   }
 }

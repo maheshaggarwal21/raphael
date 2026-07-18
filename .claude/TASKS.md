@@ -829,11 +829,23 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       endpoint deferred until the owner deploys it (recorded). `raph contribute
       bundle|send` (send = list bundles + the GitHub issue submission path; sending is
       the user's browser act). Weekly digest mentions a staged bundle. +4 tests.
-- [ ] 17.8 Flip + docs + e2e: autopilot default for fresh installs (existing brains keep
-      mode), README/manual rewritten around "install and forget", full live loop verified
-      (session -> pulse -> active lesson -> next-session injection -> digest; seed ->
-      local learn -> bundle staged), v0.2.0. Seed half of 17.6 lands BEFORE this so new
-      installs start from the global brain, not empty.
+- [x] 17.8 SHIPPED (session 13, 402/402): flip + docs + OUTSIDE-USER e2e + v0.2.0.
+      Docs: README rewritten around "install and forget" (autopilot lead, global brain,
+      machine curator, security model updated to the mode-conditional truth); manual.md
+      NEW §0 "Autopilot — the default way to run Raphael" (three questions, what pulse
+      does, what you see) + §10 hooks updated; docs/hooks.md manual fallback + SessionEnd.
+      Autopilot-default POLICY: the plugin onboarding funnel recommends+defaults to
+      autopilot; bare `raph arise` stays manual ON PURPOSE (a CLI default must never
+      grant consent silently — consent is always an explicit word). OUTSIDE-USER E2E
+      (clean npm prefix, installed from the packed 0.2.0 tarball, sandbox HOME, exactly
+      a stranger's path): version/doctor -> first session-start = onboarding envelope,
+      second = silent (once-ever) -> arise --autopilot --contribute = 3 permissions +
+      26 seeded + doctor healthy -> next session-start = real recall envelope ->
+      SessionEnd pulse --async w/ real Windows cwd = detached child ran (mine/atlas/
+      event/log) -> weekly digest appeared with honest numbers -> contribute send clean.
+      E2E CAUGHT + FIXED a real bug: spawn cwd=project made the detached child die
+      SILENTLY on a bad/nonexistent path (spawn ENOENT swallowed by fail-open) — cwd
+      option removed, project travels via --project only. package.json 0.2.0.
 Onboarding = THREE permissions in-chat (§2.2 of the vision doc): (1) learn from my work
 [COMPULSORY, includes down-sync], (2) contribute bundles to the global brain [OPTIONAL],
 (3) autopilot/manual [autopilot default + recommended]. Two usage surfaces, same feeding:
