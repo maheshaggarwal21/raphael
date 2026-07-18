@@ -45,16 +45,22 @@ npm install -g raphael-brain        # or, from GitHub: npm install -g maheshagga
 
 This installs the `raph` CLI — the engine. Check it worked: `raph version`.
 
-**Step 2 — inside Claude Code** (open Claude Code and type these as chat input —
-they are slash commands, not shell commands):
+**Step 2 — also in your terminal** (the `claude` CLI comes with Claude Code):
 
 ```
-/plugin marketplace add maheshaggarwal21/raphael
-/plugin install raphael-brain@raphael
+claude plugin marketplace add maheshaggarwal21/raphael
+claude plugin install raphael-brain@raphael
 ```
 
 This installs the plugin, which auto-wires recall into your sessions and adds the
-`/brain` commands and the 10 agents.
+`/brain` commands and the 10 agents. Verify with `claude plugin list` — you should
+see `raphael-brain` enabled.
+
+> Using Claude Code **in a terminal**? You can type the same two lines as
+> `/plugin marketplace add …` and `/plugin install …` in the chat instead — same
+> result. The `/plugin` dialog is **not** available in the desktop app or web,
+> which is why the `claude plugin …` terminal commands above are the reliable
+> path everywhere.
 
 That's the whole install. **Your next Claude Code session asks you three questions
 once** (may Raphael learn from your work · contribute scrubbed lessons to the

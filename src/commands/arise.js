@@ -62,9 +62,9 @@ That's it — you're done. Raphael now runs itself:
   · once a week, one short line reports what it learned — raph web shows
     everything and can undo anything in one click
 
-Wire the Claude Code plugin if you haven't:
-  /plugin marketplace add maheshaggarwal21/raphael
-  /plugin install raphael-brain@raphael
+Wire the Claude Code plugin if you haven't (run in this terminal):
+  claude plugin marketplace add maheshaggarwal21/raphael
+  claude plugin install raphael-brain@raphael
 
 Prefer to review lessons yourself? raph auto manual`);
     return 0;
@@ -80,9 +80,9 @@ Prefer to review lessons yourself? raph auto manual`);
   console.log(`
 Next steps:
 
-  1. Wire the Claude Code plugin (auto-recall + /brain commands):
-       /plugin marketplace add maheshaggarwal21/raphael
-       /plugin install raphael-brain@raphael
+  1. Wire the Claude Code plugin (auto-recall + /brain commands — run in this terminal):
+       claude plugin marketplace add maheshaggarwal21/raphael
+       claude plugin install raphael-brain@raphael
 
   2. First five minutes:
        raph pack add security    seed 26 reviewed security lessons (skip if you used --pack)

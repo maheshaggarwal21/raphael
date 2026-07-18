@@ -13,7 +13,8 @@ to run it. Plain language throughout. Jargon is explained the first time it appe
 | Command looks like… | Type it in… |
 |---|---|
 | `raph …` (e.g. `raph status`) | your **terminal** (PowerShell, cmd, bash — any shell) |
-| `/…` (e.g. `/brain`, `/plugin install`) | the **Claude Code chat input** — slash commands |
+| `/…` (e.g. `/brain`) | the **Claude Code chat input** — slash commands |
+| `claude plugin …` | your **terminal** — Claude Code's own CLI (works even where `/plugin` doesn't) |
 | "use the raphael-… agent" | the **Claude Code chat input** — plain words |
 
 Quick vocabulary:
@@ -76,11 +77,12 @@ raph web              # the console: activity feed, lessons, one-click undo
 ## 1. Getting started
 
 ### Installing (before any `raph` command exists)
-**In your terminal** (needs Node.js 18+): `npm install -g raphael-brain` — this
-gives you the `raph` CLI. **Then inside Claude Code**, type
-`/plugin marketplace add maheshaggarwal21/raphael` and
-`/plugin install raphael-brain@raphael` as chat input — this wires the hooks,
-agents, and `/brain` commands. Details in §10.
+Both steps run **in your terminal** (needs Node.js 18+):
+`npm install -g raphael-brain` gives you the `raph` CLI; then
+`claude plugin marketplace add maheshaggarwal21/raphael` and
+`claude plugin install raphael-brain@raphael` wire the hooks, agents, and
+`/brain` commands into Claude Code. Details (and the in-chat `/plugin`
+alternative for terminal sessions) in §10.
 
 ### `raph arise` — the one-command first run
 **When:** you just installed Raphael and want everything set up in one go
@@ -406,13 +408,16 @@ never merges its own code. "No measurement, no mutation."
 
 ## 10. The Claude Code plugin surface
 
-Installed with two lines — typed **inside Claude Code as chat input** (they are
-slash commands, not terminal commands; the `raph` CLI from §1 must already be
-installed in your terminal first):
+Installed with two lines **in your terminal** (the `raph` CLI from §1 should
+already be installed):
 ```
-/plugin marketplace add maheshaggarwal21/raphael
-/plugin install raphael-brain@raphael
+claude plugin marketplace add maheshaggarwal21/raphael
+claude plugin install raphael-brain@raphael
 ```
+Verify with `claude plugin list`. If you use Claude Code **in a terminal**, the
+in-chat equivalents `/plugin marketplace add …` and `/plugin install …` do the
+same thing — but the `/plugin` dialog does not exist in the desktop or web app,
+so the `claude plugin …` terminal commands are the path that works everywhere.
 
 **Hooks (automatic):** SessionStart + UserPromptSubmit run `raph inject` — recall
 with the budgets and envelopes described in §3. A PreToolUse nudge fires once per

@@ -2,11 +2,13 @@
 
 **Preferred: install the plugin.** The Raphael plugin (`plugin/`) registers these hooks
 automatically via `plugin/hooks/hooks.json` — install the CLI (`npm install -g
-maheshaggarwal21/raphael`) so `raph` is on PATH, then add the plugin in Claude Code:
+maheshaggarwal21/raphael`) so `raph` is on PATH, then add the plugin **in your
+terminal** (the in-chat `/plugin` command only exists in terminal Claude Code
+sessions; these work everywhere):
 
 ```
-/plugin marketplace add maheshaggarwal21/raphael
-/plugin install raphael-brain@raphael
+claude plugin marketplace add maheshaggarwal21/raphael
+claude plugin install raphael-brain@raphael
 ```
 
 Then run `/brain` for the first-five-minutes setup. Nothing else to wire.
