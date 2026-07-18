@@ -1,6 +1,6 @@
 {
   "name": "raphael-brain",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A learning layer for AI coding agents. Distills lessons from your real projects and injects the relevant ones back into agent context at the right moment — advisory data, never commands.",
   "author": { "name": "Mahesh Aggarwal" },
   "homepage": "https://github.com/maheshaggarwal21/raphael",
