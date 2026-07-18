@@ -584,6 +584,12 @@ compaction (manual or automatic) can never lose progress.
   enabled on the owner's machine). All docs + arise.js output now lead with `claude
   plugin …`; never document /plugin as the primary path again. arise.js text change
   ships with the next npm patch (registry 0.2.0 still prints the old lines).
+- GUARD AUTO-INSTALL (session 13 round 6, owner ask): pulse step 6c = ensureGuard()
+  (lib/guard.js) — on autopilot, the first session end in any consented git repo
+  installs the pre-commit secret hook automatically (foreign hooks never clobbered;
+  opt-out autopilot.auto_guard:false). 406/406, live-smoked. Version bumped to 0.2.2
+  (0.2.1 published earlier same day: claude-plugin install path + contribute-default
+  + console Settings); tag v0.2.2 + GitHub release at the owner's next npm publish.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
