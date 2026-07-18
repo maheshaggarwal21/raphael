@@ -34,8 +34,8 @@ only ones users would actually keep. That is the flaw.
 
 ## 2. The target experience (the whole spec in four lines)
 
-1. Install once. One consent screen ("Can Raphael learn from my projects and manage
-   its lessons itself?"). Answer yes. Done forever.
+1. Install once. ONE consent screen with THREE questions (see §2.2). Answer. Done
+   forever.
 2. The user codes normally. Raphael mines, distills, screens, approves, indexes, and
    injects — silently, in the background, on the user's existing subscription.
 3. Once a week, one small line appears: "Raphael: 12 lessons learned, ~34k recall
@@ -44,6 +44,78 @@ only ones users would actually keep. That is the flaw.
    approval; undo replaces permission.
 
 Principle: **ask once, act always, show weekly, undo anytime.**
+
+### 2.1 The two-brain model (owner spec, 2026-07-18 round 2)
+
+There are TWO brains, not one:
+
+- **GLOBAL BRAIN** — lives on GitHub, owned and curated by the owner. It is the
+  distilled, reviewed, public lesson set (today's ancestor: the 26-lesson security
+  pack + the adopted packs). The owner upgrades it over time. Every lesson in it is
+  tier=curated and has passed human review — it is the trusted seed.
+- **LOCAL BRAIN** — on each user's machine (~/.raphael). At install it starts as a
+  COPY of the global brain. From then on it learns locally from that user's real
+  work. It is private by default (invariant #6).
+
+Flows between the two:
+
+```
+            seed at install + occasional updates (down-sync)
+   GLOBAL  ──────────────────────────────────────────────────▶  LOCAL
+   BRAIN   ◀──────────────────────────────────────────────────  BRAIN
+            optional contribution bundles (up-sync, permission #2 only)
+```
+
+- **Down-sync**: the local brain occasionally pulls new global lessons. Delivery is
+  version-stamped; every incoming lesson STILL passes the chokepoint + machine-
+  curator dedupe against local lessons (a global lesson never overwrites or dupes a
+  local one). Mechanism: (a) npm package updates carry the current global snapshot
+  (npm integrity covers it), and (b) pulse may check the pinned global-brain
+  manifest on GitHub (bounded HTTPS GET, hash-verified) so users who never run
+  `npm update` still stay current. (b) is a NEW background fetch → invariant #5c
+  amendment, scoped to exactly one pinned owner-controlled URL, covered by the
+  install consent.
+- **Up-sync (contribution)**: ONLY if the user granted permission #2. New locally-
+  learned lessons are occasionally batched into a BUNDLE — each lesson goes through
+  the existing contribute pipeline first (strip project/paths/evidence refs,
+  re-scrub every text field, re-validate through the chokepoint; refuse on any
+  failure) — and sent to the global brain's intake. Nothing arrives in the global
+  brain unreviewed: bundles land as SUBMISSIONS the owner curates before merging.
+  If permission #2 is denied, local lessons never leave the device. Send mechanism,
+  in order of preference: (1) a tiny owner-deployed ingest endpoint (one pinned
+  HTTPS POST; free serverless worker holding the owner's repo token, so users need
+  ZERO auth) → opens a submission PR on the global-brain repo; (2) v0 fallback
+  until the endpoint exists: bundles stage locally and the weekly digest offers a
+  one-click `raph contribute send`.
+
+This is the flywheel at product scale: every consenting user's real mistakes make
+the global brain smarter, and every user inherits the whole community's lessons.
+
+### 2.2 The three install-time permissions
+
+1. **Learn from my work** (record lessons from my projects) — COMPULSORY; without
+   it Raphael is pointless. Includes keeping the local brain updated from the
+   global brain (down-sync).
+2. **Contribute to the global brain** (send my scrubbed, anonymized lessons up in
+   occasional bundles) — OPTIONAL. Denied = everything stays on-device forever.
+3. **Mode: autopilot / manual** — autopilot is the DEFAULT and the recommendation
+   shown on the screen; manual (curator) remains for users who want the queue.
+
+### 2.3 The two usage surfaces (same brain, same feeding)
+
+- **Surface 1 — normal chat**: the user just talks to Claude Code as always. The
+  plugin hooks feed the right thing at the right time: relevant lessons at session
+  start and per prompt, the atlas digest when the project has one, decisions,
+  the weekly digest line. The user does nothing.
+- **Surface 2 — Raphael's agents**: the user runs our shipped agents (the 10-agent
+  roster + recipes). Same feeding, but sharper because agent intent is known:
+  e.g. the moment an agent is about to Grep the repo, the PreToolUse hook fires
+  and the brain hands it the atlas instead ("query the graph, don't scan") —
+  already live as 16.3. The driver feeds stage-scoped context the same way.
+
+Both surfaces serve the single goal: FEWER TOKENS (atlas answers instead of file
+scans, ≤1,200-token recall budget), BETTER CODE, PRODUCTION-GRADE SECURITY (the
+global brain's security lessons are in every local brain from minute one).
 
 ## 3. The key design move: a MACHINE CURATOR, not a missing curator
 
@@ -115,10 +187,13 @@ competing with them for the session limit.
 The "interface that asks for permissions" is the agent itself:
 
 - First SessionStart after install, the hook detects an unconfigured brain and
-  injects a tiny one-time onboarding envelope telling the agent to ask the user, in
-  plain words, ONE question with three checkboxes: learn from my projects in the
-  background? (yes) — include security lessons? (yes) — install the commit guard?
-  (optional). The agent then runs `raph arise --autopilot`.
+  injects a tiny one-time onboarding envelope telling the agent to ask the user,
+  in plain words, the THREE permissions of §2.2 (learn from my work — required;
+  contribute bundles to the global brain — optional; autopilot or manual —
+  autopilot recommended) plus one optional extra (install the commit guard?).
+  The agent then runs `raph arise --autopilot [--contribute] [--guard]`, which
+  also SEEDS the local brain from the global-brain snapshot shipped in the
+  package (every seed lesson still enters through the chokepoint).
 - After that the onboarding envelope never appears again. Zero further questions,
   ever. (Claude Code itself asks once to allow the plugin's hooks — that OS-level
   prompt is the real permission grant and is out of our hands, which is correct.)
@@ -198,13 +273,31 @@ bounded (advisory-only + audit trail + undo). The owner accepts it for the UX wi
 - **17.5 Onboarding + digest** (small): first-run envelope + `arise --autopilot`,
   weekly digest block (≤150 tokens, honest numbers, 7-day throttle). Tests:
   one-time-ness, throttle, empty-week silence.
-- **17.6 Flip + docs + end-to-end** (small): autopilot = default for fresh installs,
+- **17.6 Global brain: repo + seed + down-sync** (medium): promote the global brain
+  to a first-class artifact — a `global-brain/` lesson set in the raphael repo
+  (starting from the security pack + curated adopted lessons), version-stamped
+  manifest with per-lesson hashes; `arise` seeds the local brain from the shipped
+  snapshot (all through the chokepoint); pulse down-syncs from the pinned GitHub
+  manifest (bounded fetch, hash-verified, dedupe vs local). Invariant #5c
+  amendment. Tests: seed idempotence, hash mismatch = reject, dedupe.
+- **17.7 Contribution bundles (up-sync)** (medium): permission #2 in config;
+  bundle builder over the EXISTING contribute pipeline (strip → re-scrub →
+  re-validate, refuse on failure); v0 = staged bundle + one-click
+  `raph contribute send` offered in the digest; v1 = owner's serverless ingest
+  endpoint (single pinned HTTPS POST, zero user auth) that opens submission PRs
+  the owner curates. Nothing enters the global brain without the owner's review.
+  Invariant #6 amendment: opt-in moves from per-lesson to the install-time grant
+  (per-lesson exclusion still possible in the console). Tests: denied-permission
+  = nothing leaves, scrub refusal blocks the bundle, bundle format.
+- **17.8 Flip + docs + end-to-end** (small): autopilot = default for fresh installs,
   README/manual rewritten around "install and forget", full live loop verified
-  (real session → pulse → new active lesson → next-session injection → digest),
-  version 0.2.0.
+  (real session → pulse → new active lesson → next-session injection → digest;
+  seed → local learn → bundle staged), version 0.2.0.
 
-Rough total: ~6 working sessions. 17.2 before 17.3 so the unattended loop never
-exists without its safety layer.
+Rough total: ~8 working sessions. 17.2 before 17.3 so the unattended loop never
+exists without its safety layer; 17.6/17.7 can follow the flip if needed, but the
+seed half of 17.6 should land before 17.8 so new installs start from the global
+brain, not empty.
 
 ## 8. What this is NOT
 

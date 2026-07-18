@@ -766,11 +766,32 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       ONE consent question in-chat -> `raph arise --autopilot`), weekly digest block
       (≤150 tokens, honest numbers, 7-day throttle, silent on empty weeks, security
       lessons always highlighted).
-- [ ] 17.6 Flip + docs + e2e: autopilot default for fresh installs (existing brains keep
+- [ ] 17.6 GLOBAL BRAIN (owner round-2 spec, 2026-07-18): two-brain model. Global brain
+      = owner-curated lesson set on GitHub (`global-brain/` in the raphael repo, seeded
+      from the security pack + curated adoptions), version-stamped manifest w/ per-lesson
+      hashes. `arise` SEEDS the local brain from the shipped snapshot (chokepoint always);
+      pulse DOWN-SYNCS from the pinned GitHub manifest (bounded fetch, hash-verified,
+      dedupe vs local — global never clobbers local). Invariant #5c amendment (one pinned
+      owner-controlled URL, covered by install consent).
+- [ ] 17.7 CONTRIBUTION BUNDLES (up-sync, permission #2, OPTIONAL at install): batch new
+      local lessons through the EXISTING contribute pipeline (strip -> re-scrub ->
+      re-validate, refuse on failure); v0 = staged bundle + one-click `raph contribute
+      send` offered in the digest; v1 = owner's serverless ingest endpoint (one pinned
+      HTTPS POST, zero user auth) opening submission PRs the OWNER curates before merge.
+      Permission denied = nothing ever leaves the device. Invariant #6 amendment: opt-in
+      moves to the install-time grant (per-lesson exclusion stays in the console).
+- [ ] 17.8 Flip + docs + e2e: autopilot default for fresh installs (existing brains keep
       mode), README/manual rewritten around "install and forget", full live loop verified
-      (session -> pulse -> active lesson -> next-session injection -> digest), v0.2.0.
-Stays manual on purpose: adopt (user-initiated fetch, #5b), contribute (opt-in, #6),
-guard install (asked once at onboarding), curator mode preserved as opt-in.
+      (session -> pulse -> active lesson -> next-session injection -> digest; seed ->
+      local learn -> bundle staged), v0.2.0. Seed half of 17.6 lands BEFORE this so new
+      installs start from the global brain, not empty.
+Onboarding = THREE permissions in-chat (§2.2 of the vision doc): (1) learn from my work
+[COMPULSORY, includes down-sync], (2) contribute bundles to the global brain [OPTIONAL],
+(3) autopilot/manual [autopilot default + recommended]. Two usage surfaces, same feeding:
+normal chat (hooks) and Raphael's shipped agents (hooks + stage-scoped driver context —
+e.g. agent about to Grep gets the atlas via PreToolUse, live since 16.3).
+Stays manual on purpose: adopt (user-initiated fetch, #5b), guard install (asked once at
+onboarding), curator mode preserved as opt-in.
 
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,

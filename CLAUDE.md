@@ -508,6 +508,17 @@ compaction (manual or automatic) can never lose progress.
   (silent, 30-day tombstone — no nagging either). Curator mode preserved as opt-in;
   adopt/contribute stay user-initiated (invariants #5b/#6). Build order 17.1->17.6 with
   17.2 (curator) strictly before 17.3 (unattended loop). NOT built — awaiting owner go.
+- Session 13 round 2 — owner's TWO-BRAIN spec folded into the vision + Phase 17:
+  GLOBAL brain (GitHub, owner-curated) + LOCAL brain (user device, seeded as a COPY of
+  global, learns locally). THREE install permissions: learn-from-my-work (compulsory,
+  incl. down-sync), contribute-bundles-to-global (OPTIONAL; denied = lessons never leave
+  the device), mode autopilot/manual (autopilot default+recommended). TWO surfaces, same
+  feeding: normal chat (hooks) + shipped agents (PreToolUse atlas handoff, live since
+  16.3). New milestones: 17.6 global-brain repo/seed/down-sync (pinned manifest,
+  hash-verified, chokepoint+dedupe; invariant #5c amendment), 17.7 contribution bundles
+  (existing contribute pipeline; v0 staged+one-click send, v1 owner ingest endpoint ->
+  submission PRs owner curates; invariant #6 amendment: opt-in at install), 17.8 flip+
+  e2e+v0.2.0 (~8 sessions). Still awaiting owner go to build.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
