@@ -32,7 +32,9 @@ function autopilotOn(home) {
 
 const noopDeps = {
   mine: async () => 0,
-  distill: async () => 0
+  distill: async () => 0,
+  // tests must never touch the npm registry — the self-update step is stubbed
+  selfUpdate: async () => ({ checked: false })
 };
 
 test('pulse is a silent no-op in curator mode', async () => {
@@ -74,6 +76,7 @@ test('with autopilot + consent the loop runs and logs one pulse event', async ()
     const s = await runPulse({
       project: home,
       deps: {
+        ...noopDeps,
         mine: async (a) => { mineArgs = a; return 0; },
         distill: async (a) => { distillArgs = a; return 0; }
       }
@@ -106,7 +109,7 @@ test('budget: after dailyDistillRuns distills, pulse mines but does not distill'
     let distillCalled = false;
     const s = await runPulse({
       project: home,
-      deps: { mine: async () => 0, distill: async () => { distillCalled = true; return 0; } }
+      deps: { ...noopDeps, mine: async () => 0, distill: async () => { distillCalled = true; return 0; } }
     });
     assert.equal(s.ran, true);
     assert.equal(distillCalled, false);
@@ -120,12 +123,12 @@ test('distill exit 4 marks the pulse limited; a throwing step fails open', async
   const home = sandbox();
   try {
     autopilotOn(home);
-    const limited = await runPulse({ project: home, deps: { mine: async () => 0, distill: async () => 4 } });
+    const limited = await runPulse({ project: home, deps: { ...noopDeps, mine: async () => 0, distill: async () => 4 } });
     assert.equal(limited.limited, true);
 
     const thrown = await runPulse({
       project: home,
-      deps: { mine: async () => { throw new Error('mine exploded'); }, distill: async () => 0 }
+      deps: { ...noopDeps, mine: async () => { throw new Error('mine exploded'); }, distill: async () => 0 }
     });
     assert.equal(thrown.ran, true); // the pulse still completed
     assert.ok(thrown.errors.some((e) => /mine exploded/.test(e)));

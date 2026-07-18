@@ -106,6 +106,18 @@ test('weekly digest stays silent when the week had no activity', () => {
   }
 });
 
+test('weekly digest mentions a self-update even in an otherwise quiet week', () => {
+  const home = sandbox();
+  try {
+    setMode('autopilot');
+    logEvent({ event: 'self-update', from: '0.2.1', to: '0.2.2' });
+    const d = weeklyDigestBlock();
+    assert.match(d, /updated to v0\.2\.2/);
+  } finally {
+    cleanup(home);
+  }
+});
+
 // ---------- arise --autopilot ----------
 
 test('arise --autopilot records all three permissions in one shot', async () => {

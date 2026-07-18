@@ -1,6 +1,6 @@
 {
   "name": "raphael-brain",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Raphael — a learning layer (brain) for AI coding agents. Distills lessons from your real projects and injects them back at the right moment.",
   "type": "module",
   "bin": {

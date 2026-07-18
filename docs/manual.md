@@ -64,6 +64,10 @@ A background heartbeat, budgeted and fail-open — it can never block or slow yo
 - **installs the commit guard** in the project's git repo automatically (the
   pre-commit secret hook, §7) — never clobbering a hook you already had;
   opt out with `autopilot.auto_guard: false` in config.yaml
+- **keeps the `raph` CLI up to date** — a daily check of the npm registry, and if
+  a newer `raphael-brain` is published it runs `npm install -g raphael-brain@latest`
+  for you (npm's own integrity check is the gate; never downgrades). Opt out with
+  `autopilot.auto_update: false`
 
 ### What you see
 One short line, at most once a week, only when something happened:
@@ -120,6 +124,17 @@ raph init --guard     # + the secret-scanning pre-commit hook in the current rep
 **When:** something feels off, or after installing/updating.
 **What:** checks the environment (Node, git, the Claude CLI), the brain's integrity,
 and the plugin wiring, and tells you the exact fix for anything wrong.
+
+### `raph update` — stay on the latest version
+**When:** almost never by hand — on autopilot the pulse checks daily and upgrades
+for you. Reach for it if you're in manual mode, or want to update right now.
+**What:** asks the npm registry whether a newer `raphael-brain` exists and, if so,
+runs `npm install -g raphael-brain@latest` (npm verifies the download's integrity;
+never downgrades). `--check` looks without changing anything.
+```
+raph update           # upgrade if a newer version is published
+raph update --check   # just tell me if I'm behind
+```
 
 ---
 
@@ -509,10 +524,13 @@ deployer, with critique over anything you want double-checked.
    the canary gate, with whole-batch rollback on failure. **Quarantined**
    (injection-suspect) content never machine-activates in ANY mode — it expires
    silently after 30 days.
-5. **Network:** exactly three things — model calls (subscription CLI or API),
-   user-initiated read-only adopt fetches, and the weekly global-brain down-sync
+5. **Network:** exactly four things — model calls (subscription CLI or API),
+   user-initiated read-only adopt fetches, the weekly global-brain down-sync
    (two pinned HTTPS URLs, hash-verified, every lesson still through the
-   chokepoint, local lessons always win). Nothing else. The brain repo blocks
+   chokepoint, local lessons always win), and the daily self-update check (the
+   npm registry document for this package; then `npm install -g
+   raphael-brain@latest` — the same command you installed with — only when a
+   newer version exists, never a downgrade). Nothing else. The brain repo blocks
    pushes by default.
 6. **Local by default:** everything mined stays on your machine unless you granted
    contribution at install — and even then, bundles are stripped, re-scrubbed,

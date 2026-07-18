@@ -42,6 +42,7 @@ const COMMANDS = {
   adopt: () => import('./commands/adopt.js'),
   auto: () => import('./commands/auto.js'),
   pulse: () => import('./commands/pulse.js'),
+  update: () => import('./commands/update.js'),
   web: () => import('./commands/web.js')
 };
 
@@ -134,6 +135,8 @@ Commands:
   pulse       The autopilot heartbeat: mine -> distill -> machine-curate ->
               sweep -> index, budgeted and fail-open. Runs itself after each
               session via the plugin hook. (raph pulse [--run] [--async])
+  update      Check npm for a newer raphael-brain and upgrade in place
+              (raph update [--check]) — autopilot also does this daily
   web         Start the local console: your brain in the browser, localhost
               only, token-guarded (raph web [--port N] [--no-open])
   help        Show this help

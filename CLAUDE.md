@@ -587,9 +587,21 @@ compaction (manual or automatic) can never lose progress.
 - GUARD AUTO-INSTALL (session 13 round 6, owner ask): pulse step 6c = ensureGuard()
   (lib/guard.js) — on autopilot, the first session end in any consented git repo
   installs the pre-commit secret hook automatically (foreign hooks never clobbered;
-  opt-out autopilot.auto_guard:false). 406/406, live-smoked. Version bumped to 0.2.2
-  (0.2.1 published earlier same day: claude-plugin install path + contribute-default
-  + console Settings); tag v0.2.2 + GitHub release at the owner's next npm publish.
+  opt-out autopilot.auto_guard:false). 406/406, live-smoked. Shipped in 0.2.2
+  (published; registry=0.2.2). (0.2.1 earlier same day: claude-plugin install path +
+  contribute-default + console Settings.)
+- SELF-UPDATE / AUTO-UPGRADE (session 13 round 7, owner ask "auto-upgrade the npm
+  package so the user never runs npm update"): src/lib/update.js = daily-throttled
+  bounded GET of the npm registry doc (https://registry.npmjs.org/raphael-brain/latest,
+  the ONLY endpoint) -> `npm install -g raphael-brain@latest` ONLY when strictly newer
+  (semver compare; never downgrades; npm's sha512 integrity check is the gate). Wired as
+  pulse step 8 (LAST, so an npm file-swap can't disturb earlier steps; autopilot-gated,
+  fail-open, opt-out autopilot.auto_update:false) + `raph update [--check]` CLI (41 verbs
+  now). Records state/update.json + a self-update event (surfaced in the weekly digest:
+  "updated to vX"). Invariant #5 amended to #5d (CLAUDE.md + ARCHITECTURE §0.6). 412/412,
+  live-smoked (real --check refuses downgrade dev>registry; maybeSelfUpdate end-to-end via
+  fake registry + stub upgrade logs event + writes state). Version -> 0.2.3; tag +
+  GitHub release at the owner's next npm publish.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
@@ -623,8 +635,15 @@ compaction (manual or automatic) can never lose progress.
    2026-07-18, §11.13/§2.1, autopilot only, covered by the install consent): a weekly
    background https GET of EXACTLY the two pinned URLs in src/lib/globalbrain.js
    (manifest + bundle on the owner's repo), hash-verified, every lesson still through
-   the chokepoint, local lessons always win. No other network access. The brain repo
-   blocks pushes by default (pre-push hook).
+   the chokepoint, local lessons always win; and (d) the SELF-UPDATE check (AMENDED
+   2026-07-18, invariant #5d, autopilot only, covered by the install consent, opt-out
+   `autopilot.auto_update:false`): a daily-throttled bounded https GET of EXACTLY the
+   npm registry document `https://registry.npmjs.org/raphael-brain/latest`
+   (src/lib/update.js), and — only when the registry version is strictly newer — the
+   upgrade command `npm install -g raphael-brain@latest`, i.e. the user's own install
+   command re-run, with npm's sha512 integrity check as the supply-chain gate (Raphael
+   adds nothing to the trust chain and never downgrades). No other network access. The
+   brain repo blocks pushes by default (pre-push hook).
 6. Everything mined stays local. Named-lesson export stays per-lesson opt-in; the
    contribution grant (bundling) defaults ON at `arise --autopilot` (§11.14, owner
    2026-07-18 — announced in output, `raph contribute on|off` / console Settings to

@@ -251,12 +251,14 @@ export function weeklyDigestBlock({ now = Date.now() } = {}) {
     const quarantined = inWindow.filter((e) => e.event === 'quarantine-expired').length;
     const injections = inWindow.filter((e) => e.event === 'injected');
     const recallTokens = injections.reduce((s, e) => s + (e.tokens ?? 0), 0);
-    if (activated.length === 0 && retired === 0 && injections.length === 0) return ''; // silent empty week
+    const updated = inWindow.filter((e) => e.event === 'self-update').slice(-1)[0];
+    if (activated.length === 0 && retired === 0 && injections.length === 0 && !updated) return ''; // silent empty week
 
     const bits = [`learned ${activated.length} lesson(s)${security ? ` (${security} security)` : ''}`];
     if (injections.length) bits.push(`recalled into ${injections.length} session(s) for ~${recallTokens} tokens total`);
     if (retired) bits.push(`self-retired ${retired}`);
     if (quarantined) bits.push(`expired ${quarantined} quarantined unseen`);
+    if (updated) bits.push(`updated to v${updated.to}`);
     if (inWindow.some((e) => e.event === 'bundle-staged')) bits.push('a contribution bundle is staged (raph contribute send)');
     const text = [
       '<raphael-digest>',

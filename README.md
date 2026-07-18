@@ -107,7 +107,8 @@ everything starting with `/` (like `/brain`) is typed **inside Claude Code**.
                    ├─ sync the global brain (weekly, hash-verified, local wins)
                    ├─ refresh the project atlas             (zero tokens)
                    ├─ install the commit guard in your repo (never clobbers yours)
-                   └─ self-retire lessons that never help   (probation)
+                   ├─ self-retire lessons that never help   (probation)
+                   └─ self-update the raph CLI              (daily, npm integrity-checked)
  your next session ◀── auto-injection: relevant lessons + project map + weekly digest
                        budgeted, enveloped as data, fail-open, raph why explains it
 ```
@@ -180,6 +181,8 @@ manual-mode and power-user surface.
   re-scrubbed, re-validated through the chokepoint before it leaves your machine.
 - **`raph eval` / `stats` / `lint` / `optimize`** — proof and upkeep: ON/OFF lift,
   cost per injection, retrieval misses, stale/contradicting lessons, prune candidates.
+- **`raph update`** — check npm and upgrade the CLI in place (`--check` to just look).
+  On autopilot you never run it: the pulse does this daily so you're always current.
 
 Three products built by Raphael's own autonomous Academy while training itself:
 [repo-keeper](https://github.com/maheshaggarwal21/repo-keeper) ·
@@ -198,10 +201,12 @@ Three products built by Raphael's own autonomous Academy while training itself:
 4. In manual mode, security lessons never activate without you. In autopilot they
    activate only through the machine curator (strict reviewer screen + canary gate);
    quarantined injection-suspect content never machine-activates in ANY mode.
-5. Network access: model calls, user-initiated read-only adopt fetches, and the
-   weekly global-brain down-sync (two pinned HTTPS URLs, hash-verified, covered by
-   your install consent). Nothing else — contribution bundles stage locally and are
-   only ever sent by your own action.
+5. Network access: model calls, user-initiated read-only adopt fetches, the weekly
+   global-brain down-sync (two pinned HTTPS URLs, hash-verified), and the daily
+   self-update check (the npm registry document for this package, then npm's own
+   integrity-checked install when a newer version exists) — the last two covered by
+   your install consent and each independently opt-out-able. Nothing else —
+   contribution bundles stage locally and are only ever sent by your own action.
 6. Everything mined stays local unless you granted contribution — and even then,
    bundles are stripped of project traces, re-scrubbed, and re-validated first.
 
@@ -210,7 +215,7 @@ Three products built by Raphael's own autonomous Academy while training itself:
 ```
 npm install
 npm test                  # 402 tests, node:test, no frameworks
-node bin/raph.js help     # the full CLI surface (40 verbs)
+node bin/raph.js help     # the full CLI surface (41 verbs)
 ```
 
 Point `RAPHAEL_HOME` at a scratch directory to sandbox any command. CI runs the test

@@ -328,8 +328,10 @@ runs/day), passes every candidate — security included — through the **machin
 curator** (contained reviewer screen, fail-closed; canary gate; whole-batch
 byte-identical rollback on any failure), syncs the global brain weekly, refreshes
 the project atlas when the repo moved, installs the commit guard in the project's
-git repo (never clobbering an existing hook), and self-retires machine lessons
-that never help. Every activation is a git commit in the brain repo, so everything is
+git repo (never clobbering an existing hook), self-updates the `raph` CLI daily
+(a bounded npm-registry check, then npm's own integrity-checked install only when
+a newer version is published — never a downgrade), and self-retires machine
+lessons that never help. Every activation is a git commit in the brain repo, so everything is
 undoable. Curator (manual) mode remains fully supported via `raph auto manual`.
 
 **Use:** nothing — that's the point. `raph pulse` shows the last heartbeat;
@@ -489,7 +491,7 @@ role. Questions, strong answers, and what the interviewer is really probing.*
 chokepoint through which every piece of knowledge must pass. Around it: miners that
 read session history, a distiller that calls a contained model through four quality
 gates, a human review queue, a deterministic retrieval engine with hard token
-budgets, and surfaces — a 40-verb CLI, a localhost web console, and a Claude Code
+budgets, and surfaces — a 41-verb CLI, a localhost web console, and a Claude Code
 plugin. Storage is plain markdown in a git repo; the only network access is model
 calls, user-initiated read-only fetches, and a weekly hash-verified down-sync of
 the curated community seed from two pinned URLs. *(Probing: can you describe your

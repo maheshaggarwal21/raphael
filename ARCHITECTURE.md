@@ -37,6 +37,12 @@
    with the owner's explicit approval, see §13. An adopt fetch is bounded (https GET
    only, no credentials ever sent, size/time capped), happens only because the user
    asked for that specific source, and its content is data — scanned, never executed.
+   Amended 2026-07-18 (autopilot, covered by the install consent, each opt-out-able):
+   (c) the weekly global-brain down-sync (two pinned hash-verified URLs, §11.13) and
+   (d) the daily self-update check — a bounded GET of the npm registry document for
+   this package, then `npm install -g raphael-brain@latest` (the user's own install
+   command, npm's sha512 integrity check the gate) only when the registry is strictly
+   newer; never a downgrade, never any other endpoint (invariant #5d).
 7. **Measurable.** An eval harness must show lift vs a naked agent, or we are failing
    silently.
 

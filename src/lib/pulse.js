@@ -31,6 +31,7 @@ import { retireRefs } from './review.js';
 import { sweepQuarantine } from './curator.js';
 import { refreshAtlasIfStale } from './atlas.js';
 import { ensureGuard } from './guard.js';
+import { maybeSelfUpdate } from './update.js';
 import { syncGlobalBrain } from './globalbrain.js';
 import { maybeBundleContributions } from './contribute.js';
 import { buildIndex } from './compile.js';
@@ -236,6 +237,20 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
 
     // 7. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }
+
+    // 8. self-update (owner decision 2026-07-18, invariant #5d) — LAST on
+    // purpose: if npm swaps the package files mid-upgrade, every other step of
+    // this pulse has already finished. Daily-throttled bounded GET of the npm
+    // registry; the upgrade is the user's own install command re-run (npm's
+    // sha512 integrity check is the gate). Opt out: autopilot.auto_update:false.
+    if (cfg.autopilot?.auto_update !== false) {
+      try {
+        const up = await (deps.selfUpdate ?? maybeSelfUpdate)({ log });
+        if (up.checked) summary.update = up.updated ? `updated -> ${up.latest}` : (up.why ?? null);
+      } catch (err) {
+        summary.errors.push(`update: ${err.message}`);
+      }
+    }
   } finally {
     releaseLock();
     summary.durationMs = Date.now() - startedAt;
@@ -246,7 +261,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
         ran: summary.ran, skipped: summary.skipped,
         mined: summary.mined, distilled: summary.distilled, curated: summary.curated,
         expired: summary.expired, retired: summary.retired, atlas: summary.atlas,
-        guard: summary.guard,
+        guard: summary.guard, update: summary.update ?? null,
         limited: summary.limited, errors: summary.errors.slice(0, 5),
         durationMs: summary.durationMs
       });
