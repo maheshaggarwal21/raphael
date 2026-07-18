@@ -8,6 +8,10 @@ right moment. The result: your agent stops repeating mistakes you already paid f
 This manual explains every command: what it does, **when** to reach for it, and how
 to run it. Plain language throughout. Jargon is explained the first time it appears.
 
+> New here? The **[README](../README.md)** is the guided tour (features, tables, the
+> pitch). This manual is the reference. **[ARCHITECTURE.md](../ARCHITECTURE.md)** is
+> the deep design, and **[docs/README.md](README.md)** maps everything else.
+
 **Where commands run — the one rule to remember:**
 
 | Command looks like… | Type it in… |
