@@ -6,7 +6,7 @@
 import { adoptSource, revokeAdoption, loadSource, adoptConfig, estimateAdoptTokens } from '../lib/adopt.js';
 import { listAdoptions } from '../lib/provenance.js';
 import { getModelCaller } from '../lib/provider.js';
-import { autoApproveStaged } from '../lib/autoapprove.js';
+import { curateStaged } from '../lib/curator.js';
 import { loadConfig } from '../lib/config.js';
 
 const HELP = `raph adopt — digest external material into reviewable knowledge
@@ -133,7 +133,7 @@ export default async function adopt(args) {
   let autoActivated = 0;
   const eligible = result.staged.filter((s) => !s.quarantined);
   if (eligible.length > 0) {
-    const auto = autoApproveStaged(eligible, { origin: 'adopted', config: cfg, adoption: result.adoption, log: (s) => console.log(s) });
+    const auto = await curateStaged(eligible, { origin: 'adopted', config: cfg, adoption: result.adoption, callModel: provider.callModel, log: (s) => console.log(s) });
     autoActivated = auto.activated.length;
     for (const sk of auto.skipped) console.log(`  [held] ${sk.slug} — ${sk.why}`);
   }

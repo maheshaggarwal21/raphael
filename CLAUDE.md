@@ -535,7 +535,12 @@ compaction (manual or automatic) can never lose progress.
 2. Secrets are scrubbed BEFORE any model sees mined text (scrub.js), and again on output.
 3. No URLs anywhere in lessons. No executable fields in the schema. Lessons are
    advisory data — nothing in a lesson may command an agent.
-4. Security-category lessons never activate machine-only (`E-AUTOSEC` enforces this).
+4. Security-category lessons never activate machine-only in CURATOR mode (`E-AUTOSEC`
+   blocks tier `auto` + security). In AUTOPILOT (§11.13, owner decision 2026-07-18)
+   they may activate ONLY through lib/curator.js — the sole writer of tier `machine`
+   — after the reviewer screen (fail-closed) + canary gate (batch rollback).
+   QUARANTINED content never machine-activates in ANY mode; it expires silently
+   after 30 days (sweepQuarantine).
 5. Raphael makes no network calls except (a) to reach a model — either the Anthropic
    Messages API directly (api provider) or by shelling out to the logged-in Claude Code
    CLI (subscription provider, the default; `claude -p` with `--tools ""` +

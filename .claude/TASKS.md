@@ -754,11 +754,20 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       `raph auto manual|off|standard|wide` = curator mode. Console levels list picks up
       'full' automatically (derived from DIAL_LEVELS). ARCHITECTURE §11.13 written
       (supersedes §11.11 in autopilot; quarantine floor survives). +6 tests.
-- [ ] 17.2 Machine curator (build BEFORE the unattended loop exists): reviewer screen
-      over distilled candidates (reuse adopt's contained reviewer, malformed verdict =
-      fail-closed), canary-gated batch activation (eval --dry-run canaries; any failure
-      = batch rollback), probation confidence for auto lessons, stricter security rubric,
-      quarantine tombstone. All in the shared review engine, console-visible.
+- [x] 17.2 SHIPPED (session 13, 374/374): src/lib/curator.js = the machine curator.
+      curateStaged() is the ONE autopilot activation entry — below autopilot+full it IS
+      the plain dial (delegation, zero model calls); at full it reviewer-screens EVERY
+      candidate (adopt's REVIEW_TOOL schema, fail-closed on malformed/transport error,
+      E-LIMIT propagates; security gets a stricter DEFENSIVE/GENERIC/advisory addendum;
+      quality>=1 required) then activates with tier 'machine' (schema enum extended;
+      curator is the ONLY writer) and faces the CANARY GATE: chokepoint canaries must
+      all block + index must rebuild, else the WHOLE batch rolls back to candidates
+      byte-identical, no events. E-AUTOSEC stays scoped to tier auto (tested both ways).
+      Quarantine floor: never activates at any level; sweepQuarantine() tombstones
+      silently after 30 days (mtime-based). Probation: tier machine takes the 0.9
+      confidence discount + counts in countAutoTier's shared cap. distill + adopt
+      commands now call curateStaged (await, provider.callModel). CLAUDE.md invariant
+      #4 rewritten mode-conditional. +10 tests.
 - [ ] 17.3 `raph pulse` + SessionEnd hook: the heartbeat. Hook fires `pulse --async`
       (detached spawn, <50ms return); child takes a lock, then mine (watermark) ->
       budget/E-LIMIT check (autopilot.daily_calls) -> distill -> machine-curate ->

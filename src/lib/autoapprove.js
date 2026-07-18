@@ -88,10 +88,13 @@ function walkLessons() {
 }
 
 export function countAutoTier() {
+  // 'auto' (plain dial) and 'machine' (curator, §11.13) share the one cap —
+  // both are machine-activated tiers a human never clicked.
   let n = 0;
   for (const file of walkLessons()) {
     try {
-      if (parseLessonFile(readFileSync(file, 'utf8')).data.provenance?.tier === 'auto') n++;
+      const tier = parseLessonFile(readFileSync(file, 'utf8')).data.provenance?.tier;
+      if (tier === 'auto' || tier === 'machine') n++;
     } catch { /* unreadable lesson — doctor's problem */ }
   }
   return n;

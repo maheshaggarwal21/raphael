@@ -3,7 +3,7 @@ import path from 'node:path';
 import { distillEpisodes, estimateTokens, DISTILLER } from '../lib/distill.js';
 import { getModelCaller } from '../lib/provider.js';
 import { loadLedger, hasProcessed, appendLedger } from '../lib/ledger.js';
-import { autoApproveStaged } from '../lib/autoapprove.js';
+import { curateStaged } from '../lib/curator.js';
 import { loadConfig } from '../lib/config.js';
 import { p } from '../lib/paths.js';
 
@@ -109,7 +109,9 @@ export default async function distill(args) {
       byProject.get(key).push(s);
     }
     for (const [project, items] of byProject) {
-      const auto = autoApproveStaged(items, { origin: 'mined', config: cfg, project, log: (s) => console.log(s) });
+      // curateStaged IS the plain dial below autopilot+full; at full it runs
+      // the machine curator (reviewer screen + canary gate), security included
+      const auto = await curateStaged(items, { origin: 'mined', config: cfg, project, callModel: provider.callModel, log: (s) => console.log(s) });
       autoActivated += auto.activated.length;
       for (const sk of auto.skipped) console.log(`  [held] ${sk.slug} — ${sk.why}`);
     }

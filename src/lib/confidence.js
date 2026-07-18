@@ -37,8 +37,8 @@ export function computeConfidence(lesson, { now = new Date() } = {}) {
   if (lesson.provenance?.human_edited) c += 1;
 
   const tier = lesson.provenance?.tier;
-  if (tier === 'curated') c = Math.max(c, 6); // expert floor, resists age
-  else if (tier === 'auto') c *= 0.9;         // machine-derived discount
+  if (tier === 'curated') c = Math.max(c, 6);              // expert floor, resists age
+  else if (tier === 'auto' || tier === 'machine') c *= 0.9; // machine-derived discount (probation)
 
   return Math.max(0, Math.min(10, Number(c.toFixed(1))));
 }

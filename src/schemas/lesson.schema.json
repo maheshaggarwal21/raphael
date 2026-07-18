@@ -152,7 +152,7 @@
           "enum": ["session-transcript", "git-history", "manual", "imported"]
         },
         "human_edited": { "type": "boolean" },
-        "tier": { "enum": ["curated", "user", "auto"] }
+        "tier": { "enum": ["curated", "user", "auto", "machine"] }
       }
     },
     "injection": {
