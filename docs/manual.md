@@ -61,6 +61,9 @@ A background heartbeat, budgeted and fail-open — it can never block or slow yo
   sending is always your own click)
 - **refreshes the project atlas** when the repo changed (zero tokens)
 - **self-retires** machine-activated lessons that never help (probation)
+- **installs the commit guard** in the project's git repo automatically (the
+  pre-commit secret hook, §7) — never clobbering a hook you already had;
+  opt out with `autopilot.auto_guard: false` in config.yaml
 
 ### What you see
 One short line, at most once a week, only when something happened:
@@ -343,7 +346,10 @@ raph validate --all
 ## 7. Guard rails for your own repos
 
 ### `raph guard` — don't commit secrets
-**When:** every repo you own. Install once, forget it.
+**When:** every repo you own. On **autopilot you don't even install it** — the
+pulse adds the hook to any consented git repo you work in automatically (a
+foreign pre-commit hook is never touched; `autopilot.auto_guard: false` opts
+out). The commands below are for manual mode, audits, and special cases.
 ```
 raph guard install       # pre-commit hook in the current repo
 raph guard scan --all    # audit every tracked file right now

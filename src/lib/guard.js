@@ -251,6 +251,22 @@ export function installPreCommitHook(projectDir, { force = false } = {}) {
   return { ok: true, hookPath, top };
 }
 
+// Autopilot's zero-touch guard (owner ask 2026-07-18): make sure a project's
+// git repo carries the pre-commit secret hook without anyone running
+// `raph guard install`. Idempotent and polite: an already-raphael hook is left
+// alone, a FOREIGN hook is NEVER clobbered (reported, not forced), and a
+// directory that is not a git repo is a clean no-op.
+export function ensureGuard(projectDir) {
+  const status = hookStatus(projectDir);
+  if (!status.isRepo) return { status: 'not-a-repo' };
+  if (status.installed) return { status: 'present', hookPath: status.hookPath };
+  if (status.foreign) return { status: 'foreign-hook', hookPath: status.hookPath };
+  const r = installPreCommitHook(projectDir, { force: false });
+  return r.ok
+    ? { status: 'installed', hookPath: r.hookPath }
+    : { status: r.reason, hookPath: r.hookPath ?? null };
+}
+
 export function uninstallPreCommitHook(projectDir) {
   const top = gitTopLevel(projectDir);
   if (!top) return { ok: false, reason: 'not-a-git-repo' };

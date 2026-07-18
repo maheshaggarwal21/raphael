@@ -238,7 +238,10 @@ patterns block by default; a noisier entropy pass is opt-in. Fails open, never
 touches history, refuses to clobber a foreign hook, and a `.raphallow` file
 allowlists known-benign fixture paths — always announced, never silent.
 
-**Use:** `raph guard install` once per repo; `raph guard scan --all` to audit.
+**Use:** on autopilot, nothing — the pulse installs it automatically in every
+consented git repo (foreign hooks never touched; `autopilot.auto_guard: false`
+opts out). Manually: `raph guard install` once per repo; `raph guard scan --all`
+to audit.
 
 ## 2.12 The console (`raph web`)
 
@@ -324,8 +327,9 @@ finished session (zero tokens), distills under caps (8 episodes/pulse, 3 distill
 runs/day), passes every candidate — security included — through the **machine
 curator** (contained reviewer screen, fail-closed; canary gate; whole-batch
 byte-identical rollback on any failure), syncs the global brain weekly, refreshes
-the project atlas when the repo moved, and self-retires machine lessons that never
-help. Every activation is a git commit in the brain repo, so everything is
+the project atlas when the repo moved, installs the commit guard in the project's
+git repo (never clobbering an existing hook), and self-retires machine lessons
+that never help. Every activation is a git commit in the brain repo, so everything is
 undoable. Curator (manual) mode remains fully supported via `raph auto manual`.
 
 **Use:** nothing — that's the point. `raph pulse` shows the last heartbeat;

@@ -30,6 +30,7 @@ import { readActiveLessons, retireCandidates } from './freshness.js';
 import { retireRefs } from './review.js';
 import { sweepQuarantine } from './curator.js';
 import { refreshAtlasIfStale } from './atlas.js';
+import { ensureGuard } from './guard.js';
 import { syncGlobalBrain } from './globalbrain.js';
 import { maybeBundleContributions } from './contribute.js';
 import { buildIndex } from './compile.js';
@@ -109,7 +110,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
     project: project ?? null,
     ran: false, skipped: null,
     mined: 0, distilled: 0, curated: 0,
-    expired: 0, retired: 0, atlas: null,
+    expired: 0, retired: 0, atlas: null, guard: null,
     limited: false, errors: []
   };
 
@@ -218,6 +219,21 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       }
     }
 
+    // 6c. guard auto-install (owner ask 2026-07-18): a consented project that
+    // is a git repo gets the pre-commit secret hook automatically — zero
+    // clicks, zero tokens. Foreign hooks are NEVER clobbered; a non-repo dir
+    // is a no-op. Opt out: autopilot.auto_guard: false in config.yaml.
+    if (project && cfg.autopilot?.auto_guard !== false) {
+      try {
+        const guard = (deps.ensureGuard ?? ensureGuard)(project);
+        summary.guard = guard.status;
+        if (guard.status === 'installed') log(`  [guard] pre-commit secret hook installed in ${project}`);
+        if (guard.status === 'foreign-hook') log('  [guard] a non-raphael pre-commit hook exists — left untouched (raph guard install --force to replace)');
+      } catch (err) {
+        summary.errors.push(`guard: ${err.message}`);
+      }
+    }
+
     // 7. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }
   } finally {
@@ -230,6 +246,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
         ran: summary.ran, skipped: summary.skipped,
         mined: summary.mined, distilled: summary.distilled, curated: summary.curated,
         expired: summary.expired, retired: summary.retired, atlas: summary.atlas,
+        guard: summary.guard,
         limited: summary.limited, errors: summary.errors.slice(0, 5),
         durationMs: summary.durationMs
       });

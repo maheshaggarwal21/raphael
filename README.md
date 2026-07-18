@@ -106,6 +106,7 @@ everything starting with `/` (like `/brain`) is typed **inside Claude Code**.
                    │   (security included; quarantine never; rollback on any failure)
                    ├─ sync the global brain (weekly, hash-verified, local wins)
                    ├─ refresh the project atlas             (zero tokens)
+                   ├─ install the commit guard in your repo (never clobbers yours)
                    └─ self-retire lessons that never help   (probation)
  your next session ◀── auto-injection: relevant lessons + project map + weekly digest
                        budgeted, enveloped as data, fail-open, raph why explains it

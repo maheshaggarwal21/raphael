@@ -238,3 +238,58 @@ test('pulse runs the atlas step and records it in the summary + event', async ()
     cleanup(home);
   }
 });
+
+// ---------- guard auto-install (owner ask 2026-07-18) ----------
+
+test('pulse auto-installs the guard hook in a consented git repo; foreign hooks untouched; opt-out honored', async () => {
+  const { execSync } = await import('node:child_process');
+  const home = sandbox();
+  try {
+    autopilotOn(home);
+    const proj = path.join(home, 'workrepo');
+    mkdirSync(proj, { recursive: true });
+    execSync('git init -q', { cwd: proj });
+
+    // stub every other step so this test exercises ONLY the guard
+    const deps = {
+      ...noopDeps,
+      syncGlobal: async () => ({ checked: false }),
+      bundle: () => ({ built: false }),
+      refreshAtlas: () => ({ refreshed: false })
+    };
+
+    // first pulse: hook installed, zero clicks
+    let s = await runPulse({ project: proj, deps });
+    assert.equal(s.guard, 'installed');
+    const hookPath = path.join(proj, '.git', 'hooks', 'pre-commit');
+    assert.ok(existsSync(hookPath));
+    assert.ok(readFileSync(hookPath, 'utf8').includes('raphael'));
+
+    // second pulse: already there, nothing rewritten
+    s = await runPulse({ project: proj, deps });
+    assert.equal(s.guard, 'present');
+
+    // a FOREIGN hook is never clobbered
+    writeFileSync(hookPath, '#!/bin/sh\necho custom-team-hook\n', 'utf8');
+    s = await runPulse({ project: proj, deps });
+    assert.equal(s.guard, 'foreign-hook');
+    assert.ok(readFileSync(hookPath, 'utf8').includes('custom-team-hook'));
+
+    // not a git repo = clean no-op
+    const plain = path.join(home, 'plaindir');
+    mkdirSync(plain, { recursive: true });
+    s = await runPulse({ project: plain, deps });
+    assert.equal(s.guard, 'not-a-repo');
+
+    // opt-out: autopilot.auto_guard=false skips the step entirely
+    const cfg = loadConfig();
+    cfg.autopilot = { ...(cfg.autopilot ?? {}), auto_guard: false };
+    saveConfig(cfg);
+    rmSync(hookPath, { force: true });
+    s = await runPulse({ project: proj, deps });
+    assert.equal(s.guard, null);
+    assert.ok(!existsSync(hookPath));
+  } finally {
+    cleanup(home);
+  }
+});
