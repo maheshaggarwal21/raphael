@@ -49,3 +49,40 @@ test('renderContribution names the slug and the stripping', () => {
   assert.match(out, /webhook-idempotency/);
   assert.match(out, /re-scrubbed/);
 });
+
+// Regression: `raph contribute <slug>` with NO --out used to export nothing.
+// outIdx === -1 made the filter drop args[0] (the slug itself).
+test('command: `contribute <slug>` with no --out writes the export file', async () => {
+  const { mkdtempSync, rmSync, existsSync } = await import('node:fs');
+  const os = await import('node:os');
+  const pathMod = await import('node:path');
+  const { writeActiveLesson } = await import('./helpers.js');
+  const contributeCmd = (await import('../src/commands/contribute.js')).default;
+
+  const home = mkdtempSync(pathMod.join(os.tmpdir(), 'raph-contrib-cmd-'));
+  const cwd = mkdtempSync(pathMod.join(os.tmpdir(), 'raph-contrib-cwd-'));
+  const origCwd = process.cwd();
+  process.env.RAPHAEL_HOME = home;
+  const origLog = console.log;
+  console.log = () => {};
+  try {
+    writeActiveLesson({
+      slug: 'debounce-inputs-well',
+      title: 'Debounce expensive input handlers',
+      lesson: 'Debounce expensive search input handlers so keystrokes do not flood the backend API.',
+      injection: { headline: 'Debounce expensive input handlers to avoid flooding the API.', tokens: 12 },
+      provenance: { created_by: 'test', source_kind: 'session-transcript', human_edited: false, tier: 'user' }
+    });
+    process.chdir(cwd);
+    const code = await contributeCmd(['debounce-inputs-well']);
+    assert.equal(code, 0);
+    assert.ok(existsSync(pathMod.join(cwd, 'raphael-contrib', 'debounce-inputs-well.md')),
+      'export file should be written under the default raphael-contrib dir');
+  } finally {
+    console.log = origLog;
+    process.chdir(origCwd);
+    rmSync(home, { recursive: true, force: true });
+    rmSync(cwd, { recursive: true, force: true });
+    delete process.env.RAPHAEL_HOME;
+  }
+});

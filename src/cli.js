@@ -54,8 +54,10 @@ Commands:
   init        Create ~/.raphael, the brain git repo, and default config
               (raph init [--guard] — --guard also installs the project secret
                guard in the current git repo)
-  arise       One-command first-run: init + optional pack seed + guard + the
-              plugin wiring steps (raph arise [--pack] [--guard])
+  arise       One-command first-run. Recommended: raph arise --autopilot
+              (consent + global-brain seed + autopilot + sharing, zero-touch;
+               add --no-contribute to opt out of sharing). Manual setup:
+              raph arise [--pack] [--guard] — you review every lesson.
   contribute  Share a lesson on purpose: strip local traces, re-scrub, re-validate,
               write a portable .md (raph contribute <id|slug...> [--out dir] | list)
   status      Show brain health: lesson counts, pending candidates, mode

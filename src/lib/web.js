@@ -475,7 +475,7 @@ function renderDash() {
       '<tr><th>Home</th><td>' + esc(s.home) + '</td></tr>' +
       '<tr><th>Version</th><td>' + esc(s.version) + ' · mode ' + esc(s.mode) + '</td></tr>' +
       '<tr><th>Injection</th><td>' + (s.injectionEnabled ? 'on' : 'off') + '</td></tr>' +
-      '<tr><th>Auto-approve</th><td>' + esc(s.autoApprove.level) + ' (cap ' + esc(s.autoApprove.cap) + ', daily ' + esc(s.autoApprove.dailyCap) + ') — security always needs a human</td></tr>' +
+      '<tr><th>Auto-approve</th><td>' + esc(s.autoApprove.level) + ' (cap ' + esc(s.autoApprove.cap) + ', daily ' + esc(s.autoApprove.dailyCap) + ') — ' + (s.mode === 'autopilot' ? 'security activates via the machine curator; quarantined content never does' : 'security always needs a human') + '</td></tr>' +
       '<tr><th>By category</th><td>' + cats + '</td></tr>' +
       '</table>' +
       '<h2>Self-use (raph stats)</h2><table>' +

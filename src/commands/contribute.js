@@ -100,7 +100,9 @@ The maintainer reviews every lesson before anything enters the global brain.
 
   const outIdx = args.indexOf('--out');
   const outDir = outIdx >= 0 ? path.resolve(args[outIdx + 1] ?? '.') : path.resolve('raphael-contrib');
-  const refs = args.filter((a, i) => !a.startsWith('--') && i !== outIdx + 1);
+  // Only skip the value that FOLLOWS --out; when --out is absent (outIdx === -1)
+  // there is no such value, and `i !== outIdx + 1` would wrongly drop args[0].
+  const refs = args.filter((a, i) => !a.startsWith('--') && (outIdx < 0 || i !== outIdx + 1));
 
   let failed = 0;
   for (const ref of refs) {

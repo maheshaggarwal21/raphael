@@ -14,8 +14,13 @@ const RULES = [
   ['jwt', /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
   ['url-credentials', /\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:[^\s:@/]+@/gi],
   ['bearer', /\bBearer\s+[A-Za-z0-9._~+/-]{16,}=*/g],
-  // (?<!<) keeps this rule from re-matching our own <SECRET:...> placeholders
-  ['kv-secret', /(?<!<)\b(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth)\b\s*[:=]\s*['"]?[^\s'"]{8,}['"]?/gi]
+  // Underscore-aware boundaries: `\b` treats `_` as a word char, so a `\b`-walled
+  // keyword would MISS the archetypal env-var leak `DB_PASSWORD=...` /
+  // `SESSION_SECRET=...` / `AUTH_TOKEN=...` (keyword fenced by underscores). The
+  // lookarounds below exclude only alphanumerics, so `_` (and `=`, quotes, space)
+  // count as boundaries — while `<` stays excluded on the left so this rule never
+  // re-matches our own <SECRET:...> placeholders.
+  ['kv-secret', /(?<![a-z0-9<])(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth)(?![a-z0-9])\s*[:=]\s*['"]?[^\s'"]{8,}['"]?/gi]
 ];
 
 const ENTROPY_MIN_LEN = 20;

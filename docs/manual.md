@@ -370,8 +370,12 @@ raph guard install       # pre-commit hook in the current repo
 raph guard scan --all    # audit every tracked file right now
 ```
 Uses the same secret patterns as the brain's chokepoint — one definition of "secret".
-Blocks named-pattern hits by default; add `--entropy` for the noisier high-entropy
-pass. Scans staged content only, fails open (a broken scan can't wedge your commit),
+Blocks named-pattern hits by default (provider tokens like `AKIA…`, `ghp_…`, `sk_live_…`,
+and keyword assignments such as `PASSWORD=`, `SECRET=`, `TOKEN=`, `API_KEY=`). A bare
+high-entropy blob with **no** recognizable prefix or keyword (e.g. a raw AWS *secret*
+access key) is only caught with `--entropy` — kept opt-in so lockfile hashes don't false-
+fire and block ordinary commits. Turn it on for the hook if you want maximum coverage.
+Scans staged content only, fails open (a broken scan can't wedge your commit),
 refuses to clobber someone else's pre-commit hook. A `.raphallow` file at the repo
 root allowlists known-benign paths (test fixtures) — always announced, never silent.
 
