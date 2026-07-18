@@ -254,6 +254,7 @@ export function weeklyDigestBlock({ now = Date.now() } = {}) {
     if (injections.length) bits.push(`recalled into ${injections.length} session(s) for ~${recallTokens} tokens total`);
     if (retired) bits.push(`self-retired ${retired}`);
     if (quarantined) bits.push(`expired ${quarantined} quarantined unseen`);
+    if (inWindow.some((e) => e.event === 'bundle-staged')) bits.push('a contribution bundle is staged (raph contribute send)');
     const text = [
       '<raphael-digest>',
       `Raphael this week: ${bits.join('; ')}. Inspect or undo anything: raph web.`,

@@ -31,6 +31,7 @@ import { retireRefs } from './review.js';
 import { sweepQuarantine } from './curator.js';
 import { refreshAtlasIfStale } from './atlas.js';
 import { syncGlobalBrain } from './globalbrain.js';
+import { maybeBundleContributions } from './contribute.js';
 import { buildIndex } from './compile.js';
 import { p } from './paths.js';
 
@@ -195,7 +196,16 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       }
     }
 
-    // 6. atlas freshness (17.4) — zero tokens; rebuild only when HEAD moved
+    // 6. contribution bundle (17.7) — permission #2 only, weekly, LOCAL STAGE
+    // only (sending is always the user's own act; no network here)
+    try {
+      const bundle = (deps.bundle ?? maybeBundleContributions)({ config: cfg, log });
+      if (bundle.built) summary.bundle = `${bundle.count} lesson(s) staged`;
+    } catch (err) {
+      summary.errors.push(`bundle: ${err.message}`);
+    }
+
+    // 6b. atlas freshness (17.4) — zero tokens; rebuild only when HEAD moved
     // (or daily for non-git projects). The next session's hooks then inject a
     // current digest with no one running `raph atlas` ever.
     if (project) {

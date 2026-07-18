@@ -817,13 +817,18 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       the bundle fetch, malformed = refused, offline = fail-open + no hammering).
       package.json files +global-brain/. CLAUDE.md invariant #5c written. +6 tests
       (incl. tamper-refusal + smuggled-lesson refusal).
-- [ ] 17.7 CONTRIBUTION BUNDLES (up-sync, permission #2, OPTIONAL at install): batch new
-      local lessons through the EXISTING contribute pipeline (strip -> re-scrub ->
-      re-validate, refuse on failure); v0 = staged bundle + one-click `raph contribute
-      send` offered in the digest; v1 = owner's serverless ingest endpoint (one pinned
-      HTTPS POST, zero user auth) opening submission PRs the OWNER curates before merge.
-      Permission denied = nothing ever leaves the device. Invariant #6 amendment: opt-in
-      moves to the install-time grant (per-lesson exclusion stays in the console).
+- [x] 17.7 SHIPPED (session 13, 402/402, live-smoked): contribution bundles in
+      lib/contribute.js. Permission gate contributionEnabled (cfg.contribute.enabled,
+      set by arise --contribute) — OFF = buildBundle refuses, nothing even stages.
+      eligibleForBundle = active, tier != curated (global lessons never bounce back up),
+      not previously bundled (state/contributed.json). buildBundle: each lesson through
+      exportableLesson (strip->re-scrub->re-validate; failures SKIPPED never raw — AKIA
+      leak test proves it) -> staged/bundles/bundle-<ulid>.json + bundle-staged event.
+      maybeBundleContributions (pulse step 6): weekly throttle + >=3 minimum, LOCAL
+      STAGE ONLY — no network write exists in pulse (invariant #5 untouched); v1 ingest
+      endpoint deferred until the owner deploys it (recorded). `raph contribute
+      bundle|send` (send = list bundles + the GitHub issue submission path; sending is
+      the user's browser act). Weekly digest mentions a staged bundle. +4 tests.
 - [ ] 17.8 Flip + docs + e2e: autopilot default for fresh installs (existing brains keep
       mode), README/manual rewritten around "install and forget", full live loop verified
       (session -> pulse -> active lesson -> next-session injection -> digest; seed ->

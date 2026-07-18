@@ -6,22 +6,71 @@
 
 import path from 'node:path';
 import { readActiveLessons } from '../lib/freshness.js';
-import { exportableLesson, renderContribution } from '../lib/contribute.js';
+import {
+  exportableLesson, renderContribution,
+  buildBundle, listBundles, contributionEnabled, eligibleForBundle
+} from '../lib/contribute.js';
+import { loadConfig } from '../lib/config.js';
 import { atomicWrite } from '../lib/files.js';
 
 export default async function contribute(args) {
   const lessons = readActiveLessons();
 
   if (!args[0] || args[0] === 'help') {
-    console.log('raph contribute — share a lesson, safely and on purpose');
+    console.log('raph contribute — share lessons, safely and on purpose');
     console.log('');
     console.log('Usage: raph contribute <id|slug...> [--out <dir>]   export named lessons');
     console.log('       raph contribute list                          show what you could share');
+    console.log('       raph contribute bundle                        stage a bundle of new local');
+    console.log('                                                     lessons for the global brain');
+    console.log('                                                     (needs the contribution grant)');
+    console.log('       raph contribute send                          show staged bundles + where');
+    console.log('                                                     to submit them');
     console.log('');
     console.log('Each export strips project names, path globs, and evidence refs; re-scrubs');
     console.log('the full text for secrets; and re-validates through the same chokepoint');
-    console.log('that guards the brain. Sharing is per-lesson opt-in — there is no --all.');
+    console.log('that guards the brain. Nothing is ever sent automatically.');
     return args[0] ? 0 : 1;
+  }
+
+  if (args[0] === 'bundle') {
+    const cfg = loadConfig();
+    if (!contributionEnabled(cfg)) {
+      console.error('raph: contribution is not granted — enable it with "raph arise --autopilot --contribute"');
+      console.error('      or add "contribute: { enabled: true }" in the console settings. Nothing leaves');
+      console.error('      this machine without that grant.');
+      return 1;
+    }
+    const res = buildBundle({ config: cfg, min: 1, log: (s) => console.log(s) });
+    if (res.refused) {
+      console.log(`raph: no bundle — ${res.refused}`);
+      return 0;
+    }
+    for (const s of res.skipped) console.log(`  [skipped] ${s.slug} — ${s.why}`);
+    console.log(`BUNDLE  ${res.count} lesson(s) -> ${res.staged}`);
+    console.log('NEXT    raph contribute send');
+    return 0;
+  }
+
+  if (args[0] === 'send') {
+    const bundles = listBundles();
+    if (bundles.length === 0) {
+      const cfg = loadConfig();
+      const n = contributionEnabled(cfg) ? eligibleForBundle().length : 0;
+      console.log(`raph: no staged bundles${n ? ` (${n} lesson(s) eligible — "raph contribute bundle")` : ''}`);
+      return 0;
+    }
+    console.log('Staged contribution bundles (scrubbed, chokepoint-validated, ready to share):\n');
+    for (const b of bundles) {
+      console.log(`  ${b.id}  ${b.count} lesson(s)  ${b.created ?? ''}`);
+      console.log(`    ${b.file}`);
+    }
+    console.log(`
+To submit: attach a bundle file to a new issue titled "contribution bundle" at
+  https://github.com/maheshaggarwal21/raphael/issues/new
+The maintainer reviews every lesson before anything enters the global brain.
+(Sending is your action, in your browser — Raphael never uploads anything itself.)`);
+    return 0;
   }
 
   if (args[0] === 'list') {
