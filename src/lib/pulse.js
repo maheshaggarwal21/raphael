@@ -29,6 +29,7 @@ import { readEvents, logEvent } from './events.js';
 import { readActiveLessons, retireCandidates } from './freshness.js';
 import { retireRefs } from './review.js';
 import { sweepQuarantine } from './curator.js';
+import { refreshAtlasIfStale } from './atlas.js';
 import { buildIndex } from './compile.js';
 import { p } from './paths.js';
 
@@ -106,7 +107,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
     project: project ?? null,
     ran: false, skipped: null,
     mined: 0, distilled: 0, curated: 0,
-    expired: 0, retired: 0,
+    expired: 0, retired: 0, atlas: null,
     limited: false, errors: []
   };
 
@@ -182,7 +183,20 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       summary.errors.push(`retire: ${err.message}`);
     }
 
-    // 5. index freshness
+    // 5. atlas freshness (17.4) — zero tokens; rebuild only when HEAD moved
+    // (or daily for non-git projects). The next session's hooks then inject a
+    // current digest with no one running `raph atlas` ever.
+    if (project) {
+      try {
+        const atlas = (deps.refreshAtlas ?? refreshAtlasIfStale)(project);
+        summary.atlas = atlas.refreshed ? `refreshed (${atlas.why})` : 'fresh';
+        if (atlas.refreshed) log(`  [atlas] rebuilt — ${atlas.why} (${atlas.files} files, 0 tokens)`);
+      } catch (err) {
+        summary.errors.push(`atlas: ${err.message}`);
+      }
+    }
+
+    // 6. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }
   } finally {
     releaseLock();
@@ -193,7 +207,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
         project: summary.project,
         ran: summary.ran, skipped: summary.skipped,
         mined: summary.mined, distilled: summary.distilled, curated: summary.curated,
-        expired: summary.expired, retired: summary.retired,
+        expired: summary.expired, retired: summary.retired, atlas: summary.atlas,
         limited: summary.limited, errors: summary.errors.slice(0, 5),
         durationMs: summary.durationMs
       });

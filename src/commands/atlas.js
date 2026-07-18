@@ -10,16 +10,16 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  scanProject,
-  buildAtlas,
-  renderAtlas,
   renderDigest,
   whereQuery,
   pathQuery,
   explainQuery,
   benchAtlas,
   benchQuestions,
-  renderBench
+  renderBench,
+  atlasPaths,
+  loadAtlasDoc as loadAtlas,
+  buildAndSaveAtlas as buildAndSave
 } from '../lib/atlas.js';
 import { mapFileName } from '../lib/map.js';
 import { renderVault } from '../lib/obsidian.js';
@@ -30,39 +30,6 @@ import { p } from '../lib/paths.js';
 function projectDirFrom(args) {
   const i = args.indexOf('--project');
   return path.resolve(i >= 0 && args[i + 1] ? args[i + 1] : process.cwd());
-}
-
-function atlasPaths(projectDir) {
-  const name = mapFileName(path.basename(projectDir));
-  return {
-    json: path.join(p.atlas(), `${name}.json`),
-    md: path.join(p.atlas(), `${name}.md`)
-  };
-}
-
-function loadAtlas(projectDir) {
-  const { json } = atlasPaths(projectDir);
-  if (!existsSync(json)) return null;
-  try {
-    return JSON.parse(readFileSync(json, 'utf8'));
-  } catch {
-    return null; // corrupt cache = rebuild
-  }
-}
-
-function buildAndSave(projectDir, { previous = null } = {}) {
-  const { extractions, reused, extracted } = scanProject(projectDir, { previous });
-  const today = new Date().toISOString().slice(0, 10);
-  const atlas = buildAtlas(extractions, {
-    project: path.basename(projectDir),
-    generated: today
-  });
-  const doc = { ...atlas, fileExtractions: extractions };
-  const { json, md } = atlasPaths(projectDir);
-  mkdirSync(p.atlas(), { recursive: true });
-  atomicWrite(json, JSON.stringify(doc));
-  atomicWrite(md, renderAtlas(atlas));
-  return { atlas: doc, reused, extracted, json, md };
 }
 
 // Load the atlas, building it on demand (it costs nothing but a scan).

@@ -784,8 +784,13 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       Live smoke: --async returned instantly, child logged; consent gate refused an
       unconsented project. BONUS FIX: `raph auto <level>` never parsed the level word
       (a -1 --cap index excluded args[0]) — pre-existing, found by the smoke. +8 tests.
-- [ ] 17.4 Atlas-in-pulse: auto-build/refresh per consented project when stale
-      (mtime + git HEAD check), zero tokens.
+- [x] 17.4 SHIPPED (session 13, 384/384, live-verified): atlas persistence extracted to
+      lib (atlasPaths/loadAtlasDoc/buildAndSaveAtlas — command now thin per the §14 law)
+      + gitHead() stamped into every atlas doc + refreshAtlasIfStale(): rebuild when
+      missing / HEAD moved / (non-git) json older than a day; incremental via the
+      per-file SHA cache, zero tokens. Wired as pulse step 5 (DI-able for tests),
+      summary.atlas in the pulse event. Live on raphael: first run 186 files with 116
+      reused from cache, second run "fresh" no-op. +2 tests.
 - [ ] 17.5 Onboarding + digest: first-SessionStart onboarding envelope (agent asks the
       ONE consent question in-chat -> `raph arise --autopilot`), weekly digest block
       (≤150 tokens, honest numbers, 7-day throttle, silent on empty weeks, security

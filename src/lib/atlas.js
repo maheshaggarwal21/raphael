@@ -13,8 +13,12 @@
 // lessons, nothing in it may command an agent.
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { mapFileName } from './map.js';
+import { atomicWrite } from './files.js';
+import { p } from './paths.js';
 
 // Bump whenever extraction semantics change — a cached extraction from an older
 // extractor is stale even if the file content is identical.
@@ -340,6 +344,76 @@ function owningFiles(atlas, nid, nbr) {
 }
 
 // Tokenize a question / error text into things we can match against the graph.
+// ---------- persistence + freshness (extracted from the command for pulse, 17.4) ----------
+
+export function atlasPaths(projectDir) {
+  const name = mapFileName(path.basename(projectDir));
+  return {
+    json: path.join(p.atlas(), `${name}.json`),
+    md: path.join(p.atlas(), `${name}.md`)
+  };
+}
+
+export function loadAtlasDoc(projectDir) {
+  const { json } = atlasPaths(projectDir);
+  if (!existsSync(json)) return null;
+  try {
+    return JSON.parse(readFileSync(json, 'utf8'));
+  } catch {
+    return null; // corrupt cache = rebuild
+  }
+}
+
+export function buildAndSaveAtlas(projectDir, { previous = null } = {}) {
+  const { extractions, reused, extracted } = scanProject(projectDir, { previous });
+  const today = new Date().toISOString().slice(0, 10);
+  const atlas = buildAtlas(extractions, {
+    project: path.basename(projectDir),
+    generated: today
+  });
+  const doc = { ...atlas, fileExtractions: extractions, head: gitHead(projectDir) };
+  const { json, md } = atlasPaths(projectDir);
+  mkdirSync(p.atlas(), { recursive: true });
+  atomicWrite(json, JSON.stringify(doc));
+  atomicWrite(md, renderAtlas(atlas));
+  return { atlas: doc, reused, extracted, json, md };
+}
+
+export function gitHead(projectDir) {
+  try {
+    const r = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: projectDir, encoding: 'utf8', timeout: 5000, windowsHide: true });
+    const head = r.status === 0 ? String(r.stdout).trim() : null;
+    return head && /^[0-9a-f]{7,40}$/.test(head) ? head : null;
+  } catch {
+    return null;
+  }
+}
+
+// Autopilot freshness (17.4): rebuild when the atlas is missing, when the git
+// HEAD moved since the last build, or — for non-git projects — once a day
+// (json mtime). Rebuilds are incremental (per-file SHA cache) and zero-token.
+export function refreshAtlasIfStale(projectDir, { now = Date.now() } = {}) {
+  const previous = loadAtlasDoc(projectDir);
+  const head = gitHead(projectDir);
+  let stale = false;
+  let why = null;
+  if (!previous) {
+    stale = true; why = 'no atlas yet';
+  } else if (head && previous.head !== head) {
+    stale = true; why = `HEAD moved (${String(previous.head ?? 'none').slice(0, 8)} -> ${head.slice(0, 8)})`;
+  } else if (!head) {
+    try {
+      const mtime = statSync(atlasPaths(projectDir).json).mtimeMs;
+      if (now - mtime > 24 * 60 * 60 * 1000) { stale = true; why = 'older than a day (no git to compare)'; }
+    } catch {
+      stale = true; why = 'atlas unreadable';
+    }
+  }
+  if (!stale) return { refreshed: false, why: 'fresh' };
+  const out = buildAndSaveAtlas(projectDir, { previous });
+  return { refreshed: true, why, files: out.atlas.counts.files, extracted: out.extracted, reused: out.reused };
+}
+
 export function queryTokens(text) {
   const codes = [...String(text).matchAll(/\bE-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*\b/g)].map((m) => m[0]);
   const paths = [...String(text).matchAll(/[\w./-]+\.(?:js|mjs|cjs|ts|tsx|py|md)\b/g)].map((m) => m[0]);

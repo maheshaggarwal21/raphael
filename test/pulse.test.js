@@ -189,3 +189,52 @@ test('probationRetire touches only machine/auto tiers and reports honestly when 
     cleanup(home);
   }
 });
+
+// ---------- 17.4: atlas-in-pulse ----------
+
+test('refreshAtlasIfStale builds when missing, skips when HEAD unchanged, rebuilds when HEAD moves', async (t) => {
+  const home = sandbox();
+  const proj = mkdtempSync(path.join(os.tmpdir(), 'raph-atproj-'));
+  try {
+    const { execSync } = await import('node:child_process');
+    const { refreshAtlasIfStale, loadAtlasDoc } = await import('../src/lib/atlas.js');
+    writeFileSync(path.join(proj, 'a.js'), 'export function alpha() { return 1; }\n');
+    execSync('git init -q && git add -A && git -c user.email=t@t -c user.name=t commit -qm one', { cwd: proj });
+
+    const first = refreshAtlasIfStale(proj);
+    assert.equal(first.refreshed, true);
+    assert.match(first.why, /no atlas/);
+    const doc = loadAtlasDoc(proj);
+    assert.ok(doc.head, 'atlas records the git HEAD');
+
+    const second = refreshAtlasIfStale(proj);
+    assert.equal(second.refreshed, false);
+
+    writeFileSync(path.join(proj, 'b.js'), 'export function beta() { return 2; }\n');
+    execSync('git add -A && git -c user.email=t@t -c user.name=t commit -qm two', { cwd: proj });
+    const third = refreshAtlasIfStale(proj);
+    assert.equal(third.refreshed, true);
+    assert.match(third.why, /HEAD moved/);
+  } finally {
+    cleanup(home);
+    rmSync(proj, { recursive: true, force: true });
+  }
+});
+
+test('pulse runs the atlas step and records it in the summary + event', async () => {
+  const home = sandbox();
+  try {
+    autopilotOn(home);
+    let refreshed = false;
+    const s = await runPulse({
+      project: home,
+      deps: { ...noopDeps, refreshAtlas: () => { refreshed = true; return { refreshed: true, why: 'no atlas yet', files: 3, extracted: 3, reused: 0 }; } }
+    });
+    assert.equal(refreshed, true);
+    assert.match(s.atlas, /refreshed/);
+    const ev = readEvents().filter((e) => e.event === 'pulse').pop();
+    assert.match(ev.atlas, /refreshed/);
+  } finally {
+    cleanup(home);
+  }
+});
