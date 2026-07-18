@@ -1,0 +1,190 @@
+{
+ "schema": "raphael/global-brain/v1",
+ "version": 1,
+ "generated": "2026-07-18",
+ "count": 26,
+ "lessons": [
+  {
+   "slug": "secrets-belong-in-env-vars",
+   "id": "les_01KXSXE9V5RHHFFC8RE0RN2AZW",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "8b5eaa9f2797335ae2f2105bdf787bdb0c9da8f1afa6e8ba261e0f88cb2bc22b"
+  },
+  {
+   "slug": "no-public-prefix-on-secret-env-vars",
+   "id": "les_01KXSXE9VG606Z9D8GZFEC7454",
+   "category": "security",
+   "severity": "high",
+   "sha256": "4252b220817b86d7dee2535273448aaaf668c8539aae4243fda0dbf8a91795f2"
+  },
+  {
+   "slug": "rotate-secrets-that-touched-git",
+   "id": "les_01KXSXE9VHNYVARZVWVQG11V98",
+   "category": "security",
+   "severity": "high",
+   "sha256": "c190b79f1c7839e1576ab6d71199712ea916180ee4b7e969af0acee495cd0f3c"
+  },
+  {
+   "slug": "hash-passwords-with-a-slow-kdf",
+   "id": "les_01KXSXE9VJMS8G1R0CVN8T1AX0",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "e1e143d1db34b81e85d41a0ef4fc8a97d33d179489d91f89d7a69575f76bbcbe"
+  },
+  {
+   "slug": "keep-pii-and-secrets-out-of-logs",
+   "id": "les_01KXSXE9VM6FHPR67GT4G3FJ33",
+   "category": "security",
+   "severity": "high",
+   "sha256": "7452179eacd095160ebc361d2ad1049e0eea0904290de2e8676766961051dbfe"
+  },
+  {
+   "slug": "set-httponly-secure-samesite-cookies",
+   "id": "les_01KXSXE9VNNQVENRWCMRAW2ZJZ",
+   "category": "security",
+   "severity": "high",
+   "sha256": "1b63b8505aaf33e6fff463068b5442bc1304e697e0453fb3370388399eeacad2"
+  },
+  {
+   "slug": "return-only-the-fields-the-client-needs",
+   "id": "les_01KXSXE9VPR6Q6FVK7JNPP0PYH",
+   "category": "security",
+   "severity": "high",
+   "sha256": "c6721a910bb204354da98be1cb24d77b83cd987eb39f3c0cac7afa4e6cb274ab"
+  },
+  {
+   "slug": "send-baseline-security-headers",
+   "id": "les_01KXSXE9VPVP75PRH9R1QMGQQM",
+   "category": "security",
+   "severity": "medium",
+   "sha256": "7e3ce67d5a9bacbf7e3eafb7f00697c2a3dc7550a78fde43a35f394e107b81df"
+  },
+  {
+   "slug": "rate-limit-authentication-endpoints",
+   "id": "les_01KXSXE9VQJDXRQ67RFZ6KHFKY",
+   "category": "security",
+   "severity": "high",
+   "sha256": "696bf404b254c3ffde6422abf68bd8ffa67b3001f32c468f13fe3f47443bb7cd"
+  },
+  {
+   "slug": "restrict-cors-to-known-origins",
+   "id": "les_01KXSXE9VRRTB72K5F2P60GGHV",
+   "category": "security",
+   "severity": "medium",
+   "sha256": "1a53213530e87b998c4b39fbcf69e6de472c5f9d17d178e35cdf121fb90e3346"
+  },
+  {
+   "slug": "never-send-stack-traces-to-clients",
+   "id": "les_01KXSXE9VS0NT7HGP2HVZW0WTX",
+   "category": "security",
+   "severity": "medium",
+   "sha256": "b1886299dedad53775e33d4389a9dfee99b0f114ba69f10412a06e323702f8ce"
+  },
+  {
+   "slug": "check-ownership-to-stop-idor",
+   "id": "les_01KXSXE9VSCFVHJZMNQ0G430M8",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "c71e18342dfa5b2c37d7a9c245f73eee7ea75b5e494b13f46adf06c6d781fc9d"
+  },
+  {
+   "slug": "server-is-the-authority-on-price",
+   "id": "les_01KXSXE9VT97F7FEG638DCF5QP",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "573419d7a6a293401646d4d57561037c045a344c94e50359d57325a6195b13c6"
+  },
+  {
+   "slug": "verify-payment-webhook-signatures",
+   "id": "les_01KXSXE9VTMMW25YME4QQ34DGV",
+   "category": "security",
+   "severity": "high",
+   "sha256": "e0faa348ab45869302b99917b050d69c57cd013a5a1f89cbfe29705c567fb41b"
+  },
+  {
+   "slug": "use-parameterized-queries",
+   "id": "les_01KXSXE9VVF4EF635N5EPKX5Q1",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "9bfce2c8c3b391ea98783bc9870ac4e36fac1de638f9231fd811318df16b938a"
+  },
+  {
+   "slug": "harden-password-reset-tokens",
+   "id": "les_01KXSXE9VV7QX6F8GPZ9PWTM6W",
+   "category": "security",
+   "severity": "high",
+   "sha256": "c441929125674d8bcbe46ba32b99e652ae01f3ba96b109863c1b9a0286ce350b"
+  },
+  {
+   "slug": "enforce-authorization-on-the-server",
+   "id": "les_01KXSXE9VWWAW290HDV4WHJZKR",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "cacd9cee813dd45d0fda9384d45058ac7e1909594033186117de4000cdb00d23"
+  },
+  {
+   "slug": "validate-uploads-server-side",
+   "id": "les_01KXSXE9VX8G4MF5MDSBEJNVD4",
+   "category": "security",
+   "severity": "high",
+   "sha256": "63778f6e1ab58b36508c1692a57c9950c4e14104b379a85b15d11eae62602ebe"
+  },
+  {
+   "slug": "test-the-app-as-an-attacker-would",
+   "id": "les_01KXSXE9VYE396SD6EZ2P6D3X3",
+   "category": "security",
+   "severity": "medium",
+   "sha256": "1c3c77f4b570531d138ba3cddb71233b7edc9ee62b3a5171eeab097e101b32ca"
+  },
+  {
+   "slug": "encode-output-to-stop-xss",
+   "id": "les_01KXSXE9VZCPXPE5H30HXA40VM",
+   "category": "security",
+   "severity": "high",
+   "sha256": "a1d225b4f407a9081af4eab8cfb2c278fffaba9c49ae643b4f28f2919757d150"
+  },
+  {
+   "slug": "give-users-a-data-deletion-path",
+   "id": "les_01KXSXE9W0AJ7AS50BN57XQ7CV",
+   "category": "security",
+   "severity": "medium",
+   "sha256": "57bb8ae0ad331574b6a2a3a12fe3b66ec175e486410ceca0b412fa6df4c11ab7"
+  },
+  {
+   "slug": "strip-debug-code-and-test-endpoints",
+   "id": "les_01KXSXE9W08KQ65706JDZ589AJ",
+   "category": "security",
+   "severity": "high",
+   "sha256": "75af0e144906eb360ba456e78c4261c07f062e58f2823b8d6fd81c4888b4f2c2"
+  },
+  {
+   "slug": "validate-required-env-at-startup",
+   "id": "les_01KXSXE9W1DNV5H0FD2ZFWQ99P",
+   "category": "security",
+   "severity": "medium",
+   "sha256": "43bf1ecf183874cec23cb593152ff9e33b95143e45f3167a2281869bf8805b80"
+  },
+  {
+   "slug": "secure-the-production-database-connection",
+   "id": "les_01KXSXE9W1QYKENFWPZ354WQYW",
+   "category": "security",
+   "severity": "high",
+   "sha256": "63fae6ceded33bf6ffc825620145ea7f9d5e86a4be7d35d375609493622875a8"
+  },
+  {
+   "slug": "do-not-expose-internal-files-and-docs",
+   "id": "les_01KXSXE9W2X0KVEGASD6HFK11S",
+   "category": "security",
+   "severity": "high",
+   "sha256": "1ce92798a2962d7c56a9a8e9c536de646b66ec657f112dd6a1831caef914ae15"
+  },
+  {
+   "slug": "supabase-anon-key-needs-row-level-security",
+   "id": "les_01KXSXE9W24G6TB6ZW9FN7CVDZ",
+   "category": "security",
+   "severity": "critical",
+   "sha256": "51130a1cd6def3c85b7bd846a191d82523798609f036f0ff66c30355c9ce586a"
+  }
+ ]
+}

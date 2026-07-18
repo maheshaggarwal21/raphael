@@ -16,6 +16,7 @@ import init from './init.js';
 import pack from './pack.js';
 import { loadConfig, saveConfig, setMode, setConsentScope } from '../lib/config.js';
 import { setDial } from '../lib/autoapprove.js';
+import { seedGlobalBrain } from '../lib/globalbrain.js';
 
 export default async function arise(args = []) {
   const autopilot = args.includes('--autopilot');
@@ -41,6 +42,17 @@ export default async function arise(args = []) {
     console.log('CONSENT  learn from this machine\'s projects: granted (raph config: consent.scope=all)');
     console.log(`SHARE    contribute to the community brain: ${args.includes('--contribute') ? 'granted — scrubbed bundles, you curate nothing' : 'NOT granted — everything stays on this machine'}`);
     console.log('MODE     autopilot — mine, distill, curate, and index after each session');
+
+    // 3. seed the local brain from the global brain shipped in the package
+    //    (§2.1: your copy starts as the owner-curated set; zero network)
+    const seed = seedGlobalBrain({ log: (s) => console.log(s) });
+    if (seed.activated?.length) {
+      console.log(`SEED     ${seed.activated.length} curated lesson(s) from the global brain v${seed.version} — active now`);
+    } else if (seed.why) {
+      console.log(`SEED     skipped — ${seed.why}`);
+    } else {
+      console.log('SEED     nothing new (the local brain already has the global set)');
+    }
     console.log(`
 That's it — you're done. Raphael now runs itself:
   · after each coding session it quietly learns from what happened

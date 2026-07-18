@@ -30,6 +30,7 @@ import { readActiveLessons, retireCandidates } from './freshness.js';
 import { retireRefs } from './review.js';
 import { sweepQuarantine } from './curator.js';
 import { refreshAtlasIfStale } from './atlas.js';
+import { syncGlobalBrain } from './globalbrain.js';
 import { buildIndex } from './compile.js';
 import { p } from './paths.js';
 
@@ -183,7 +184,18 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       summary.errors.push(`retire: ${err.message}`);
     }
 
-    // 5. atlas freshness (17.4) — zero tokens; rebuild only when HEAD moved
+    // 5. global-brain down-sync (17.6) — weekly, pinned URL, hash-verified,
+    // fail-open. Local lessons always win the dedupe.
+    if (cfg.autopilot?.sync_global !== false) {
+      try {
+        const sync = await (deps.syncGlobal ?? syncGlobalBrain)({ log });
+        if (sync.checked) summary.globalSync = sync.updated ? `v${sync.version}: +${sync.activated?.length ?? 0}` : sync.why;
+      } catch (err) {
+        summary.errors.push(`global-sync: ${err.message}`);
+      }
+    }
+
+    // 6. atlas freshness (17.4) — zero tokens; rebuild only when HEAD moved
     // (or daily for non-git projects). The next session's hooks then inject a
     // current digest with no one running `raph atlas` ever.
     if (project) {
@@ -196,7 +208,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       }
     }
 
-    // 6. index freshness
+    // 7. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }
   } finally {
     releaseLock();

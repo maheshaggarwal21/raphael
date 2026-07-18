@@ -548,7 +548,11 @@ compaction (manual or automatic) can never lose progress.
    user-initiated, read-only `raph adopt` fetches (AMENDED 2026-07-16 with the owner's
    explicit approval, ARCHITECTURE §0.6 + §13): https GET only, no credentials ever
    sent, ≤3 redirects, size/time capped, content treated as data — scanned, never
-   executed; never a background behavior. No other network access. The brain repo
+   executed; never a background behavior; and (c) the global-brain DOWN-SYNC (AMENDED
+   2026-07-18, §11.13/§2.1, autopilot only, covered by the install consent): a weekly
+   background https GET of EXACTLY the two pinned URLs in src/lib/globalbrain.js
+   (manifest + bundle on the owner's repo), hash-verified, every lesson still through
+   the chokepoint, local lessons always win. No other network access. The brain repo
    blocks pushes by default (pre-push hook).
 6. Everything mined stays local; sharing is opt-in per lesson.
 

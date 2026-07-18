@@ -1,0 +1,1252 @@
+[
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9V5RHHFFC8RE0RN2AZW",
+  "slug": "secrets-belong-in-env-vars",
+  "title": "Keep secrets in environment variables, not source code",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "secret",
+    "api key",
+    "token",
+    "credential",
+    "env",
+    "stripe",
+    "supabase",
+    "database url"
+   ],
+   "paths": [
+    ".env",
+    "config",
+    "settings"
+   ]
+  },
+  "lesson": "API keys, tokens, database URLs, and passwords written as string literals in source, config, or comments are exposed the moment the repo is shared or the bundle ships. Every secret lives in an environment variable read at runtime; the source holds names, never values.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Gitleaks)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Hardcoded secrets in source leak on share — read them from env vars instead.",
+   "tokens": 19
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VG606Z9D8GZFEC7454",
+  "slug": "no-public-prefix-on-secret-env-vars",
+  "title": "Never put a secret behind a browser-exposed env prefix",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "env",
+    "frontend",
+    "next_public",
+    "react_app",
+    "vite",
+    "browser",
+    "client"
+   ],
+   "paths": []
+  },
+  "lesson": "Build tools inline any variable prefixed with NEXT_PUBLIC_, REACT_APP_, or VITE_ straight into the browser bundle, where anyone viewing the page can read it. Only genuinely public values take those prefixes; a service-role or secret key behind one is fully exposed.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Gitleaks)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "A NEXT_PUBLIC_/VITE_ prefix ships the value to the browser — never for secret keys.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VHNYVARZVWVQG11V98",
+  "slug": "rotate-secrets-that-touched-git",
+  "title": "Rotate any secret that was ever committed to git",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "git",
+    "history",
+    "secret",
+    "rotate",
+    "commit",
+    "leak"
+   ],
+   "paths": []
+  },
+  "lesson": "Removing a secret from current code does not remove it from git history, where anyone with the repo can still recover it. A key, token, or password that was ever committed is compromised and stays valid until rotated at its provider.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Gitleaks)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Deleting a leaked secret leaves it in git history — rotate it, do not just delete.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VJMS8G1R0CVN8T1AX0",
+  "slug": "hash-passwords-with-a-slow-kdf",
+  "title": "Store passwords with a slow hash, never plain or fast hashes",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "password",
+    "hash",
+    "bcrypt",
+    "argon2",
+    "scrypt",
+    "auth",
+    "login"
+   ],
+   "paths": []
+  },
+  "lesson": "Passwords kept in plaintext, or hashed with a fast algorithm like MD5 or SHA-256 alone, fall to offline cracking within hours of a database leak. A purpose-built slow hash — bcrypt, scrypt, or argon2 — is required, and the plaintext is never stored, logged, or returned.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Bearer)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Plain or MD5/SHA-256 passwords crack fast after a leak — use bcrypt/scrypt/argon2.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VM6FHPR67GT4G3FJ33",
+  "slug": "keep-pii-and-secrets-out-of-logs",
+  "title": "Redact personal data and secrets before logging",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "log",
+    "logging",
+    "pii",
+    "redact",
+    "email",
+    "observability"
+   ],
+   "paths": []
+  },
+  "lesson": "Log lines that include full requests, headers, emails, phone numbers, or tokens copy that sensitive data into log storage and any third-party log service, where it outlives its purpose. Logs carry method, path, and status; sensitive fields are redacted or omitted.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Bearer)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Full-request logging copies PII and tokens into log storage — redact before logging.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VNNQVENRWCMRAW2ZJZ",
+  "slug": "set-httponly-secure-samesite-cookies",
+  "title": "Session cookies need httpOnly, secure, and sameSite",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "cookie",
+    "session",
+    "httponly",
+    "samesite",
+    "xss",
+    "csrf",
+    "localstorage"
+   ],
+   "paths": []
+  },
+  "lesson": "A session cookie without httpOnly is readable by any script through an XSS bug; without secure it crosses plaintext HTTP; without sameSite it rides cross-site requests as CSRF. Session identifiers set all three, and personal data stays out of localStorage, which every script on the page can read.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Bearer)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Cookies missing httpOnly/secure/sameSite are stealable — set all three on sessions.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VPR6Q6FVK7JNPP0PYH",
+  "slug": "return-only-the-fields-the-client-needs",
+  "title": "Filter API responses to the fields the client needs",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "api",
+    "response",
+    "serializer",
+    "over-fetch",
+    "fields",
+    "pii"
+   ],
+   "paths": []
+  },
+  "lesson": "Returning a whole database record leaks password hashes, internal ids, moderation flags, and sometimes other users data the caller was never meant to see. Each endpoint serializes an explicit allowlist of fields rather than the raw row.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Bearer)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Returning whole records leaks hidden fields — serialize an explicit allowlist.",
+   "tokens": 20
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VPVP75PRH9R1QMGQQM",
+  "slug": "send-baseline-security-headers",
+  "title": "Send the baseline security response headers",
+  "status": "candidate",
+  "category": "security",
+  "severity": "medium",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "headers",
+    "helmet",
+    "csp",
+    "hsts",
+    "clickjacking",
+    "x-frame-options"
+   ],
+   "paths": []
+  },
+  "lesson": "Without X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, and a Content-Security-Policy, an app is open to MIME sniffing, clickjacking, protocol downgrade, and injected scripts. These headers ship on every response; on Express the helmet middleware sets a sound default set.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Missing security headers invite clickjacking and injection — set the helmet baseline.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VQJDXRQ67RFZ6KHFKY",
+  "slug": "rate-limit-authentication-endpoints",
+  "title": "Rate-limit login, signup, reset, and OTP endpoints",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "rate limit",
+    "login",
+    "signup",
+    "otp",
+    "brute force",
+    "credential stuffing"
+   ],
+   "paths": []
+  },
+  "lesson": "Authentication endpoints with no rate limit let an attacker try thousands of passwords or OTP codes and create accounts in bulk. Login, signup, password reset, and OTP verification cap attempts per IP and per account over a short window.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Unlimited login attempts enable brute force — rate-limit auth endpoints per IP.",
+   "tokens": 20
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VRRTB72K5F2P60GGHV",
+  "slug": "restrict-cors-to-known-origins",
+  "title": "Do not allow all origins in CORS on a private API",
+  "status": "candidate",
+  "category": "security",
+  "severity": "medium",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "cors",
+    "origin",
+    "wildcard",
+    "api",
+    "credentials"
+   ],
+   "paths": []
+  },
+  "lesson": "A CORS policy that reflects every origin, or answers with a wildcard while still allowing credentials, lets any website call the API as the logged-in user. A private API lists only the specific front-end origins it trusts.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Wildcard CORS lets any site call your API as the user — allowlist known origins.",
+   "tokens": 20
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VS0NT7HGP2HVZW0WTX",
+  "slug": "never-send-stack-traces-to-clients",
+  "title": "Return generic errors to clients, detailed logs to the server",
+  "status": "candidate",
+  "category": "security",
+  "severity": "medium",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "error",
+    "stack trace",
+    "exception",
+    "debug",
+    "correlation id"
+   ],
+   "paths": []
+  },
+  "lesson": "An error response carrying a stack trace, SQL fragment, or file path hands an attacker a map of the stack and its internals. Clients receive a generic message plus a correlation id, while full detail goes only to server-side logs.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Stack traces in responses map your internals — return a generic error, log the detail.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VSCFVHJZMNQ0G430M8",
+  "slug": "check-ownership-to-stop-idor",
+  "title": "Verify resource ownership on every id taken from the client",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "idor",
+    "authorization",
+    "ownership",
+    "object id",
+    "access control"
+   ],
+   "paths": []
+  },
+  "lesson": "An endpoint that reads an id from the URL or body and returns the record without checking who is asking lets a user fetch or change another users data by changing the number — an IDOR flaw. Every such handler confirms the authenticated caller owns, or may access, that specific object.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Trail of Bits)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Returning a record by client id without an owner check is IDOR — verify ownership.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VT97F7FEG638DCF5QP",
+  "slug": "server-is-the-authority-on-price",
+  "title": "Recompute prices and totals on the server, never trust the client",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "payment",
+    "price",
+    "total",
+    "discount",
+    "cart",
+    "checkout"
+   ],
+   "paths": []
+  },
+  "lesson": "When the server accepts a price, total, quantity, or discount from the request body, an attacker edits those values and pays what they choose. Money is recomputed server-side from trusted catalog and rule data; the client numbers are display-only.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Trail of Bits)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Trusting client-sent prices lets attackers set their own total — recompute server-side.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VTMMW25YME4QQ34DGV",
+  "slug": "verify-payment-webhook-signatures",
+  "title": "Verify payment webhook signatures before granting access",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "webhook",
+    "payment",
+    "stripe",
+    "razorpay",
+    "signature",
+    "fulfilment"
+   ],
+   "paths": []
+  },
+  "lesson": "A payment webhook handler that acts on the request body without checking the provider signature can be called directly by anyone to forge a paid event and unlock features. The signature is verified against the shared secret, and access is granted only after the provider confirms the payment.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Trail of Bits)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Unverified payment webhooks forge paid events — check the provider signature first.",
+   "tokens": 21
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VVF4EF635N5EPKX5Q1",
+  "slug": "use-parameterized-queries",
+  "title": "Build SQL with bound parameters, never string concatenation",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "sql",
+    "sql injection",
+    "query",
+    "parameterized",
+    "orm",
+    "input"
+   ],
+   "paths": []
+  },
+  "lesson": "Assembling a query by concatenating user input lets that input change the query itself — the classic SQL injection that dumps or destroys a database. Values reach the database only as bound parameters, through parameterized queries or an ORM, and never inside the query string.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Trail of Bits)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Concatenating user input into SQL is injection — bind values as parameters.",
+   "tokens": 19
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VV7QX6F8GPZ9PWTM6W",
+  "slug": "harden-password-reset-tokens",
+  "title": "Make reset tokens random, single-use, and short-lived",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "password reset",
+    "token",
+    "account takeover",
+    "expiry",
+    "jwt"
+   ],
+   "paths": []
+  },
+  "lesson": "A password-reset token that is guessable, reusable, or valid for days is a path to account takeover. Reset tokens are long random values tied to one account, usable once, and expiring in minutes; the same care applies to JWT signing secrets and token expiry.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Trail of Bits)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Guessable or long-lived reset tokens enable takeover — random, single-use, short expiry.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VWWAW290HDV4WHJZKR",
+  "slug": "enforce-authorization-on-the-server",
+  "title": "Enforce roles and permissions on the server, not in the UI",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "authorization",
+    "role",
+    "admin",
+    "privilege escalation",
+    "rbac"
+   ],
+   "paths": []
+  },
+  "lesson": "Hiding an admin button while leaving its endpoint open lets a user reach admin actions by guessing the route or editing a role claim in their token. Every protected action re-checks the caller role and permission on the server, treating client-side role data as untrusted.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Security Review)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Hiding admin UI without a server role check invites escalation — authorize server-side.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VX8G4MF5MDSBEJNVD4",
+  "slug": "validate-uploads-server-side",
+  "title": "Validate file uploads by real type and size on the server",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "upload",
+    "file",
+    "mime",
+    "size",
+    "malware",
+    "stored xss"
+   ],
+   "paths": []
+  },
+  "lesson": "Trusting a file name or client-sent type lets an attacker upload a script or an oversized file; serving uploads from the app own origin with execute rights turns that into stored XSS or code execution. Uploads are checked for real type and size on the server and served from an isolated origin without execution.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Security Review)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Unchecked uploads become malware or stored XSS — validate type/size, isolate serving.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VYE396SD6EZ2P6D3X3",
+  "slug": "test-the-app-as-an-attacker-would",
+  "title": "Re-run an attacker-perspective review after each major feature",
+  "status": "candidate",
+  "category": "security",
+  "severity": "medium",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "critique"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "attacker",
+    "security review",
+    "abuse",
+    "business logic",
+    "audit"
+   ],
+   "paths": []
+  },
+  "lesson": "New code is new attack surface, and logic flaws — negative payments, stacked discounts, restarted free trials, self-referral, infinite promo codes — are invisible to unit tests because each step is individually valid. A deliberate attacker-perspective pass after major features catches abuse paths that normal testing misses.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Security Review)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "New features add attack surface — re-run an attacker-perspective pass to catch abuse.",
+   "tokens": 22
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9VZCPXPE5H30HXA40VM",
+  "slug": "encode-output-to-stop-xss",
+  "title": "Escape user input on output to stop cross-site scripting",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "xss",
+    "sanitize",
+    "escape",
+    "html",
+    "output encoding",
+    "injection"
+   ],
+   "paths": []
+  },
+  "lesson": "Rendering user input into HTML, attributes, or the DOM without escaping lets an attacker run script in other users' browsers — stored or reflected XSS that steals sessions and data. Untrusted values are escaped on output for their context, and rich text is sanitized against an allowlist before it renders.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Trail of Bits)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Unescaped user input in HTML runs as script (XSS) — encode on output, sanitize rich text.",
+   "tokens": 23
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9W0AJ7AS50BN57XQ7CV",
+  "slug": "give-users-a-data-deletion-path",
+  "title": "Provide a way for users to delete or anonymize their data",
+  "status": "candidate",
+  "category": "security",
+  "severity": "medium",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "gdpr",
+    "ccpa",
+    "deletion",
+    "erasure",
+    "privacy",
+    "pii"
+   ],
+   "paths": []
+  },
+  "lesson": "An app that collects personal data but offers no deletion path strands that data forever and breaches privacy law (GDPR right-to-erasure, CCPA). An account-deletion flow that removes or anonymizes the user's records — including copies in logs, backups, and third-party services — closes the loop.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Bearer)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "No deletion path strands PII and breaks privacy law — offer account deletion/anonymization.",
+   "tokens": 23
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9W08KQ65706JDZ589AJ",
+  "slug": "strip-debug-code-and-test-endpoints",
+  "title": "Remove debug code and test-only endpoints before deploy",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "debug",
+    "test endpoint",
+    "backdoor",
+    "seed-data",
+    "production",
+    "cleanup"
+   ],
+   "paths": []
+  },
+  "lesson": "Debug logging, commented-out blocks, hardcoded test credentials, and test-only routes (/debug, /seed-data, /admin-backdoor) shipped to production leak internals and hand attackers a shortcut. These are stripped before deploy and debug mode defaults to off.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Debug code and /seed-data routes in production are a backdoor — strip them before deploy.",
+   "tokens": 23
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9W1DNV5H0FD2ZFWQ99P",
+  "slug": "validate-required-env-at-startup",
+  "title": "Validate required configuration at startup and refuse to boot without it",
+  "status": "candidate",
+  "category": "security",
+  "severity": "medium",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "env",
+    "config",
+    "startup",
+    "validation",
+    "boot",
+    "fail-fast"
+   ],
+   "paths": []
+  },
+  "lesson": "An app that starts with a critical variable missing — database URL, auth signing secret, a required API key — fails later in confusing or insecure ways, sometimes falling back to an unsafe default. Required configuration is checked at startup, and the app refuses to boot with a clear error when any is absent.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "Booting with a critical env var missing fails unsafely — validate config at startup, fail fast.",
+   "tokens": 24
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9W1QYKENFWPZ354WQYW",
+  "slug": "secure-the-production-database-connection",
+  "title": "Require TLS, unique credentials, and a closed port on the production database",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "database",
+    "tls",
+    "ssl",
+    "credentials",
+    "network",
+    "production"
+   ],
+   "paths": []
+  },
+  "lesson": "A production database reachable without TLS, running on default or shared credentials, or listening on a port open to the whole internet is trivially compromised. The connection uses TLS in production, unique non-default credentials, and network rules that limit access to the app.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Production Audit)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "A plaintext or open-port database with default creds is trivially owned — require TLS + lock it down.",
+   "tokens": 26
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9W2X0KVEGASD6HFK11S",
+  "slug": "do-not-expose-internal-files-and-docs",
+  "title": "Keep .env, .git, and internal API docs off the public surface",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "deployer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "exposure",
+    "dotenv",
+    "git",
+    "swagger",
+    "openapi",
+    "health"
+   ],
+   "paths": []
+  },
+  "lesson": "Serving the .env file, the .git directory, Swagger/OpenAPI docs, or a verbose health endpoint on the public surface hands an attacker secrets, source history, and a full map of the API. These paths are blocked at the server, and internal docs and health detail sit behind authentication.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Security Review)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "A reachable .env/.git/Swagger leaks secrets and the API map — block them, gate internal docs.",
+   "tokens": 24
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
+  "id": "les_01KXSXE9W24G6TB6ZW9FN7CVDZ",
+  "slug": "supabase-anon-key-needs-row-level-security",
+  "title": "The Supabase anon key is only safe with Row Level Security on every table",
+  "status": "candidate",
+  "category": "security",
+  "severity": "critical",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "supabase",
+    "rls",
+    "row level security",
+    "anon key",
+    "service role"
+   ],
+   "paths": []
+  },
+  "lesson": "The Supabase anon key is designed for the browser, but only when Row Level Security is enabled on every table; without RLS it exposes the entire database to anyone who reads the page. The service_role key bypasses RLS and must never appear in client code under any circumstances.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-18",
+   "last_seen": "2026-07-18"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on Gitleaks)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "A Supabase anon key without RLS exposes the whole database — enable RLS, keep service_role server-side.",
+   "tokens": 26
+  }
+ }
+]

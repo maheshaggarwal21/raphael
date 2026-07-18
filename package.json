@@ -15,6 +15,7 @@
     "src/",
     "plugin/",
     "docs/",
+    "global-brain/",
     "README.md",
     "LICENSE",
     "ARCHITECTURE.md"
