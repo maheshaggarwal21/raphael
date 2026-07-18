@@ -21,6 +21,13 @@
           { "type": "command", "command": "raph inject --event pre-tool" }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "raph pulse --async" }
+        ]
+      }
     ]
   }
 }

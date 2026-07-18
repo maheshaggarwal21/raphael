@@ -41,6 +41,7 @@ const COMMANDS = {
   stats: () => import('./commands/stats.js'),
   adopt: () => import('./commands/adopt.js'),
   auto: () => import('./commands/auto.js'),
+  pulse: () => import('./commands/pulse.js'),
   web: () => import('./commands/web.js')
 };
 
@@ -126,9 +127,13 @@ Commands:
   adopt       Digest external material (URL, file, repo, skill file) into
               reviewable lessons + skill drafts, with provenance and undo
               (raph adopt <url|path> [--dry-run] | adopt list | adopt revoke <id>)
-  auto        The auto-approve dial: off | standard (own mined lessons) |
-              wide (+ adopted). Security always waits for a human.
-              (raph auto [off|standard|wide] [--cap N] [--daily-cap N])
+  auto        The auto-approve dial + autopilot switch: off | standard (own
+              mined) | wide (+ adopted) | full (AUTOPILOT: + security via the
+              machine curator). (raph auto [off|standard|wide|full|manual]
+              [--cap N] [--daily-cap N])
+  pulse       The autopilot heartbeat: mine -> distill -> machine-curate ->
+              sweep -> index, budgeted and fail-open. Runs itself after each
+              session via the plugin hook. (raph pulse [--run] [--async])
   web         Start the local console: your brain in the browser, localhost
               only, token-guarded (raph web [--port N] [--no-open])
   help        Show this help

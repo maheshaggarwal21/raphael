@@ -34,7 +34,8 @@ export default async function auto(args) {
 
   const capIdx = args.indexOf('--cap');
   const dailyIdx = args.indexOf('--daily-cap');
-  const word = args.find((a) => !a.startsWith('--') && args.indexOf(a) !== capIdx + 1 && args.indexOf(a) !== dailyIdx + 1);
+  // (an -1 flag index must not exclude args[0] — that hid the level word)
+  const word = args.find((a, i) => !a.startsWith('--') && !(capIdx >= 0 && i === capIdx + 1) && !(dailyIdx >= 0 && i === dailyIdx + 1));
 
   if (word === 'help') {
     console.log(HELP);

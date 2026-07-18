@@ -768,10 +768,22 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       confidence discount + counts in countAutoTier's shared cap. distill + adopt
       commands now call curateStaged (await, provider.callModel). CLAUDE.md invariant
       #4 rewritten mode-conditional. +10 tests.
-- [ ] 17.3 `raph pulse` + SessionEnd hook: the heartbeat. Hook fires `pulse --async`
-      (detached spawn, <50ms return); child takes a lock, then mine (watermark) ->
-      budget/E-LIMIT check (autopilot.daily_calls) -> distill -> machine-curate ->
-      auto-commit -> pulse event. EVERY step fails open (exit 0, touch nothing).
+- [x] 17.3 SHIPPED (session 13, 382/382, live-smoked): src/lib/pulse.js + commands/
+      pulse.js + SessionEnd hook (plugin/hooks.json -> `raph pulse --async`). --async =
+      hook entry: reads the hook's stdin JSON (cwd), spawns a DETACHED --run child
+      (stdio -> ~/.raphael/logs/pulse.log, windowsHide, unref), always exit 0. runPulse:
+      autopilot-mode gate + hasConsent gate (NEVER grants consent itself; skips are
+      SILENT, no event spam) + lock (wx-flag create, 30-min stale steal, unreadable =
+      stale) -> mine (ledger-incremental, zero tokens) -> budget (autopilot.
+      max_episodes_per_pulse=8, daily_distill_runs=3; counted from spending pulse
+      events) -> distill --yes --max-episodes (exit 4 = limited:true, resumes next
+      pulse via ledgers; machine curator runs INSIDE distill) -> sweepQuarantine ->
+      probationRetire (acts on retire suggestions for tier machine/auto ONLY, max
+      3/pulse — human-approved lessons stay suggestions forever) -> buildIndex ->
+      ONE pulse event. Every step try/caught (fail-open). `raph pulse` = status view.
+      Live smoke: --async returned instantly, child logged; consent gate refused an
+      unconsented project. BONUS FIX: `raph auto <level>` never parsed the level word
+      (a -1 --cap index excluded args[0]) — pre-existing, found by the smoke. +8 tests.
 - [ ] 17.4 Atlas-in-pulse: auto-build/refresh per consented project when stale
       (mtime + git HEAD check), zero tokens.
 - [ ] 17.5 Onboarding + digest: first-SessionStart onboarding envelope (agent asks the
