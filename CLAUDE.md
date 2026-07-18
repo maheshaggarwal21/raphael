@@ -564,6 +564,13 @@ compaction (manual or automatic) can never lose progress.
   list); handbook updated end to end for v0.2.0 (new 2.18 Autopilot + 2.19 Two brains,
   Journey A autopilot-first, marketing posts lead with "install once, runs itself",
   402/40 numbers). 402/402 green.
+- INSTALL-PATH CORRECTION (owner hit live): `/plugin` does NOT exist in the desktop/web
+  app — only in interactive TERMINAL Claude Code. The universal install path is the
+  terminal CLI: `claude plugin marketplace add maheshaggarwal21/raphael` +
+  `claude plugin install raphael-brain@raphael` (verified live: plugin 0.2.0 installed +
+  enabled on the owner's machine). All docs + arise.js output now lead with `claude
+  plugin …`; never document /plugin as the primary path again. arise.js text change
+  ships with the next npm patch (registry 0.2.0 still prints the old lines).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
