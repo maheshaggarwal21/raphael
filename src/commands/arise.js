@@ -1,22 +1,64 @@
-// `raph arise` — the one-command first-run (Phase 11). A new user should not
-// need to know the setup order; this runs it: init the brain (non-destructive),
-// optionally seed the security pack and install the commit guard, then print
-// the two plugin lines and the first five minutes. It composes the existing
-// commands — arise holds no logic of its own.
-//   raph arise [--pack] [--guard] [--yes]
+// `raph arise` — the one-command first-run (Phase 11 + 17.5). A new user should
+// not need to know the setup order; this runs it. Two shapes:
+//
+//   raph arise --autopilot [--contribute] [--guard]
+//       The zero-touch setup (§2.2's three permissions, answered): global
+//       consent to learn from this machine's projects, optional contribution
+//       grant, mode autopilot + dial full. From here Raphael runs itself
+//       (pulse after each session) and speaks once a week.
+//
+//   raph arise [--pack] [--guard]
+//       The manual (curator) setup — everything waits for human review.
+//
+// arise composes the existing engines — it holds no policy of its own.
 
 import init from './init.js';
 import pack from './pack.js';
+import { loadConfig, saveConfig, setMode, setConsentScope } from '../lib/config.js';
+import { setDial } from '../lib/autoapprove.js';
 
 export default async function arise(args = []) {
-  console.log('raph arise — setting up your brain\n');
+  const autopilot = args.includes('--autopilot');
+  console.log(`raph arise — setting up your brain${autopilot ? ' (autopilot)' : ''}\n`);
 
   // 1. the brain (creates only what is missing; never touches lessons)
   const initArgs = args.includes('--guard') ? ['--guard'] : [];
   const initCode = await init(initArgs);
   if (initCode !== 0) return initCode;
 
-  // 2. optional: seed the security starter pack as REVIEWABLE candidates
+  if (autopilot) {
+    // 2. the three permissions, recorded (§2.2)
+    setConsentScope('all');                    // permission 1: learn from my work
+    if (args.includes('--contribute')) {       // permission 2 (optional): share up
+      const cfg = loadConfig();
+      cfg.contribute = { enabled: true, granted: new Date().toISOString().slice(0, 10) };
+      saveConfig(cfg);
+    }
+    setMode('autopilot');                      // permission 3: autopilot
+    const cfg = loadConfig();
+    setDial(cfg, { level: 'full' });
+    saveConfig(cfg);
+    console.log('CONSENT  learn from this machine\'s projects: granted (raph config: consent.scope=all)');
+    console.log(`SHARE    contribute to the community brain: ${args.includes('--contribute') ? 'granted — scrubbed bundles, you curate nothing' : 'NOT granted — everything stays on this machine'}`);
+    console.log('MODE     autopilot — mine, distill, curate, and index after each session');
+    console.log(`
+That's it — you're done. Raphael now runs itself:
+  · after each coding session it quietly learns from what happened
+  · lessons pass the machine curator (reviewer screen + canary gate) before
+    they activate; quarantined content never activates
+  · your project map (atlas) stays fresh automatically
+  · once a week, one short line reports what it learned — raph web shows
+    everything and can undo anything in one click
+
+Wire the Claude Code plugin if you haven't:
+  /plugin marketplace add maheshaggarwal21/raphael
+  /plugin install raphael-brain@raphael
+
+Prefer to review lessons yourself? raph auto manual`);
+    return 0;
+  }
+
+  // manual (curator) path — unchanged Phase 11 behavior
   if (args.includes('--pack')) {
     console.log('');
     const packCode = await pack(['add', 'security']);
@@ -42,6 +84,7 @@ Next steps:
 
 Injection is ON by default, budgeted at ~1,200 tokens/session; "raph why" shows
 every injection, "raph off" stops them. Everything stays on this machine —
-sharing is per-lesson opt-in via "raph contribute".`);
+sharing is per-lesson opt-in via "raph contribute". Want zero-touch instead?
+raph arise --autopilot`);
   return 0;
 }

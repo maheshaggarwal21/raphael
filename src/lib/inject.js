@@ -9,9 +9,10 @@
 //     envelope that tells the agent these are notes, not instructions
 // The safe wrapper never throws: injection is fail-open by design.
 
-import { existsSync, readFileSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, rmSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { loadConfig, isInjectionEnabled } from './config.js';
+import { loadConfig, isInjectionEnabled, getMode } from './config.js';
+import { readEvents } from './events.js';
 import { loadIndex } from './compile.js';
 import { detectStacks } from './stacks.js';
 import { rank, extractPaths } from './match.js';
@@ -186,6 +187,86 @@ export function atlasDigestBlock(cwd, budget = ATLAS_DIGEST_BUDGET) {
   }
 }
 
+// ---------- 17.5: one-time onboarding + the weekly digest ----------
+
+// The onboarding envelope fires EXACTLY ONCE per machine: the first session
+// after install, when no config.yaml exists yet. It instructs the agent to ask
+// the three §2.2 permissions conversationally and run the matching arise
+// command. A marker file makes it one-time even if the user ignores it —
+// autopilot must never nag.
+const ONBOARDING_MARKER = () => path.join(p.state(), 'onboarding.json');
+
+export function onboardingBlock() {
+  try {
+    if (existsSync(p.config())) return '';           // already set up
+    if (existsSync(ONBOARDING_MARKER())) return '';  // already asked once
+    mkdirSync(p.state(), { recursive: true });
+    atomicWrite(ONBOARDING_MARKER(), JSON.stringify({ shown_at: new Date().toISOString() }));
+    return [
+      '<raphael-onboarding>',
+      'Raphael (the learning-brain plugin) is installed but not set up. ONCE, now,',
+      'ask the user these three questions in plain words, then run the matching',
+      'command. Never ask again after this turn.',
+      '1. May Raphael learn from your coding sessions on this machine, in the',
+      '   background? (required — without it Raphael stays dormant)',
+      '2. Contribute your anonymized, secret-scrubbed lessons to the community',
+      '   brain? (optional — nothing ever leaves this machine unless they say yes)',
+      '3. Autopilot (recommended: fully automatic, security handled by the machine',
+      '   curator, weekly summary, everything undoable) or manual review?',
+      'Then run exactly one of:',
+      '  yes + autopilot: raph arise --autopilot [--contribute]',
+      '  yes + manual:    raph arise --pack',
+      '  no:              nothing — Raphael stays dormant (raph arise works anytime)',
+      '</raphael-onboarding>'
+    ].join('\n');
+  } catch {
+    return '';
+  }
+}
+
+// The weekly digest (autopilot's only voice): at most once every 7 days, only
+// when something actually happened, ≤150 tokens, security always called out.
+const DIGEST_INTERVAL_MS = 7 * 86400000;
+export const WEEKLY_DIGEST_BUDGET = 150;
+
+export function weeklyDigestBlock({ now = Date.now() } = {}) {
+  try {
+    const cfg = loadConfig();
+    if (getMode(cfg) !== 'autopilot') return '';
+    const events = readEvents();
+    let lastShown = 0;
+    for (const e of events) {
+      if (e.event === 'digest-shown') lastShown = Math.max(lastShown, Date.parse(e.ts ?? 0) || 0);
+    }
+    if (now - lastShown < DIGEST_INTERVAL_MS) return '';
+    const since = Math.max(lastShown, now - DIGEST_INTERVAL_MS);
+    const inWindow = events.filter((e) => (Date.parse(e.ts ?? 0) || 0) >= since);
+
+    const activated = inWindow.filter((e) => ['machine-curated', 'auto-approved', 'approved'].includes(e.event));
+    const security = activated.filter((e) => e.category === 'security').length;
+    const retired = inWindow.filter((e) => e.event === 'retired').length;
+    const quarantined = inWindow.filter((e) => e.event === 'quarantine-expired').length;
+    const injections = inWindow.filter((e) => e.event === 'injected');
+    const recallTokens = injections.reduce((s, e) => s + (e.tokens ?? 0), 0);
+    if (activated.length === 0 && retired === 0 && injections.length === 0) return ''; // silent empty week
+
+    const bits = [`learned ${activated.length} lesson(s)${security ? ` (${security} security)` : ''}`];
+    if (injections.length) bits.push(`recalled into ${injections.length} session(s) for ~${recallTokens} tokens total`);
+    if (retired) bits.push(`self-retired ${retired}`);
+    if (quarantined) bits.push(`expired ${quarantined} quarantined unseen`);
+    const text = [
+      '<raphael-digest>',
+      `Raphael this week: ${bits.join('; ')}. Inspect or undo anything: raph web.`,
+      '</raphael-digest>'
+    ].join('\n');
+    if (estTokens(text) > WEEKLY_DIGEST_BUDGET) return '';
+    logEvent({ event: 'digest-shown', activated: activated.length, security, retired, recallTokens });
+    return text;
+  } catch {
+    return '';
+  }
+}
+
 // The core decision. Returns { text, injected, tokens } — text === '' means
 // print nothing at all.
 // Search-shaped tool calls are the moment the awareness problem bites: the
@@ -232,6 +313,14 @@ export function runInjection(event, payload = {}) {
   // "no-op until first lesson" gate below.
   if (event === 'pre-tool') return runPreToolNudge(payload);
 
+  // 17.5: a brand-new install has no config and no lessons — the one-time
+  // onboarding envelope is the only thing worth injecting, and it must fire
+  // before the empty-index gate below.
+  if (event === 'session-start') {
+    const onboarding = onboardingBlock();
+    if (onboarding) return { text: onboarding, injected: [], tokens: estTokens(onboarding) };
+  }
+
   const { lessons } = loadIndex();
   if (lessons.length === 0) return { text: '', injected: [], tokens: 0 }; // no-op until first approval
 
@@ -263,6 +352,10 @@ export function runInjection(event, payload = {}) {
       // 16.8b: standing decisions, capability-checked (only if any exist).
       const decisions = decisionsBlock(DECISIONS_BUDGET);
       if (decisions) text += '\n' + decisionsEnvelope(decisions);
+      // 17.5: the weekly digest — autopilot only, 7-day throttle, silent when
+      // the week was empty, own ≤150-token budget.
+      const weekly = weeklyDigestBlock();
+      if (weekly) text += '\n' + weekly;
     }
   } else if (event === 'user-prompt') {
     const promptText = String(payload.prompt ?? '');

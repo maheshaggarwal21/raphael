@@ -37,6 +37,9 @@ async function withSandbox(fn) {
   const proj = path.join(dir, 'proj');
   mkdirSync(proj, { recursive: true });
   writeFileSync(path.join(proj, 'package.json'), '{}', 'utf8'); // → node stack
+  // a configured brain (a missing config.yaml means "fresh install" and would
+  // trigger the 17.5 one-time onboarding envelope instead of normal recall)
+  writeFileSync(path.join(dir, 'config.yaml'), 'schema: raphael/config/v1\nmode: curator\n', 'utf8');
   try {
     return await fn(dir, proj);
   } finally {

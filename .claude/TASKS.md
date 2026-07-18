@@ -791,10 +791,19 @@ trail + one-click undo). Principle: ask once, act always, show weekly, undo anyt
       per-file SHA cache, zero tokens. Wired as pulse step 5 (DI-able for tests),
       summary.atlas in the pulse event. Live on raphael: first run 186 files with 116
       reused from cache, second run "fresh" no-op. +2 tests.
-- [ ] 17.5 Onboarding + digest: first-SessionStart onboarding envelope (agent asks the
-      ONE consent question in-chat -> `raph arise --autopilot`), weekly digest block
-      (≤150 tokens, honest numbers, 7-day throttle, silent on empty weeks, security
-      lessons always highlighted).
+- [x] 17.5 SHIPPED (session 13, 392/392, live-smoked): (a) onboardingBlock() in
+      inject.js — fires EXACTLY once per machine (config.yaml missing + marker file
+      state/onboarding.json); instructs the agent to ask the THREE §2.2 permissions
+      in-chat and run `raph arise --autopilot [--contribute]` / `--pack` / nothing;
+      never nags (marker written on emit, even if ignored); rides session-start BEFORE
+      the empty-index gate. (b) weeklyDigestBlock() — autopilot-only, 7-day throttle
+      via digest-shown events, SILENT on empty weeks, ≤150 tokens, security lessons
+      always called out, honest numbers from events (activated/recall tokens/retired/
+      quarantine-expired). (c) arise --autopilot [--contribute] [--guard]: one command
+      records all three permissions (consent.scope=all, contribute.enabled, mode
+      autopilot + dial full) and prints the "you're done" contract; manual path
+      unchanged. Fix: inject test sandboxes now write a config.yaml (a missing config
+      = fresh install = onboarding, by design). +8 tests.
 - [ ] 17.6 GLOBAL BRAIN (owner round-2 spec, 2026-07-18): two-brain model. Global brain
       = owner-curated lesson set on GitHub (`global-brain/` in the raphael repo, seeded
       from the security pack + curated adoptions), version-stamped manifest w/ per-lesson
