@@ -411,3 +411,49 @@ test('console 14.3 e2e: Company tab data = the exact portfolio + weekly report e
     cleanup(home);
   }
 });
+
+// --- 17.x follow-up: mode switch + contribution toggle live on Settings -----------
+
+test('console settings: /api/auto full couples mode (same applyDial), /api/contribute toggles the grant', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  const opts = (extra = {}) => ({ headers: { 'x-raphael-token': token, 'content-type': 'application/json', ...extra.headers }, ...extra });
+  const post = (p, body) => fetch(`${base}${p}`, opts({ method: 'POST', body: JSON.stringify(body) }));
+  try {
+    // fresh sandbox: curator, sharing not granted
+    let s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.mode, 'curator');
+    assert.equal(s.contribution.enabled, false);
+
+    // full = autopilot, via the console — the SAME applyDial as `raph auto full`
+    const up = await (await post('/api/auto', { level: 'full' })).json();
+    assert.equal(up.mode, 'autopilot');
+    s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.mode, 'autopilot');
+    assert.equal(s.autoApprove.level, 'full');
+
+    // 'manual' steps back down: curator, dial standard
+    const down = await (await post('/api/auto', { level: 'manual' })).json();
+    assert.equal(down.mode, 'curator');
+    assert.equal(down.level, 'standard');
+
+    // the contribution grant: toggle on, verify, toggle off; junk refused
+    s = await (await post('/api/contribute', { enabled: true })).json();
+    assert.equal(s.contribution.enabled, true);
+    s = await (await fetch(`${base}/api/settings`, opts())).json();
+    assert.equal(s.contribution.enabled, true);
+    s = await (await post('/api/contribute', { enabled: false })).json();
+    assert.equal(s.contribution.enabled, false);
+    assert.equal((await post('/api/contribute', { enabled: 'yes' })).status, 400);
+
+    // the page ships the new controls
+    const page = await (await fetch(`${base}/?token=${token}`, opts())).text();
+    assert.ok(page.includes('smode'));
+    assert.ok(page.includes('sshare'));
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});

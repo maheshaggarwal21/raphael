@@ -564,6 +564,19 @@ compaction (manual or automatic) can never lose progress.
   list); handbook updated end to end for v0.2.0 (new 2.18 Autopilot + 2.19 Two brains,
   Journey A autopilot-first, marketing posts lead with "install once, runs itself",
   402/40 numbers). 402/402 green.
+- CONTRIBUTE-DEFAULT + CONSOLE CATCH-UP (session 13 round 5, owner directive): (a)
+  `arise --autopilot` now grants contribution BY DEFAULT (--no-contribute opts out) —
+  ARCHITECTURE §11.14 + invariant #6 updated; stage-only unchanged, sending always
+  human. New `raph contribute on|off` = setContribution() in lib/contribute.js (the
+  one grant writer); onboarding envelope updated (Q2 recommended/default-on). (b)
+  applyDial() extracted to lib/autoapprove.js — the dial+mode coupling (full=autopilot,
+  manual steps down) now shared by `raph auto` AND the console (fixed a real §14
+  violation: /api/auto missed the coupling). (c) Console Settings tab caught up to
+  Phase 17: Mode card (autopilot/manual switch), full-dial description, corrected
+  security-floor text, Community-sharing card (grant toggle, staged/eligible counts)
+  via new POST /api/contribute. Live-smoked on the real brain (autopilot + granted,
+  33 eligible, zero console errors). Real brain: contribution granted 2026-07-18.
+  405/405 tests.
 - INSTALL-PATH CORRECTION (owner hit live): `/plugin` does NOT exist in the desktop/web
   app — only in interactive TERMINAL Claude Code. The universal install path is the
   terminal CLI: `claude plugin marketplace add maheshaggarwal21/raphael` +
@@ -606,7 +619,11 @@ compaction (manual or automatic) can never lose progress.
    (manifest + bundle on the owner's repo), hash-verified, every lesson still through
    the chokepoint, local lessons always win. No other network access. The brain repo
    blocks pushes by default (pre-push hook).
-6. Everything mined stays local; sharing is opt-in per lesson.
+6. Everything mined stays local. Named-lesson export stays per-lesson opt-in; the
+   contribution grant (bundling) defaults ON at `arise --autopilot` (§11.14, owner
+   2026-07-18 — announced in output, `raph contribute on|off` / console Settings to
+   change, setContribution() the only writer) but only ever STAGES bundles locally —
+   nothing is transmitted except by the user's own action.
 
 ## Layout
 ```

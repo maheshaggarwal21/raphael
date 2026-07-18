@@ -178,3 +178,77 @@ test('config roundtrip: mode + consent + dial coexist with unrelated keys', () =
     cleanup(home);
   }
 });
+
+// ---------- applyDial: the dial+mode coupling, shared by CLI and console ----------
+
+test('applyDial couples dial and mode: full=autopilot, sub-full=curator, manual steps full down', async () => {
+  const home = sandbox();
+  try {
+    const { applyDial } = await import('../src/lib/autoapprove.js');
+    const cfg = loadConfig();
+
+    const up = applyDial(cfg, { level: 'full' });
+    assert.equal(up.mode, 'autopilot');
+    assert.equal(cfg.mode, 'autopilot');
+    assert.equal(dialLevel(cfg), 'full');
+
+    // an explicit sub-full level drops back to curator
+    const down = applyDial(cfg, { level: 'wide' });
+    assert.equal(down.mode, 'curator');
+    assert.equal(dialLevel(cfg), 'wide');
+
+    // 'manual' from autopilot: curator + full stepped down to standard
+    applyDial(cfg, { level: 'full' });
+    const man = applyDial(cfg, { level: 'manual' });
+    assert.equal(man.mode, 'curator');
+    assert.equal(dialLevel(cfg), 'standard');
+
+    assert.throws(() => applyDial(cfg, { level: 'yolo' }), /E-DIAL/);
+  } finally {
+    cleanup(home);
+  }
+});
+
+// ---------- setContribution + the arise default ----------
+
+test('setContribution is the one grant writer; arise --autopilot grants by default, --no-contribute opts out', async () => {
+  const { setContribution, contributionEnabled } = await import('../src/lib/contribute.js');
+  const arise = (await import('../src/commands/arise.js')).default;
+
+  let home = sandbox();
+  try {
+    const on = setContribution(true);
+    assert.equal(on.enabled, true);
+    assert.match(on.granted, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(contributionEnabled(loadConfig()), true);
+    const off = setContribution(false);
+    assert.equal(off.enabled, false);
+    assert.equal(contributionEnabled(loadConfig()), false);
+    assert.throws(() => setContribution('yes'), /E-CONFIG/);
+  } finally {
+    cleanup(home);
+  }
+
+  // arise --autopilot: contribution ON by default (owner decision 2026-07-18)
+  home = sandbox();
+  try {
+    assert.equal(await arise(['--autopilot']), 0);
+    const cfg = loadConfig();
+    assert.equal(contributionEnabled(cfg), true);
+    assert.equal(getMode(cfg), 'autopilot');
+    assert.equal(dialLevel(cfg), 'full');
+  } finally {
+    cleanup(home);
+  }
+
+  // --no-contribute opts out; everything else unchanged
+  home = sandbox();
+  try {
+    assert.equal(await arise(['--autopilot', '--no-contribute']), 0);
+    const cfg = loadConfig();
+    assert.equal(contributionEnabled(cfg), false);
+    assert.equal(getMode(cfg), 'autopilot');
+  } finally {
+    cleanup(home);
+  }
+});

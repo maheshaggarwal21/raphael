@@ -4,7 +4,7 @@
 // exactly the same functions (no verb, no button).
 
 import { loadConfig, saveConfig, getMode } from '../lib/config.js';
-import { setDial, dialLevel, dialCaps, countAutoTier } from '../lib/autoapprove.js';
+import { applyDial, dialLevel, dialCaps, countAutoTier } from '../lib/autoapprove.js';
 
 const HELP = `raph auto — the auto-approve dial + autopilot switch
 
@@ -42,20 +42,12 @@ export default async function auto(args) {
     return 0;
   }
 
-  // mode coupling: 'full' IS autopilot; any explicit sub-full level IS manual.
-  let level = word;
-  let modeChanged = false;
-  if (word === 'manual') {
-    level = undefined;
-    if (cfg.mode === 'autopilot') { cfg.mode = 'curator'; modeChanged = true; }
-    // autopilot's dial level makes no sense in manual mode — step it down
-    if (dialLevel(cfg) === 'full') { cfg.auto_approve = { ...(cfg.auto_approve ?? {}), level: 'standard' }; modeChanged = true; }
-  }
-
+  // dial + mode coupling lives in lib/autoapprove.js applyDial — the console's
+  // Settings page calls the exact same function.
   let result;
   try {
-    result = setDial(cfg, {
-      level,
+    result = applyDial(cfg, {
+      level: word,
       cap: capIdx >= 0 ? Number(args[capIdx + 1]) : undefined,
       dailyCap: dailyIdx >= 0 ? Number(args[dailyIdx + 1]) : undefined
     });
@@ -63,14 +55,12 @@ export default async function auto(args) {
     console.error(`raph: ${err.message.replace(/^E-DIAL: /, '')}`);
     return 1;
   }
-  if (level === 'full' && cfg.mode !== 'autopilot') { cfg.mode = 'autopilot'; modeChanged = true; }
-  if (level && level !== 'full' && cfg.mode === 'autopilot') { cfg.mode = 'curator'; modeChanged = true; }
-  if (result.changed || modeChanged) saveConfig(cfg);
+  if (result.changed) saveConfig(cfg);
 
   const now = dialLevel(cfg);
   const caps = dialCaps(cfg);
   const mode = getMode(cfg);
-  console.log(`mode: ${mode === 'autopilot' ? 'AUTOPILOT' : 'manual (curator)'}  ·  auto-approve: ${now}${result.changed || modeChanged ? '  (saved)' : ''}`);
+  console.log(`mode: ${mode === 'autopilot' ? 'AUTOPILOT' : 'manual (curator)'}  ·  auto-approve: ${now}${result.changed ? '  (saved)' : ''}`);
   console.log(`  auto tier: ${countAutoTier()}/${caps.cap} lesson(s)  ·  adopted daily cap: ${caps.dailyCap}`);
   if (now === 'full') {
     console.log('  autopilot is ON: mined, adopted, and security lessons that pass the machine');

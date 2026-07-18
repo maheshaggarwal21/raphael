@@ -17,8 +17,9 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { loadConfig, saveConfig, isInjectionEnabled, setInjectionEnabled, setProjectConsent } from './config.js';
-import { dialLevel, dialCaps, setDial, countAutoTier, autoApproveStaged, DIAL_LEVELS } from './autoapprove.js';
+import { loadConfig, saveConfig, isInjectionEnabled, setInjectionEnabled, setProjectConsent, getMode } from './config.js';
+import { dialLevel, dialCaps, applyDial, countAutoTier, autoApproveStaged, DIAL_LEVELS } from './autoapprove.js';
+import { contributionEnabled, setContribution, listBundles, eligibleForBundle } from './contribute.js';
 import { scanTracked, scanFile, hookStatus, installPreCommitHook, uninstallPreCommitHook, loadAllowlist, gitTopLevel, ALLOWLIST_FILE } from './guard.js';
 import { listCandidates, resolveRef, needsConfirmation } from './queue.js';
 import { approveRefs, rejectRefs } from './review.js';
@@ -259,9 +260,16 @@ export function eventsFeed(limit = 50) {
 export function settingsView() {
   const cfg = loadConfig();
   return {
+    mode: getMode(cfg),
     autoApprove: { level: dialLevel(cfg), ...dialCaps(cfg), autoTier: countAutoTier(), levels: DIAL_LEVELS },
     injectionEnabled: isInjectionEnabled(cfg),
     modelProvider: cfg.model?.provider ?? 'auto',
+    contribution: {
+      enabled: contributionEnabled(cfg),
+      granted: cfg.contribute?.granted ?? null,
+      stagedBundles: listBundles().length,
+      eligible: contributionEnabled(cfg) ? eligibleForBundle().length : 0
+    },
     consent: Object.entries(cfg.projects ?? {}).map(([project, v]) => ({
       project, consent: v?.consent === true, registered: v?.registered ?? null
     }))
@@ -880,21 +888,43 @@ function renderCompany() {
 function renderSettings() {
   api('/api/settings').then(function (s) {
     var a = s.autoApprove;
+    var onAuto = s.mode === 'autopilot';
+    var h = '<h2>Mode (raph auto full / manual)</h2><div class="card">' +
+      'Raphael is in <b>' + (onAuto ? 'AUTOPILOT' : 'manual (curator)') + '</b> mode. <span class="muted">' +
+      (onAuto
+        ? 'After each session it mines, distills, and curates on its own; the machine curator (reviewer screen + canary gate, rollback on failure) approves — security included. Quarantined content never activates.'
+        : 'Everything waits in the Review queue for you; security lessons take the heavyweight one-at-a-time confirm path.') +
+      '</span><div class="actions"><button class="act primary" id="smode">' +
+      (onAuto ? 'Switch to manual — review everything yourself' : 'Switch to autopilot — it runs itself') +
+      '</button></div></div>';
     var radios = a.levels.map(function (lv) {
       var desc = lv === 'off' ? 'nothing activates without you (curator default)'
         : lv === 'standard' ? 'your own MINED lessons that pass every gate activate into the capped auto tier'
-        : 'plus ADOPTED lessons that passed the reviewer agent (daily-capped, revocable by source)';
+        : lv === 'wide' ? 'plus ADOPTED lessons that passed the reviewer agent (daily-capped, revocable by source)'
+        : 'AUTOPILOT: plus SECURITY lessons via the machine curator (reviewer screen + canary gate + probation) — selecting this switches the mode too';
       return '<label style="display:block;margin:.25rem 0"><input type="radio" name="dial" value="' + esc(lv) + '"' +
         (a.level === lv ? ' checked' : '') + '> <b>' + esc(lv) + '</b> — <span class="muted">' + esc(desc) + '</span></label>';
     }).join('');
-    var h = '<h2>Auto-approve dial (raph auto)</h2><div class="card">' + radios +
+    h += '<h2>Auto-approve dial (raph auto)</h2><div class="card">' + radios +
       '<div class="actions">auto-tier cap <input type="text" id="scap" size="5" value="' + esc(a.cap) + '">' +
       'adopted daily cap <input type="text" id="sdaily" size="5" value="' + esc(a.dailyCap) + '">' +
       '<button class="act primary" id="ssave">Save</button>' +
       '<span class="muted">auto tier now: ' + esc(a.autoTier) + '/' + esc(a.cap) + '</span></div>' +
-      '<p class="muted">At every level, security-category lessons and anything quarantined still wait for you — ' +
-      'that floor is enforced in code (E-AUTOSEC) and is not configurable.</p></div>' +
-      '<h2>Injection</h2><div class="card">recall is <b>' + (s.injectionEnabled ? 'ON' : 'OFF') +
+      '<p class="muted">At off/standard/wide, security-category lessons always wait for you (E-AUTOSEC). ' +
+      'At full (autopilot) they activate only through the machine curator. Quarantined (injection-suspect) ' +
+      'content never machine-activates at ANY level — that floor is enforced in code and is not configurable.</p></div>';
+    var c = s.contribution;
+    h += '<h2>Community sharing (raph contribute)</h2><div class="card">' +
+      'contribution is <b>' + (c.enabled ? 'GRANTED' : 'not granted') + '</b>' +
+      (c.enabled && c.granted ? ' <span class="muted">since ' + esc(c.granted) + '</span>' : '') +
+      '<div class="muted">' + (c.enabled
+        ? 'New local lessons are stripped, re-scrubbed, re-validated, and STAGED as bundles on this machine (' +
+          esc(c.stagedBundles) + ' bundle(s) staged, ' + esc(c.eligible) + ' lesson(s) eligible). ' +
+          'Sending a bundle is always your own action: raph contribute send.'
+        : 'Nothing leaves this machine. Granting only stages scrubbed bundles locally — sending still needs your own click.') +
+      '</div><div class="actions"><button class="act" id="sshare">' +
+      (c.enabled ? 'Withdraw sharing' : 'Grant sharing') + '</button></div></div>';
+    h += '<h2>Injection</h2><div class="card">recall is <b>' + (s.injectionEnabled ? 'ON' : 'OFF') +
       '</b> <span class="muted">(toggle on the Lessons tab, or raph on/off)</span> · model provider: ' + esc(s.modelProvider) + '</div>' +
       '<h2>Mining consent (per project)</h2><div class="card" id="sconsent">' +
       (s.consent.length ? '' : '<span class="muted">no projects registered — "raph mine" registers them with your consent</span>');
@@ -907,6 +937,25 @@ function renderSettings() {
     h += '</div>';
     view.innerHTML = h;
 
+    document.getElementById('smode').onclick = function () {
+      api('/api/auto', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ level: onAuto ? 'manual' : 'full' }) })
+        .then(function (r) {
+          flash(['mode: ' + (r.mode === 'autopilot' ? 'AUTOPILOT — Raphael runs itself after each session' : 'manual (curator) — everything waits for your review')]);
+          renderSettings();
+        })
+        .catch(function (e) { flash([e.message], true); });
+    };
+    document.getElementById('sshare').onclick = function () {
+      api('/api/contribute', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: !c.enabled }) })
+        .then(function () {
+          flash([c.enabled ? 'sharing withdrawn — nothing leaves this machine'
+            : 'sharing granted — bundles stage locally; sending is always your click']);
+          renderSettings();
+        })
+        .catch(function (e) { flash([e.message], true); });
+    };
     document.getElementById('ssave').onclick = function () {
       var lv = view.querySelector('input[name="dial"]:checked');
       var payload = { level: lv ? lv.value : undefined,
@@ -1086,16 +1135,27 @@ async function handle(req, res, token) {
       }
     }
 
-    // `raph auto [level] [--cap] [--daily-cap]` — the dial, via the SAME setDial.
+    // `raph auto [level|full|manual] [--cap] [--daily-cap]` — the SAME applyDial
+    // the CLI uses, so the mode coupling (full = autopilot) is identical here.
     if (url.pathname === '/api/auto') {
       const cfg = loadConfig();
       try {
-        const r = setDial(cfg, { level: body.level, cap: body.cap, dailyCap: body.dailyCap });
+        const r = applyDial(cfg, { level: body.level, cap: body.cap, dailyCap: body.dailyCap });
         if (r.changed) saveConfig(cfg);
         return sendJson(res, 200, { ...r, autoTier: countAutoTier() });
       } catch (err) {
         return sendJson(res, 400, { error: String(err.message ?? err) });
       }
+    }
+
+    // `raph contribute on|off` — the SAME setContribution. Granting only lets
+    // bundles STAGE locally; sending stays a human action (invariant #6).
+    if (url.pathname === '/api/contribute') {
+      if (typeof body.enabled !== 'boolean') {
+        return sendJson(res, 400, { error: 'E-WEB: body needs enabled (boolean)' });
+      }
+      setContribution(body.enabled);
+      return sendJson(res, 200, settingsView());
     }
 
     // The consent registry — the same setProjectConsent `raph mine` records.

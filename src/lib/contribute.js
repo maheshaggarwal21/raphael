@@ -10,6 +10,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { scrubSecrets } from './scrub.js';
+import { loadConfig, saveConfig } from './config.js';
 import { validateLesson } from './validate.js';
 import { serializeLessonFile } from './frontmatter.js';
 import { readActiveLessons } from './freshness.js';
@@ -103,6 +104,22 @@ export function readContributedState() {
 
 export function contributionEnabled(cfg) {
   return cfg?.contribute?.enabled === true;
+}
+
+// The ONE writer of the contribution grant (permission #2). `raph arise
+// --autopilot`, `raph contribute on|off`, and the console's Settings page all
+// call this. Granting only allows bundles to STAGE locally — sending remains a
+// human action always (invariant #6).
+export function setContribution(enabled) {
+  if (typeof enabled !== 'boolean') throw new Error('E-CONFIG: setContribution needs true or false');
+  const cfg = loadConfig();
+  const today = new Date().toISOString().slice(0, 10);
+  const prev = cfg.contribute ?? {};
+  cfg.contribute = enabled
+    ? { ...prev, enabled: true, granted: prev.granted ?? today }
+    : { ...prev, enabled: false, revoked: today };
+  saveConfig(cfg);
+  return { enabled, granted: cfg.contribute.granted ?? null, revoked: cfg.contribute.revoked ?? null };
 }
 
 // Locally-learned active lessons not yet bundled.

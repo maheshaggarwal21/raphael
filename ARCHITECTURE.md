@@ -659,6 +659,16 @@ baselines + ablation, checkpoint/resume machinery, TUI review, trusted co-review
     the machine is circular; it waits silently and tombstones after 30 days
     unreviewed. Design + rollout: docs/autopilot-vision.md, TASKS Phase 17.
 
+14. **Contribution grant: ON by default at autopilot setup (owner directive,
+    2026-07-18).** `raph arise --autopilot` grants permission #2 unless
+    `--no-contribute` is passed; the in-chat onboarding presents it as
+    recommended-and-default. Rationale: the grant's only effect is that scrubbed,
+    re-validated bundles STAGE LOCALLY — nothing is transmitted; sending remains a
+    human action always (invariant #6's network half is untouched). The grant is
+    announced in arise's output (never silent), revocable any time via
+    `raph contribute off` or the console's Settings tab, and `lib/contribute.js
+    setContribution()` is its only writer. Manual-mode `arise` does not grant it.
+
 ---
 
 ## 12. The self-training pipeline ("Raphael Academy")

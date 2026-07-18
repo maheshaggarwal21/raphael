@@ -124,15 +124,27 @@ test('arise --autopilot records all three permissions in one shot', async () => 
   }
 });
 
-test('arise --autopilot without --contribute leaves sharing off', async () => {
+// Owner decision 2026-07-18: contribution is ON by default at autopilot setup
+// (bundles still only STAGE locally; sending is always the user's own action).
+// --no-contribute is the opt-out.
+test('arise --autopilot grants sharing by default; --no-contribute opts out', async () => {
   const home = sandbox();
   try {
     await quiet(() => arise(['--autopilot']));
     const cfg = loadConfig();
     assert.equal(getMode(cfg), 'autopilot');
-    assert.equal(cfg.contribute, undefined);
+    assert.equal(cfg.contribute.enabled, true);
   } finally {
     cleanup(home);
+  }
+  const home2 = sandbox();
+  try {
+    await quiet(() => arise(['--autopilot', '--no-contribute']));
+    const cfg = loadConfig();
+    assert.equal(getMode(cfg), 'autopilot');
+    assert.equal(cfg.contribute.enabled, false);
+  } finally {
+    cleanup(home2);
   }
 });
 

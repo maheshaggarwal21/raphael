@@ -1,11 +1,13 @@
 // `raph arise` — the one-command first-run (Phase 11 + 17.5). A new user should
 // not need to know the setup order; this runs it. Two shapes:
 //
-//   raph arise --autopilot [--contribute] [--guard]
+//   raph arise --autopilot [--no-contribute] [--guard]
 //       The zero-touch setup (§2.2's three permissions, answered): global
-//       consent to learn from this machine's projects, optional contribution
-//       grant, mode autopilot + dial full. From here Raphael runs itself
-//       (pulse after each session) and speaks once a week.
+//       consent to learn from this machine's projects, the contribution grant
+//       (ON by default — owner decision 2026-07-18; --no-contribute opts out,
+//       `raph contribute off` any time later; bundles only ever STAGE locally,
+//       sending is always the user's click), mode autopilot + dial full. From
+//       here Raphael runs itself (pulse after each session) and speaks weekly.
 //
 //   raph arise [--pack] [--guard]
 //       The manual (curator) setup — everything waits for human review.
@@ -16,6 +18,7 @@ import init from './init.js';
 import pack from './pack.js';
 import { loadConfig, saveConfig, setMode, setConsentScope } from '../lib/config.js';
 import { setDial } from '../lib/autoapprove.js';
+import { setContribution } from '../lib/contribute.js';
 import { seedGlobalBrain } from '../lib/globalbrain.js';
 
 export default async function arise(args = []) {
@@ -30,17 +33,20 @@ export default async function arise(args = []) {
   if (autopilot) {
     // 2. the three permissions, recorded (§2.2)
     setConsentScope('all');                    // permission 1: learn from my work
-    if (args.includes('--contribute')) {       // permission 2 (optional): share up
-      const cfg = loadConfig();
-      cfg.contribute = { enabled: true, granted: new Date().toISOString().slice(0, 10) };
-      saveConfig(cfg);
-    }
+    // permission 2: contribution — ON by default at autopilot setup (owner
+    // decision 2026-07-18); --no-contribute opts out; changeable any time with
+    // `raph contribute on|off`. Grant = bundles STAGE locally only; sending is
+    // always the user's own click (invariant #6).
+    const contribute = !args.includes('--no-contribute');
+    setContribution(contribute);
     setMode('autopilot');                      // permission 3: autopilot
     const cfg = loadConfig();
     setDial(cfg, { level: 'full' });
     saveConfig(cfg);
     console.log('CONSENT  learn from this machine\'s projects: granted (raph config: consent.scope=all)');
-    console.log(`SHARE    contribute to the community brain: ${args.includes('--contribute') ? 'granted — scrubbed bundles, you curate nothing' : 'NOT granted — everything stays on this machine'}`);
+    console.log(`SHARE    contribute to the community brain: ${contribute
+      ? 'granted — scrubbed bundles stage locally, sending is always your click (raph contribute off to change)'
+      : 'NOT granted — everything stays on this machine (raph contribute on to change)'}`);
     console.log('MODE     autopilot — mine, distill, curate, and index after each session');
 
     // 3. seed the local brain from the global brain shipped in the package

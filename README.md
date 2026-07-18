@@ -21,8 +21,9 @@ Your coding agent forgets everything between sessions. You don't have to.
 - **Recall is budgeted and visible** — ≤ ~1,200 tokens/session, `raph why` shows
   every injection, `raph web` shows everything and undoes anything in one click.
 - **Local by default** — the brain lives in `~/.raphael`, in its own git repo that
-  blocks pushes. Contribution to the global brain is a separate, optional grant —
-  scrubbed bundles, staged locally, sent only by your own action.
+  blocks pushes. Contribution to the global brain (on by default at autopilot
+  setup, one command to withdraw) only ever *stages* scrubbed bundles locally —
+  nothing is sent except by your own action.
 - **Proof, not vibes** — `raph eval` measures the same tasks with the brain ON vs
   OFF; `raph atlas bench` measured **147.9× fewer tokens** answering "where do I
   look?" with the deterministic project graph vs grep-and-read.
@@ -64,13 +65,17 @@ see `raphael-brain` enabled.
 
 That's the whole install. **Your next Claude Code session asks you three questions
 once** (may Raphael learn from your work · contribute scrubbed lessons to the
-community · autopilot or manual) and runs the setup itself — just answer in chat.
-Prefer to set up by hand? Run one of these **in your terminal**:
+community — on by default, bundles only ever stage locally and sending is always
+your own click · autopilot or manual) and runs the setup itself — just answer in
+chat. Prefer to set up by hand? Run one of these **in your terminal**:
 
 ```
-raph arise --autopilot            # zero-touch: consent + seed + autopilot in one command
+raph arise --autopilot            # zero-touch: consent + seed + autopilot + sharing in one command
+raph arise --autopilot --no-contribute   # same, but nothing is ever staged for sharing
 raph arise --pack --guard         # or the manual (curator) setup — you review everything
 ```
+
+Change your mind any time: `raph contribute on|off`, or the console's Settings tab.
 
 From here on: every `raph …` command in this README runs **in your terminal**;
 everything starting with `/` (like `/brain`) is typed **inside Claude Code**.

@@ -72,6 +72,30 @@ export function setDial(cfg, { level, cap, dailyCap } = {}) {
   return { changed, level: dialLevel(cfg), ...dialCaps(cfg) };
 }
 
+// Dial + mode coupling in ONE place (§11.13): 'full' IS autopilot, any explicit
+// sub-full level IS curator, and the word 'manual' switches to curator while
+// stepping a 'full' dial down to 'standard' (autopilot's level makes no sense
+// in manual mode). `raph auto` and the console's Settings page both call this —
+// neither holds the coupling itself. Caller saves cfg when `changed`.
+export function applyDial(cfg, { level, cap, dailyCap } = {}) {
+  let modeChanged = false;
+  let dialWord = level;
+  if (level === 'manual') {
+    dialWord = undefined;
+    if (cfg.mode === 'autopilot') { cfg.mode = 'curator'; modeChanged = true; }
+    if (dialLevel(cfg) === 'full') { cfg.auto_approve = { ...(cfg.auto_approve ?? {}), level: 'standard' }; modeChanged = true; }
+  }
+  const result = setDial(cfg, { level: dialWord, cap, dailyCap });
+  if (dialWord === 'full' && cfg.mode !== 'autopilot') { cfg.mode = 'autopilot'; modeChanged = true; }
+  if (dialWord && dialWord !== 'full' && cfg.mode === 'autopilot') { cfg.mode = 'curator'; modeChanged = true; }
+  return {
+    ...result,
+    level: dialLevel(cfg),
+    changed: result.changed || modeChanged,
+    mode: cfg.mode === 'autopilot' ? 'autopilot' : 'curator'
+  };
+}
+
 function walkLessons() {
   const out = [];
   const stack = [p.lessons()];

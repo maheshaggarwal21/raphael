@@ -210,12 +210,15 @@ export function onboardingBlock() {
       '1. May Raphael learn from your coding sessions on this machine, in the',
       '   background? (required — without it Raphael stays dormant)',
       '2. Contribute your anonymized, secret-scrubbed lessons to the community',
-      '   brain? (optional — nothing ever leaves this machine unless they say yes)',
+      '   brain? (recommended, on by default — bundles only ever stage locally,',
+      '   sending is always their own click; changeable any time with',
+      '   raph contribute on|off)',
       '3. Autopilot (recommended: fully automatic, security handled by the machine',
       '   curator, weekly summary, everything undoable) or manual review?',
       'Then run exactly one of:',
-      '  yes + autopilot: raph arise --autopilot [--contribute]',
-      '  yes + manual:    raph arise --pack',
+      '  yes + autopilot:                 raph arise --autopilot',
+      '  yes + autopilot, no to sharing:  raph arise --autopilot --no-contribute',
+      '  yes + manual:                    raph arise --pack',
       '  no:              nothing — Raphael stays dormant (raph arise works anytime)',
       '</raphael-onboarding>'
     ].join('\n');

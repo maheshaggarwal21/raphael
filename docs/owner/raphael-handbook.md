@@ -340,11 +340,12 @@ lesson set (26 at v1). Every new install seeds its **local brain** as a copy of 
 **Inside:** the seed ships inside the npm package (zero network at install). A
 weekly down-sync fetches exactly two pinned HTTPS URLs (manifest + bundle),
 verifies per-lesson sha256 hashes, and still routes every lesson through the
-chokepoint — local lessons always win conflicts. Upstream is strictly opt-in:
-with the second install permission granted, non-curated active lessons are
-stripped, re-scrubbed, re-validated, and staged as a local bundle — *sending* is
-always the user's own action (`raph contribute send`). Deny the permission and
-nothing ever leaves the device.
+chokepoint — local lessons always win conflicts. Upstream: the second install
+permission (on by default at autopilot setup, `raph contribute off` any time)
+lets non-curated active lessons be stripped, re-scrubbed, re-validated, and
+staged as a local bundle — *sending* is always the user's own action
+(`raph contribute send`). Withdraw the permission and nothing is ever staged;
+either way, nothing leaves the device except by the user's click.
 
 ---
 
@@ -362,7 +363,8 @@ just heard about Raphael.*
    apps don't have it, so the terminal commands are the universal path.)
 2. 🧑 His next Claude Code session opens with three questions, asked exactly once:
    may Raphael learn from his work (required) · contribute scrubbed lessons to the
-   community brain (optional) · autopilot or manual (autopilot recommended). He
+   community brain (on by default; bundles only stage locally, sending is always
+   his click) · autopilot or manual (autopilot recommended). He
    answers, the agent runs `raph arise --autopilot` for him, and **26 curated
    lessons from the global brain are active immediately** — the brain is useful
    before it has seen a single line of his code.

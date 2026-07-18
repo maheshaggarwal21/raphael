@@ -40,9 +40,12 @@ The first Claude Code session after installing the plugin, the agent asks you:
 1. **May Raphael learn from your coding sessions on this machine?** (required —
    this is the whole point; "no" leaves Raphael dormant)
 2. **Contribute your anonymized, scrubbed lessons to the community brain?**
-   (optional — nothing ever leaves your machine without this grant)
+   (recommended, on by default — the grant only lets bundles *stage* on your
+   machine; sending is always your own click; change any time with
+   `raph contribute on|off`)
 3. **Autopilot or manual?** (autopilot recommended)
-It then runs `raph arise --autopilot [--contribute]` for you. Never asks again.
+It then runs `raph arise --autopilot` for you (with `--no-contribute` if you
+declined sharing). Never asks again.
 
 ### What autopilot does after every session (`raph pulse`)
 A background heartbeat, budgeted and fail-open — it can never block or slow you:
@@ -92,7 +95,7 @@ global brain's curated lessons (active immediately), turns on the background loo
 **What (manual):** creates the brain, optionally stages the security pack for your
 review and installs the commit guard, then prints your first five minutes.
 ```
-raph arise --autopilot                # zero-touch (add --contribute to share up)
+raph arise --autopilot                # zero-touch (sharing on by default; --no-contribute opts out)
 raph arise --pack --guard             # manual: 26 security lessons to review + guard
 ```
 
@@ -257,16 +260,22 @@ a contained reviewer screen with a security addendum, then the canary gate, with
 whole-batch rollback on any failure. Quarantined (injection-suspect) content never
 machine-activates at **any** setting, in any mode.
 
-### `raph contribute` — share a lesson, on purpose
-**When:** a lesson is good enough to give to a teammate or the community.
+### `raph contribute` — share lessons, safely
+**When:** sharing with a teammate, or feeding the community brain.
 ```
+raph contribute on|off                          # the community-sharing grant (on by
+                                                #   default at autopilot setup)
 raph contribute list
-raph contribute webhook-idempotency --out ./to-share
+raph contribute webhook-idempotency --out ./to-share   # export one named lesson
+raph contribute bundle                          # stage new local lessons as a bundle
+raph contribute send                            # show staged bundles + where to submit
 ```
-Per-lesson opt-in only (there is deliberately no `--all`). The export strips project
-names, path globs, and local evidence references, re-scrubs the full text for
-secrets, and re-validates through the chokepoint. If the result can't pass the same
-gate that guards your own brain, the export is refused.
+Every export strips project names, path globs, and local evidence references,
+re-scrubs the full text for secrets, and re-validates through the chokepoint. If
+the result can't pass the same gate that guards your own brain, it is refused.
+The grant only lets bundles **stage on your machine** — Raphael never uploads
+anything; `send` shows you the files and the submission page, and the click is
+yours. Withdraw any time with `raph contribute off` (or Settings in the console).
 
 ---
 
@@ -355,6 +364,9 @@ raph web
 ```
 Eight tabs — Dashboard, Review queue, Lessons, Adopt, Activity, Company, Guard,
 Settings — every button calling the *same functions* as the CLI verb it mirrors.
+Settings covers the autopilot/manual mode switch, the auto-approve dial (including
+`full`), the community-sharing grant, injection status, and per-project mining
+consent.
 Nothing is possible in the browser that isn't possible (and tested) at the command
 line. Security: binds to `127.0.0.1` only, a fresh token per launch, Host + Origin
 checks on every request, strict inline-only CSP, and everything rendered is treated

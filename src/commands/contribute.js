@@ -8,7 +8,7 @@ import path from 'node:path';
 import { readActiveLessons } from '../lib/freshness.js';
 import {
   exportableLesson, renderContribution,
-  buildBundle, listBundles, contributionEnabled, eligibleForBundle
+  buildBundle, listBundles, contributionEnabled, eligibleForBundle, setContribution
 } from '../lib/contribute.js';
 import { loadConfig } from '../lib/config.js';
 import { atomicWrite } from '../lib/files.js';
@@ -21,6 +21,8 @@ export default async function contribute(args) {
     console.log('');
     console.log('Usage: raph contribute <id|slug...> [--out <dir>]   export named lessons');
     console.log('       raph contribute list                          show what you could share');
+    console.log('       raph contribute on|off                        grant / withdraw the');
+    console.log('                                                     contribution permission');
     console.log('       raph contribute bundle                        stage a bundle of new local');
     console.log('                                                     lessons for the global brain');
     console.log('                                                     (needs the contribution grant)');
@@ -33,12 +35,25 @@ export default async function contribute(args) {
     return args[0] ? 0 : 1;
   }
 
+  if (args[0] === 'on' || args[0] === 'off') {
+    const r = setContribution(args[0] === 'on');
+    if (r.enabled) {
+      console.log(`SHARE  contribution granted (${r.granted}) — new local lessons may be bundled:`);
+      console.log('       stripped, re-scrubbed, re-validated, then STAGED on this machine only.');
+      console.log('       Sending a bundle is always your own action (raph contribute send).');
+    } else {
+      console.log('SHARE  contribution withdrawn — nothing leaves this machine.');
+      console.log('       Already-staged bundles stay local; delete them any time (raph contribute send shows paths).');
+    }
+    return 0;
+  }
+
   if (args[0] === 'bundle') {
     const cfg = loadConfig();
     if (!contributionEnabled(cfg)) {
-      console.error('raph: contribution is not granted — enable it with "raph arise --autopilot --contribute"');
-      console.error('      or add "contribute: { enabled: true }" in the console settings. Nothing leaves');
-      console.error('      this machine without that grant.');
+      console.error('raph: contribution is not granted — enable it with "raph contribute on"');
+      console.error('      (or the console\'s Settings tab). Nothing leaves this machine without');
+      console.error('      that grant — and even with it, sending is always your own action.');
       return 1;
     }
     const res = buildBundle({ config: cfg, min: 1, log: (s) => console.log(s) });
