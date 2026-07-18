@@ -4,10 +4,111 @@
 > **lessons** — engineering judgment mined from your real projects — and injects the
 > relevant ones into the agent's context at the right moment, so known mistakes stop
 > recurring. v1 target: Claude Code plugin, single developer, local-first, Windows-safe.
->
-> This document is the synthesis of a 6-lens parallel design (storage, pipeline,
-> retrieval, security, UX, eval) followed by an adversarial security review and an
-> over-engineering critique. Conflicts between lenses are resolved here; this file wins.
+
+## Why this document exists
+
+Every system that feeds mined text back into an AI agent is one bad design decision
+away from being a **prompt-injection delivery service**. Raphael's answer to that is
+not a feature — it is an architecture: one validation chokepoint with no exceptions,
+containment instead of prompt hardening, budgets instead of vibes, human (or
+stricter-than-human) gates on everything that activates, and an eval harness that
+would rather report failure than assume success.
+
+This file is where all of that was decided, and why. It is **the constitution**: the
+synthesis of a **6-lens parallel design** (storage, pipeline, retrieval, security, UX,
+eval) followed by an **adversarial security review** and an **over-engineering
+critique**. Conflicts between lenses are resolved here; where any other document
+disagrees, **this file wins.**
+
+It is also honest about its own nature: a founding design (2026-07-13) plus **dated
+amendments** as the owner made calls (CLI fetch and the adopt pipeline, 2026-07-16;
+autopilot and the contribution grant, 2026-07-18 — see §11 for the full decision log).
+Sections record the decision as it was made; where the shipped system has since grown
+past a v1 number (§6's "~12 verbs" became 41), the living surface is documented in
+[docs/manual.md](docs/manual.md) and the [README](README.md), while this file remains
+the record of *why* the system is shaped the way it is.
+
+**How to read it, by what you came for:**
+
+- **"Will I trust this on my machine?"** — §0 (the principles), §5 (the threat model,
+  with honest residuals), §3's gate battery, §4's injection defense, §14's console
+  security. Then run the free proof yourself: `raph eval run --dry-run`.
+- **"How does it actually work?"** — §1 (the shape in one sentence), §2 (what's on
+  disk), §3 (how a transcript becomes a lesson), §4 (how a lesson reaches an agent).
+- **"What did you decide, and when?"** — §11 (every owner decision, dated), §10 (the
+  build order), §9 (who reviews what, in which mode).
+- **"What's the product?"** — §8 (the ten agents and the flywheel), §12 (the Academy),
+  §13 (adopt), §14 (the console).
+
+## The system in one picture
+
+```
+  OUTSIDE KNOWLEDGE                YOUR REAL WORK                 SELF-TRAINING
+  raph adopt — the six-layer       Claude Code sessions           the Academy (§12):
+  gauntlet (§13)                   (transcripts, consented        agents build real
+  global/community packs (§9)      per project)                   products; every build
+        │                                │                        is more session data
+        │                                │                                │
+        └────────────┐                   │                  ┌─────────────┘
+                     ▼                   ▼                  ▼
+        ┌──────────────────────────────────────────────────────────────┐
+        │                  THE LEARNING PIPELINE (§3)                  │
+        │   mine (deterministic, 0 tokens) → extract (contained LLM,   │
+        │   zero tools) → gates G1–G7 → dedup → candidates             │
+        └──────────────────────────────┬───────────────────────────────┘
+                                       │
+                        THE GATE — friction ∝ blast radius
+                 human review (§3.4) · auto tiers & the dial (§9, §13)
+                 machine curator in autopilot (§11.13) · security floor
+                                       │
+        ┌──────────────────────────────▼───────────────────────────────┐
+        │                 THE BRAIN — ~/.raphael (§2)                  │
+        │   markdown lessons in their own git repo · evidence ·        │
+        │   quarantine · events.jsonl telemetry · compiled index       │
+        │   (derived, hash-verified) · ONE chokepoint on every path in │
+        └───────┬───────────────────────────────────────────┬──────────┘
+                │                                           │
+         RECALL (§4)                                  PROOF (§7)
+   SessionStart + per-prompt hooks              adversarial canaries (hard
+   deterministic ranking · hard token           gate) · ON/OFF lift · Wilson
+   budgets (≤1,200/session) · data              CIs · tokens-per-task ·
+   envelope · raph why explains all             retrieval-miss detection
+                │                                           │
+                ▼                                           ▼
+        ┌──────────────────────────────────────────────────────────────┐
+        │            YOUR AGENT + THE TEN SPECIALISTS (§8)             │
+        │   shared spine: brain first · free checks first · map not    │
+        │   repo · cheap→strong · write back                           │
+        └──────────────────────────────┬───────────────────────────────┘
+                                       │
+                     write-back (raph note, mined episodes)
+                                       │
+                                       └──────▶ back into MINE — the flywheel
+
+  standing watch over all of it:  the threat model (§5) · the command surface &
+  error contract (§6) · the deterministic secrets guard (§11.2) · the web console —
+  a face over the same engine, never a second brain (§14)
+```
+
+## Map of the document
+
+| § | Section | What it settles |
+|---|---|---|
+| [§0](#0-non-negotiable-principles) | **Non-negotiable principles** | The seven rules every other decision defers to — curation over quantity, lessons-as-data, honest evidence, local-first, measurability |
+| [§1](#1-the-one-sentence-architecture) | **The one-sentence architecture** | The whole shape in sixty seconds, and the rule that resolves half the conflicts |
+| [§2](#2-storage-single-source-of-truth) | **Storage** | The `~/.raphael` layout, why markdown-in-git beat every alternative, and the canonical lesson schema |
+| [§3](#3-the-learning-pipeline-brain-learn) | **The learning pipeline** | Mine → contained extract → the G1–G7 gate battery → human review; where fabricated evidence becomes structurally impossible |
+| [§4](#4-retrieval--injection-the-recall-loop) | **Retrieval & injection** | The hooks, the deterministic scorer, the hard token budgets, and the data-envelope defense |
+| [§5](#5-threat-model-summary-register) | **Threat model** | Eight threats (T1–T8) with mitigations — and honest residuals, stated plainly |
+| [§6](#6-command-surface-v1) | **Command surface** | The v1 verb set, the error-handling contract, and what stays silent vs. what asks |
+| [§7](#7-eval-harness-prove-it-with-numbers) | **Eval harness** | Canaries as the hard gate, ON/OFF lift, tokens-per-task, and retrieval-miss — the metric that catches silent failure |
+| [§8](#8-the-agent-layer-the-product-surface) | **The agent layer** | The ten-agent roster, the five-rule spine, project maps, recipes — the flywheel that makes the brain worth having |
+| [§9](#9-distribution--raphael-arise-and-the-community-brain) | **Distribution** | `arise`, auto mode's restricted tier, and the community loop with one reviewed door |
+| [§10](#10-v1-cutline-build-order) | **v1 cutline** | The build order, and what was explicitly deferred |
+| [§11](#11-product-decisions--decided-2026-07-13-owner-delegated) | **Product decisions** | The dated decision log — including §11.13, where autopilot's machine curator superseded the human queue |
+| [§12](#12-the-self-training-pipeline-raphael-academy) | **Raphael Academy** | The self-training pipeline: checkpointed autonomous builds, and the code-enforced autonomy boundary |
+| [§13](#13-the-adopt-pipeline-scout--external-knowledge-in-safely) | **The adopt pipeline** | The six-layer gauntlet for external material, provenance, and the auto-approve dial |
+| [§14](#14-the-web-console--one-engine-three-faces) | **The web console** | One engine, three faces; the law of zero business logic in the web layer; console security |
 
 ---
 
