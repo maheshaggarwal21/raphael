@@ -602,6 +602,18 @@ compaction (manual or automatic) can never lose progress.
   live-smoked (real --check refuses downgrade dev>registry; maybeSelfUpdate end-to-end via
   fake registry + stub upgrade logs event + writes state). Version -> 0.2.3; tag +
   GitHub release at the owner's next npm publish.
+- Session 14 (2026-07-19) — major doc overhaul (owner-authored, verified by me):
+  owner rewrote README.md into the flagship front door (story-driven tour of all
+  16 subsystems incl. Raph Web console + Skill Factory + Agent Maker, by-the-
+  numbers proof table, full 41-verb command atlas with use-cases, agents roster,
+  honest FAQ), upgraded ARCHITECTURE.md's front matter (overview + subsystem map +
+  per-audience reading paths, byte-identical below the intro), and added
+  docs/README.md (a documentation map). Pushed directly (commits d57c6c6, 5804570,
+  44e65f7). I pulled (was 3 behind), verified: 415/415 tests green, `raph doctor`
+  healthy, version-lock consistent (0.2.4 everywhere), numeric claims match
+  reality (415 tests, 41 verbs), and the two previously-underrepresented features
+  the owner had flagged (`raph web`, Skill Factory) are now well covered. No code
+  changes this session. Log: .claude/logs/2026-07-19-01.md.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
