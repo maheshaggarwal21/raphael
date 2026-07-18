@@ -214,7 +214,7 @@ Three products built by Raphael's own autonomous Academy while training itself:
 
 ```
 npm install
-npm test                  # 402 tests, node:test, no frameworks
+npm test                  # 415 tests, node:test, no frameworks
 node bin/raph.js help     # the full CLI surface (41 verbs)
 ```
 
