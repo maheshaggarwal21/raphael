@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {
   installPreCommitHook, uninstallPreCommitHook, scanStaged, scanTracked,
-  scanFile, gitTopLevel, isGitRepo, loadAllowlist, ALLOWLIST_FILE
+  scanFile, scanSkills, scanDesign, gitTopLevel, isGitRepo, loadAllowlist, ALLOWLIST_FILE
 } from '../lib/guard.js';
 
 const HELP = `raph guard — block commits that would leak secrets
@@ -12,9 +12,12 @@ Usage:
         --force replaces a non-raphael pre-commit hook (back it up first).
   raph guard uninstall [--project <path>]
         Remove the raphael pre-commit hook (leaves any other hook alone).
-  raph guard scan [--staged | --all | <path...>] [--entropy]
+  raph guard scan [--staged | --all | --skills | --design | <path...>] [--entropy]
         Scan for secrets and exit 1 if any are found. --staged = the content
         about to be committed (what the hook runs); --all = every tracked file;
+        --skills = installed .claude/skills/ for exfiltration / credential-access /
+        prompt-injection patterns (advisory; hard-blocks only on prompt-injection);
+        --design = tracked style/component files for hardcoded hex where a token belongs;
         or pass explicit file paths. --entropy adds the noisier high-entropy pass.
 
 Allowlist: a .raphallow file at the repo top lists glob patterns (one per line,
@@ -80,6 +83,45 @@ export default async function guard(args = []) {
       }
       return allow;
     };
+
+    // Skill supply-chain scan — a different threat class from secrets (exfiltration,
+    // credential access, prompt injection in installed .claude/skills/).
+    if (flag(rest, '--skills')) {
+      const cwd = process.cwd();
+      const { results: skillResults, highest } = scanSkills(cwd);
+      if (!skillResults.length) {
+        console.log('raph: no suspicious patterns in installed skills.');
+        return 0;
+      }
+      console.error('raph: skill supply-chain scan — patterns to review (advisory, not confirmed malicious):');
+      let count = 0;
+      for (const { file, findings } of skillResults) {
+        for (const f of findings) { console.error(`  [${f.severity.padEnd(6)}] ${file}:${f.line}  ${f.type}`); count++; }
+      }
+      console.error(`\n  ${count} finding(s). A third-party skill that reads credentials, calls out to a URL, or tries to inject`);
+      console.error('  instructions into the agent is worth vetting before trusting it. Legitimate skills can trip these too.');
+      // Only prompt-injection (the unambiguous tell) is a hard block; the rest are advisory.
+      return highest === 'high' ? 1 : 0;
+    }
+
+    // Design-token lint — hardcoded hex where a token belongs (advisory).
+    if (flag(rest, '--design')) {
+      const cwd = process.cwd();
+      if (!isGitRepo(cwd)) { console.error('raph: --design scans tracked files; not a git repo'); return 1; }
+      announceAllowlist(gitTopLevel(cwd) || cwd);
+      const { results: designResults } = scanDesign(cwd);
+      if (!designResults.length) {
+        console.log('raph: no hardcoded hex found in style/component files.');
+        return 0;
+      }
+      console.error('raph: design-token lint — hardcoded hex colors (advisory; reference a CSS-variable token instead):');
+      let count = 0;
+      for (const { file, findings } of designResults) {
+        for (const f of findings) { console.error(`  ${file}:${f.line}  ${f.type}`); count++; }
+      }
+      console.error(`\n  ${count} finding(s). Raw hex in components blocks theming and drifts; a token keeps the palette in one place.`);
+      return 1;
+    }
 
     if (flag(rest, '--staged')) {
       const cwd = process.cwd();

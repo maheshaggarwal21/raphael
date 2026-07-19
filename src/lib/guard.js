@@ -10,7 +10,7 @@
 // must never wedge a repo); the named rules only match real secret shapes anyway.
 
 import {
-  existsSync, readFileSync, writeFileSync, mkdirSync, statSync, chmodSync, rmSync
+  existsSync, readFileSync, writeFileSync, mkdirSync, statSync, chmodSync, rmSync, readdirSync
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -194,6 +194,116 @@ export function scanStaged(cwd, opts) {
     if (findings.length) results.push({ file, findings });
   }
   return results;
+}
+
+// --- skill supply-chain scan (Phase 20 / A7) ---------------------------------
+// A malicious third-party Claude Code skill in .claude/skills/ is a DIFFERENT threat
+// class from a leaked secret: it tries to exfiltrate data, read credentials, or
+// inject instructions into the agent (gstack's CSO "skill supply chain" phase; the
+// class Snyk's ToxicSkills research found in ~1 in 8 published skills). Named,
+// conservative patterns tuned to keep false-positives low; findings are advisory —
+// severity `high` = prompt-injection (the unambiguous tell), medium = credential
+// access, low = network calls to a hardcoded external target.
+export const SKILL_THREAT_RULES = [
+  ['prompt-injection', 'high', /ignore\s+(all\s+)?previous\s+instructions|disregard\s+(your|the)\s+(instructions|rules|system\s*prompt)|forget\s+(your|all\s+previous)\s+instructions|you\s+are\s+now\s+(a|an|the)\b|system\s+override/i],
+  ['credential-access', 'medium', /ANTHROPIC_API_KEY|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|\.aws\/credentials|\.ssh\/id_[a-z]+|\bprocess\.env\b|\bos\.environ\b/i],
+  ['network-exfil', 'low', /\b(curl|wget)\s+https?:\/\/|\bfetch\(\s*['"`]https?:\/\/|requests\.(?:get|post)\(\s*['"`]https?:\/\//i]
+];
+
+// Scan skill text for the three threat classes. Returns [{ line, type, severity }].
+export function scanSkillText(text) {
+  const findings = [];
+  for (const [type, severity, re] of SKILL_THREAT_RULES) {
+    const rx = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+    let m;
+    while ((m = rx.exec(text)) !== null) {
+      findings.push({ line: lineOf(text, m.index), type, severity });
+      if (m.index === rx.lastIndex) rx.lastIndex++;
+    }
+  }
+  return findings.sort((a, b) => a.line - b.line);
+}
+
+// Scan a single skill file on disk (missing/binary/oversized -> []).
+export function scanSkillFile(absPath) {
+  try {
+    const st = statSync(absPath);
+    if (!st.isFile() || st.size > MAX_SCAN_BYTES) return [];
+    const buf = readFileSync(absPath);
+    if (looksBinary(buf)) return [];
+    return scanSkillText(buf.toString('utf8'));
+  } catch {
+    return [];
+  }
+}
+
+// Walk .claude/skills/ (and a top-level skills/) for skill definition files and scan
+// each. Returns { root, results:[{file, findings}], highest }.
+export function scanSkills(cwd) {
+  const top = gitTopLevel(cwd) || cwd;
+  const roots = [path.join(top, '.claude', 'skills'), path.join(top, 'skills')];
+  const files = [];
+  const walk = (dir) => {
+    let entries;
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const name of entries) {
+      const full = path.join(dir, name.name);
+      if (name.isDirectory()) walk(full);
+      else if (/\.(md|mdx|txt|js|cjs|mjs|py|sh)$/i.test(name.name)) files.push(full);
+    }
+  };
+  for (const r of roots) walk(r);
+  const results = files
+    .map((f) => ({ file: path.relative(top, f), findings: scanSkillFile(f) }))
+    .filter((r) => r.findings.length);
+  const rank = { high: 3, medium: 2, low: 1 };
+  let highest = null;
+  for (const r of results) for (const f of r.findings) if (!highest || rank[f.severity] > rank[highest]) highest = f.severity;
+  return { root: top, results, highest };
+}
+
+// --- design-token scan (Phase 20 / A7) ---------------------------------------
+// Hardcoded hex colors in component styles block theming and drift (ui-ux-pro-max's
+// token validator). Raw hex INSIDE a :root{} / :host{} block is the legitimate
+// place tokens are defined, so it is not flagged; raw hex elsewhere is a finding.
+// Advisory design-lint, not a security gate.
+export function scanDesignText(text) {
+  // blank out the token-definition blocks so their hex doesn't count.
+  const masked = text.replace(/(:root|:host)\b[^{]*\{[^}]*\}/gi, (blk) => blk.replace(/#[0-9a-fA-F]{3,8}\b/g, '#______'));
+  const findings = [];
+  const rx = /#[0-9a-fA-F]{3,8}\b/g;
+  let m;
+  while ((m = rx.exec(masked)) !== null) {
+    findings.push({ line: lineOf(masked, m.index), type: 'hardcoded-hex' });
+  }
+  // de-dupe by line
+  const seen = new Set();
+  return findings.filter((f) => (seen.has(f.line) ? false : seen.add(f.line)));
+}
+
+export function scanDesignFile(absPath) {
+  try {
+    const st = statSync(absPath);
+    if (!st.isFile() || st.size > MAX_SCAN_BYTES) return [];
+    const buf = readFileSync(absPath);
+    if (looksBinary(buf)) return [];
+    return scanDesignText(buf.toString('utf8'));
+  } catch {
+    return [];
+  }
+}
+
+// Scan tracked style/component files for hardcoded hex. Reuses the tracked-file list
+// + allowlist so it never narrows silently.
+export function scanDesign(cwd) {
+  const top = gitTopLevel(cwd) || cwd;
+  const allow = loadAllowlist(top);
+  const results = listTrackedFiles(cwd)
+    .filter((f) => /\.(css|scss|sass|less|styl|tsx|jsx|vue|svelte)$/i.test(f))
+    .filter((f) => !allow.matches(f))
+    .map((f) => ({ file: f, findings: scanDesignFile(path.join(top, f)) }))
+    .filter((r) => r.findings.length);
+  return { top, allowlist: allow.patterns, results };
 }
 
 // Scan every TRACKED file (what `raph guard scan --all` runs; the console's
