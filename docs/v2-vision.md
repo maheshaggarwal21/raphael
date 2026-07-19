@@ -8,14 +8,11 @@ is each one actually doing, and why are developers so drawn to it. One constrain
 non-negotiable across every idea below: **Raphael's token usage must always be lower
 than not using Raphael at all.** Luxury and ritual, not token bloat.
 
-**Honesty note on sources.** The two Gemini share links
-(`share.gemini.google/ZbcmFAU5Q9Yv`, `share.gemini.google/HDfk9e3yhTbO`) redirect to
-`gemini.google.com/share/...` URLs that require an authenticated Google session — a
-plain fetch only returns the page's sign-in navigation shell, not the shared
-conversation. Both attempts (direct and post-redirect) confirmed this. **This
-document does not include their content.** If the owner pastes the research text
-directly, it should be folded in as an addendum — flagged here so nothing is
-silently treated as covered when it wasn't.
+**Update, same day:** the two Gemini share links could not be fetched (auth-walled —
+see the original note preserved in git history at commit `c3437f6`). The owner then
+pasted the full research text directly into chat — three reports, not two. Their
+content is analyzed in full in §7 below, read one by one as asked, with new
+proposals kept clearly separated from what was already covered by the repo research.
 
 The ten-repo research below **is** real: each repo's actual README was read in depth
 by a dedicated research pass (not skimmed), cross-checked against raw source where a
@@ -289,7 +286,153 @@ Raphael's current bets, not a reason to copy them:
 
 ---
 
-## 7. Proposed build order (Phase 18 — draft, awaiting owner go)
+## 7. Grounding against the 2026 research literature (the three reports, read in full)
+
+The owner's two Gemini links turned out to hold three distinct reports (a fourth,
+shorter one was a partial restatement of the third and is folded in rather than
+covered separately). Read one by one:
+
+**Report 1 — "Advanced Optimization and Security Architectures in LLMs."** Model-
+serving internals: input-prompt compression (LLMLingua/LLMLingua-2's entropy-vs-
+extractive-classification approaches), KV-cache minimization (H2O/SnapKV eviction,
+KIVI quantization, GQA, DeepSeek's Multi-Head Latent Attention), Chain-of-Thought
+output compression (TokenSkip, TokenSqueeze), grammar-constrained decoding for code
+(SynCode's DFA mask store, Parser Stack Classification), a security threat survey
+(prompt-injection attack algorithms, **slopsquatting**, **memory poisoning** via
+AgentPoison/MemoryGraft), guardrail model architectures (Llama Guard, LlamaFirewall,
+COLAGUARD), and the Prompt→Context→Harness→**Loop Engineering** progression with its
+four required components (Trigger, Goal, Verifier, State).
+
+**Report 2 — "Advanced Paradigms in AI-Assisted Software Engineering."** Overlaps
+report 1 on compression/grammar/loop-engineering, but adds the economic and quality
+argument: token-cost tables by content type, gateway infrastructure (semantic
+caching, dynamic model routing), and — the load-bearing addition — empirical
+industry telemetry: GitClear's 211M-line study (duplicated code +8×, healthy
+refactoring 25%→10%), Faros AI's "Acceleration Whiplash" (22,000 developers: bugs
++54%, production incidents +245%, PR review time +441%, **31% of PRs merged with
+zero human review**), Veracode (AI code passes basic security checks only 55% of the
+time), Sonatype (27.8% of AI-suggested dependency upgrades point to non-existent or
+unsafe packages), and a **six-pattern taxonomy of AI/developer interaction** (Anthropic
+research) ranking which interaction styles preserve versus destroy skill formation.
+
+**Report 3 — "The Acceleration Whiplash."** The deepest version of report 2's
+crisis data, adding: a token-multiplier table by agentic task complexity (2–3× for
+a simple tool call up to 100×+ for reflexion/self-correction loops), an explicit
+account of **ecosystem saturation and developer decision fatigue** (too many
+competing GitHub repos, no way to tell what's secure or necessary), the formal
+term **"Comprehension Debt"** (the widening gap between how much code exists and
+how much of it any human actually understands), and the METR randomized controlled
+trial finding that AI tooling *increased* task completion time by 19% for
+experienced developers working in mature repos they already knew well — the
+opposite of what those same developers predicted for themselves beforehand.
+
+### 7.1 What this confirms (no new build — evidence for existing bets)
+
+- **The Ralph Loop principle — deterministic verifiers beat LLM-as-judge —is
+  already how `curateStaged()` works.** The machine curator's canary gate is a real
+  test/chokepoint re-run, not a model asked "does this look safe?" This is exactly
+  the pattern reports 1 and 2 hold up as correct and warn most agentic systems get
+  wrong.
+- **Raphael's Academy driver already has a circuit breaker**, just count-based
+  rather than error-similarity-based: `applyStageResult()` in `src/lib/driver.js`
+  allows exactly one escalated retry per stage (`retry_escalated`), then sets
+  `d.status = 'failed'` and stops — verified by reading the code, not assumed. It
+  doesn't detect "the same error 3 times in a row" the way the report's ideal
+  Circuit Breaker pattern describes, but it does terminate a runaway loop before it
+  burns unbounded tokens, which is the property that actually matters.
+- **The adopt gauntlet's six layers are architecturally the same move as
+  LlamaFirewall's modular defense** (PromptGuard + AlignmentCheck + CodeShield as
+  separate, composable checks rather than one opaque filter). Independent
+  confirmation the layered-and-named approach is the right shape, not a new idea.
+- **Measuring retrieval-miss/confidence/test-count instead of lesson-count or
+  injection-count** (already `raph stats`'s design) is exactly what report 2's
+  "measure outcomes, not throughput" recommendation argues for, aimed at the same
+  failure mode (PR-volume as a vanity metric) Faros AI's data describes.
+- **No grammar-constrained decoding, no KV-cache/MLA work, no guardrail-model
+  training.** These are model-serving/inference internals — Raphael calls `claude -p`
+  as a subprocess and never controls token-level decoding or hosts a model. Correctly
+  out of scope; noted so a future session doesn't chase infrastructure Raphael
+  doesn't own.
+
+### 7.2 New idea: comprehension debt is Raphael's sharpest possible pitch
+
+This is the single most valuable thing in the three reports, and it isn't a feature —
+it's positioning. "Comprehension Debt" (report 3) plus the hard numbers behind it
+(GitClear, Faros AI, the Anthropic/METR skill-formation study, the METR RCT showing
+AI *slowed down* experienced developers by 19% on code they knew well) describes,
+with citations Raphael didn't have to generate, exactly the problem Raphael exists
+to solve: a developer's own hard-won knowledge (the mistake, the fix, the reason)
+evaporating between sessions, forcing them to either re-learn it or blindly trust an
+agent that has no memory of it either. Every other tool in this document's repo
+research sells convenience; this literature sells **prevention of measurable,
+citable industry-wide harm**. The README/handbook pitch should lead with this
+framing over the current "fewer tokens, better code" framing — fewer tokens is a
+mechanism, closing comprehension debt is the reason it matters. This is a copy/
+positioning change, not a code change — zero token-budget impact by construction.
+
+### 7.3 New idea: a memory-poisoning-aware check in the reviewer screen
+
+**This is the most concrete, code-grounded new idea in this document.** Report 1's
+threat survey describes MemoryGraft: an attack that injects a fabricated "successful
+task completion" record into an agent's memory so that on a future semantically
+similar task, the agent adopts the malicious procedure automatically, believing it
+already worked. Raphael's `curator.js`/`adopt.js` reviewer screen (`REVIEW_TOOL` in
+`src/lib/adopt.js`) already checks for four risk kinds — read directly from the
+schema: `prompt-injection`, `malicious-guidance`, `license`, `low-quality`. There is
+**no check for an unverifiable or fabricated outcome claim** — a candidate lesson
+asserting "doing X always fixes Y" or "this approach guarantees Z" with no
+supporting evidence in the mined episode or source material is exactly
+MemoryGraft's shape, and today it would only be caught incidentally (if it also
+happens to trip `low-quality` or `malicious-guidance`, which it might not).
+Concretely: add a fifth risk kind, `unverifiable-claim`, to `REVIEW_TOOL`'s schema
+and `REVIEW_SYSTEM` prompt (`src/lib/adopt.js`), and give `curator.js`'s own
+reviewer prompt (the security addendum already described in CLAUDE.md's Phase 17.2
+entry) the same instruction. This is a schema-and-prompt change to an existing
+gate, not a new pipeline — zero new network/token surface, and it directly answers
+a named, real attack class rather than a hypothetical one.
+
+### 7.4 New idea: a slopsquatting-defense lesson in the security pack
+
+Report 2/3's Sonatype finding (27.8% of AI-suggested dependency upgrades point to
+non-existent or unsafe packages — "slopsquatting," where attackers register
+packages under names LLMs are known to hallucinate) is a concrete, well-evidenced
+gap check against `src/lib/security-pack.js`'s 26 lessons. A short, curated
+addition — "verify an AI-suggested package exists and has real history on the
+registry before installing it; never trust a plausible-sounding name alone" — is a
+single new curated-tier lesson through the existing `pack.js` chokepoint, seeded
+the same way the other 26 already are. Cheap, evidence-backed, closes a real
+documented gap rather than a speculative one.
+
+### 7.5 New idea: nudge toward comprehension, not delegation, in how lessons present
+
+The Anthropic six-pattern study (report 2/3) found the best learning outcomes come
+from "Conceptual Inquiry" and "Generation-then-Comprehension" (65–86% retention)
+and the worst from "AI Delegation" and "Iterative [blind] Debugging" (~39%) — the
+difference is whether the developer engages with *why*, not just *what*. Two things
+already push Raphael in the right direction and are worth stating as a deliberate
+design principle rather than a side effect: Atlas's `where` router answers "look
+here" rather than silently fixing the file itself, and lessons are inert advisory
+data an agent must read and apply, not a macro that runs itself (invariant #3).
+The one gap: an injected lesson body doesn't consistently distinguish the *fact*
+from the *reason* the fact holds. Where mining captures both (many episode types
+already do), the injection envelope surfacing "why" as a distinctly labeled
+one-line reason — not just the corrective instruction — costs nothing extra (it's
+already in the mined lesson text, just not always surfaced as its own field) and
+directly nudges toward the interaction pattern the research shows actually builds
+skill instead of eroding it.
+
+### 7.6 New idea: name the decision-fatigue problem in Raphael's own positioning
+
+Report 3 spends real length on ecosystem saturation — developers drowning in
+competing GitHub repos, unable to tell which are secure or worth the integration
+cost. That anxiety is a direct argument *for* Raphael's existing shape (one
+governed brain behind a chokepoint, not another loose repo to individually vet) —
+worth stating explicitly in marketing copy ("stop evaluating tools, install the one
+that's already governed") rather than leaving it implicit. Positioning only, no code.
+
+---
+
+## 8. Proposed build order (Phase 18 — draft, awaiting owner go)
 
 Not started. Grouped by leverage-to-effort, matching how Phases 16/17 were staged.
 Every milestone must ship with a token-accounting note proving the net-lower claim
@@ -307,6 +450,10 @@ still holds — that check is not optional per-milestone.
 | 18.8 | `adopt` document parsing via markitdown-style extraction | §5.3 | None — same bounded-fetch surface, just a better parser downstream of it |
 | 18.9 | Theme bundle packs (testing/performance/…) | §5.5 | None — same pack.js pattern |
 | 18.10 | Effort-routing on lesson-match confidence + holdout-measured savings | §3.5, §3.6 | None — reuses existing policy/eval machinery |
+| 18.11 | `unverifiable-claim` risk kind in the reviewer screen (memory-poisoning-aware) | §7.3 | None — schema/prompt change to an existing gate |
+| 18.12 | Slopsquatting-defense lesson in the security pack | §7.4 | None — same `pack.js` pattern |
+| 18.13 | Surface the mined "why," not just the "what," in the injection envelope | §7.5 | None — same lesson text, a labeled field |
+| 18.14 | README/handbook positioning rewrite: comprehension debt + decision fatigue | §7.2, §7.6 | None — copy only |
 
 18.6 is the one milestone that changes Raphael's *distribution* shape (multi-CLI,
 not Claude-Code-only) rather than deepening the existing single-CLI experience — it
@@ -314,6 +461,12 @@ is also the one most directly aimed at "industry standard" as stated, so it may
 deserve to move earlier in sequence than its position here if the owner weighs reach
 over polish. That's a real trade-off, not a formatting choice, and is flagged for
 the owner's call rather than decided here.
+
+18.11 is arguably the milestone with the best evidence-to-effort ratio in the whole
+list: it closes a real, named, academically-documented attack class (MemoryGraft-
+style memory poisoning) with a schema field and a prompt-instruction addition to a
+gate that already exists — no new pipeline, no new surface, a few hours of work.
+Worth pulling forward regardless of how the rest of the sequence is ordered.
 
 **Awaiting owner go before any code changes.** This document is the brainstorm the
 owner asked for; nothing above has been built.

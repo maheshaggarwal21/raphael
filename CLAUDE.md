@@ -633,6 +633,23 @@ compaction (manual or automatic) can never lose progress.
   round's research independently of the earlier gstack audit). Phase 18 (10
   milestones, TASKS.md) added as PROPOSED — brainstorm only, NOT started, awaiting
   owner go. 415/415 tests untouched (docs-only). Log: .claude/logs/2026-07-19-01.md.
+- V2 RESEARCH ROUND 3 (session 14, same day): owner pasted the full text of the 2 Gemini
+  links (turned out to be 3 reports) after the initial fetch failure. Read + analyzed all
+  three in full ("Advanced Optimization and Security Architectures in LLMs," "Advanced
+  Paradigms in AI-Assisted Software Engineering," "The Acceleration Whiplash"). Verified 3
+  claims against real code before writing anything (driver.js's applyStageResult IS a real
+  bounded circuit breaker; adopt.js's REVIEW_TOOL risk kinds are prompt-injection/malicious-
+  guidance/license/low-quality/other — NO check for a MemoryGraft-shaped fabricated-outcome
+  claim; lesson.schema.json's category enum confirmed no `preference` category exists yet).
+  Added docs/v2-vision.md §7: confirms several existing bets (Ralph-Loop-style deterministic
+  verifiers, the adopt gauntlet ≈ LlamaFirewall's layered defense) and 5 new items — the
+  sharpest being "Comprehension Debt" (the literature's own term + GitClear/Faros AI/METR
+  numbers) as Raphael's positioning headline over "fewer tokens," and the best evidence-to-
+  effort item being an `unverifiable-claim` risk kind closing a named academic attack class
+  (memory poisoning) with a schema/prompt change to the existing reviewer screen. TASKS.md
+  Phase 18 extended to 18.14. Explicitly out of scope: grammar-constrained decoding, KV-
+  cache/MLA, guardrail-model training — model-serving internals Raphael doesn't own. 415/415
+  untouched. Still brainstorm-only, awaiting owner go. Log: .claude/logs/2026-07-19-01.md.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

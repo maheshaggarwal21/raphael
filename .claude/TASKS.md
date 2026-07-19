@@ -859,9 +859,15 @@ onboarding), curator mode preserved as opt-in.
 Owner directive: make Raphael the industry standard — a ritual developers reach for, not
 a tool they installed once. Grounded in a deep-read study of 10 fast-growing GitHub repos
 (mechanism + psychology, not skimmed) plus the hard constraint that Raphael's token usage
-must always stay lower than not using Raphael at all. Two Gemini research links were also
-supplied but could not be fetched (auth-walled share pages returned only the nav shell) —
-flagged honestly in the doc; still awaiting the pasted content if the owner wants it folded in.
+must always stay lower than not using Raphael at all. Two Gemini research links were
+initially unfetchable (auth-walled) — owner then pasted the full text directly (3 reports:
+LLM optimization/security architectures, AI-assisted software engineering paradigms, "The
+Acceleration Whiplash"). Read + analyzed in full, folded into docs/v2-vision.md §7:
+confirms several existing bets (Ralph-Loop-style deterministic verifiers in the curator,
+driver.js's already-real bounded retry/circuit-breaker, the adopt gauntlet's layered-defense
+shape) and surfaces genuinely new items (18.11-18.14 below), the sharpest being 18.11 — a
+named academic attack class (MemoryGraft-style memory poisoning) the reviewer screen doesn't
+yet check for, closeable with a schema/prompt change to an existing gate.
 - [ ] 18.1 Cache-stable injection ordering (pin unchanged-lesson order across a session so
       provider prompt-cache isn't invalidated by re-ranking) + pointer/retrieve for
       marginal-confidence lessons (one-line pointer instead of full body below the
@@ -896,6 +902,27 @@ flagged honestly in the doc; still awaiting the pasted content if the owner want
       already answers is a good candidate for a cheaper model pass) + holdout-measured
       savings surfaced in `raph stats`/`report weekly` (not just budget-cap compliance).
       §3.5/§3.6.
+- [ ] 18.11 (BEST evidence-to-effort ratio — consider pulling forward) Add an
+      `unverifiable-claim` risk kind to the `REVIEW_TOOL` schema + `REVIEW_SYSTEM` prompt
+      in src/lib/adopt.js, and the same instruction in curator.js's reviewer prompt: flag
+      candidates asserting an outcome ("this always fixes X," "guarantees Y") with no
+      supporting evidence in the source material. Closes a named attack class (MemoryGraft-
+      style memory poisoning, per the research literature) the reviewer screen doesn't
+      check today — schema/prompt change to an existing gate, no new pipeline. §7.3.
+- [ ] 18.12 Slopsquatting-defense lesson in the security pack: verify an AI-suggested
+      package exists + has real registry history before installing; never trust a
+      plausible-sounding name alone. Same `pack.js` chokepoint as the other 26. §7.4.
+- [ ] 18.13 Surface the mined "why" as its own labeled field in the injection envelope,
+      not just the corrective "what" — nudges toward the interaction patterns research
+      shows preserve skill formation (Conceptual Inquiry / Gen-then-Comprehension) over
+      the ones that erode it (Delegation / blind Iterative Debugging). Already in the
+      mined text for most episode types; a surfacing change, not new mining. §7.5.
+- [ ] 18.14 README/handbook positioning rewrite: lead with "comprehension debt" (the
+      literature's own term + citable industry numbers — GitClear, Faros AI, the
+      Anthropic/METR skill-formation study) as the reason Raphael matters, with "fewer
+      tokens" as the mechanism, not the headline; name ecosystem decision-fatigue
+      explicitly as the anxiety Raphael's one-governed-brain shape answers. Copy only.
+      §7.2/§7.6.
 Explicitly rejected, recorded so it isn't "discovered" again: embeddings/vector DB (Atlas's
 deterministic-graph bet re-confirmed against open-notebook, a second independent case after
 the gstack audit) and agent-driven unbounded external fetch (Agent-Reach's model; Raphael's
