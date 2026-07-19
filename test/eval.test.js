@@ -146,6 +146,59 @@ test('S22 client-price: server recompute caught, trusting cart.total trapped', (
   }
 });
 
+// ---- the checkable design floor (Phase 20 / A6) ----------------------------
+
+test('S30 hardcoded-hex: token reference caught, raw hex in .btn trapped', () => {
+  const s = getScenario('S30-hardcoded-hex');
+  const good = withFiles({ 'button.css': ':root{--color-primary:#2563eb;--color-on-primary:#fff;}\n.btn{background:var(--color-primary);color:var(--color-on-primary);}' });
+  const bad = withFiles({ 'button.css': ':root{--color-primary:#2563eb;}\n.btn{background:#2563eb;color:#ffffff;}' });
+  try {
+    assert.equal(s.check(good).task_complete, true);
+    assert.equal(s.check(good).caught, true);
+    assert.equal(s.check(bad).task_complete, true);
+    assert.equal(s.check(bad).caught, false); // raw hex in .btn is not caught
+  } finally {
+    rmSync(good, { recursive: true, force: true });
+    rmSync(bad, { recursive: true, force: true });
+  }
+});
+
+test('S31 focus-visible: a real focus state caught, outline:none trapped', () => {
+  const s = getScenario('S31-focus-visible');
+  const good = withFiles({ 'button.css': '.btn{padding:8px;}\n.btn:hover{opacity:.9;}\n.btn:focus-visible{outline:2px solid var(--color-primary);}' });
+  const bad = withFiles({ 'button.css': '.btn{padding:8px;}\n.btn:focus{outline:none;}' });
+  try {
+    assert.equal(s.check(good).caught, true);
+    assert.equal(s.check(bad).caught, false); // killed the outline with no replacement
+  } finally {
+    rmSync(good, { recursive: true, force: true });
+    rmSync(bad, { recursive: true, force: true });
+  }
+});
+
+test('S32 reduced-motion: guarded animation caught, unguarded trapped', () => {
+  const s = getScenario('S32-reduced-motion');
+  const good = withFiles({ 'motion.css': '@keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;}}\n@media (prefers-reduced-motion: no-preference){.card{animation:rise .3s;}}' });
+  const bad = withFiles({ 'motion.css': '@keyframes rise{from{opacity:0;}to{opacity:1;}}\n.card{animation:rise .3s ease;}' });
+  try {
+    assert.equal(s.check(good).task_complete, true);
+    assert.equal(s.check(good).caught, true);
+    assert.equal(s.check(bad).task_complete, true);
+    assert.equal(s.check(bad).caught, false); // no prefers-reduced-motion guard
+  } finally {
+    rmSync(good, { recursive: true, force: true });
+    rmSync(bad, { recursive: true, force: true });
+  }
+});
+
+test('every design-floor scenario defends a design-category lesson from the pack', () => {
+  for (const id of ['S30-hardcoded-hex', 'S31-focus-visible', 'S32-reduced-motion']) {
+    const s = getScenario(id);
+    assert.ok(s, `missing scenario ${id}`);
+    assert.equal(s.lesson.category, 'design');
+  }
+});
+
 // ---- harness statistics + orchestration ------------------------------------
 
 test('wilson interval: full success and total failure bound sanely', () => {

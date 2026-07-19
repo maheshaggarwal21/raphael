@@ -257,7 +257,7 @@ pack so you test THIS stack's real weak spots first instead of a generic checkli
 // is now held to ONE bar — a named methodology (its mission), calibrated output, and an
 // eval-coverage roadmap. EVAL_COVERAGE names the agents that already have eval scenarios;
 // it is a roadmap that grows to the whole roster, NOT a quality tier.
-export const EVAL_COVERAGE = ['planner', 'architect', 'reviewer', 'security', 'debugger', 'redteam'];
+export const EVAL_COVERAGE = ['planner', 'architect', 'reviewer', 'security', 'debugger', 'redteam', 'frontend', 'design'];
 
 // Render one agent into a Claude Code plugin subagent definition.
 // The `description` is what Claude Code matches against to AUTO-DELEGATE to this

@@ -23,7 +23,7 @@ calibrated output, and an eval-coverage roadmap. There is no second-class tier.
 | raphael-critique | the adversarial pass over any other agent's output before you see it | another agent's output, a plan, or a confident claim should be stress-tested for unsupported reasoning before the user relies on it |
 | raphael-redteam | the attacker's-eye penetration tester that tries to actually break a system you own, then reports what's exploitable | the user wants an authorized attacker's-eye penetration test of THEIR OWN app or a test/staging environment — actively probing for exploitable auth bypass, IDOR, injection, SSRF, or business-logic abuse and reporting real, reproducible vulnerabilities |
 
-Eval coverage today (grows to the whole roster): planner, architect, reviewer, security, debugger, redteam.
+Eval coverage today (grows to the whole roster): planner, architect, reviewer, security, debugger, redteam, frontend, design.
 
 Every agent embeds the same spine:
 

@@ -273,6 +273,107 @@ export const SCENARIOS = [
       const caught = task_complete && usesServerPrices;
       return { caught, task_complete };
     }
+  },
+  // ---- the CHECKABLE frontend-design floor (Phase 20 / agent-architecture-final.md A6) --
+  // These probe the parts of "good frontend" a deterministic checker CAN judge — the
+  // accessibility/token floor — NOT taste, which stays human-judged. Each defends a
+  // lesson from the design pack.
+  {
+    id: 'S30-hardcoded-hex',
+    title: 'Style components with tokens, not raw hex',
+    trap: 'hardcodes hex colors in the component instead of referencing tokens',
+    prompt:
+      'In button.css, style a `.btn` primary button (background + text color) for our app. ' +
+      'The app already defines CSS custom properties (design tokens) in :root. Keep it themeable and production-quality.',
+    setup(dir) {
+      write(
+        dir,
+        'button.css',
+        ':root {\n  --color-primary: #2563eb;\n  --color-on-primary: #ffffff;\n}\n\n/* TODO: style .btn using the design tokens above (not raw hex). */\n'
+      );
+    },
+    lesson: {
+      slug: 'reference-tokens-not-raw-hex',
+      title: 'Reference design tokens, not raw hex, in components',
+      category: 'design',
+      severity: 'medium',
+      keywords: ['token', 'hex', 'color', 'css variable', 'theme'],
+      lesson:
+        'Hardcoded hex colors in components block theming and drift out of sync; components that reference semantic tokens (CSS variables like --color-primary) keep the palette in one place.',
+      headline: 'Raw hex in components blocks theming — reference CSS-variable tokens instead.'
+    },
+    check(dir) {
+      const files = readAll(dir);
+      const css = Object.entries(files).filter(([f]) => f.endsWith('.css')).map(([, c]) => c).join('\n');
+      const task_complete = /\.btn\b/.test(css) && /(background|color)/i.test(css);
+      // Look only at the .btn rule body (not the :root token definitions, which legitimately hold hex).
+      const btnRule = (css.match(/\.btn[^{]*\{([^}]*)\}/i) || [, ''])[1];
+      const usesToken = /var\(\s*--/.test(btnRule);
+      const rawHexInBtn = /#[0-9a-f]{3,8}\b/i.test(btnRule);
+      const caught = task_complete && usesToken && !rawHexInBtn;
+      return { caught, task_complete };
+    }
+  },
+  {
+    id: 'S31-focus-visible',
+    title: 'Keep a visible keyboard focus state',
+    trap: 'removes the focus outline (outline: none) with no visible replacement',
+    prompt:
+      'In button.css, refine the `.btn` interactive styles: default, hover, and focus. ' +
+      'Make it look clean and modern, and keyboard-accessible. Production-quality.',
+    setup(dir) {
+      write(dir, 'button.css', '.btn { padding: 8px 16px; border-radius: 6px; }\n\n/* TODO: add :hover and a keyboard-accessible :focus state. */\n');
+    },
+    lesson: {
+      slug: 'keep-a-visible-keyboard-focus',
+      title: 'Never remove the visible focus indicator',
+      category: 'design',
+      severity: 'critical',
+      keywords: ['focus', 'keyboard', 'accessibility', 'outline', 'a11y'],
+      lesson:
+        'Removing focus outlines leaves keyboard users unable to see where they are; a clear focus state on every interactive element, restyled if the default is ugly but never deleted, keeps keyboard navigation possible.',
+      headline: 'Deleting focus outlines strands keyboard users — restyle the focus state, never remove it.'
+    },
+    check(dir) {
+      const files = readAll(dir);
+      const css = Object.entries(files).filter(([f]) => f.endsWith('.css')).map(([, c]) => c).join('\n');
+      const task_complete = /:focus/.test(css) || /outline\s*:/.test(css);
+      // trap tripped: `outline: none/0` on focus with no visible replacement
+      const killsOutline = /:focus[^{]*\{[^}]*outline\s*:\s*(none|0)\b/i.test(css) || /\.btn[^{]*\{[^}]*outline\s*:\s*(none|0)\b/i.test(css);
+      const focusRule = (css.match(/:focus(?:-visible)?[^{]*\{([^}]*)\}/i) || [, ''])[1];
+      const hasVisibleFocus = /(outline\s*:\s*(?!none|0)|box-shadow|border|background|ring)/i.test(focusRule);
+      const caught = /:focus/.test(css) && hasVisibleFocus && !killsOutline;
+      return { caught, task_complete };
+    }
+  },
+  {
+    id: 'S32-reduced-motion',
+    title: 'Gate animation behind prefers-reduced-motion',
+    trap: 'adds an animation with no prefers-reduced-motion guard',
+    prompt:
+      'In motion.css, add a subtle fade-and-rise entrance animation for `.card` elements. ' +
+      'Make it feel polished, and accessible to users sensitive to motion. Production-quality.',
+    setup(dir) {
+      write(dir, 'motion.css', '.card { opacity: 1; }\n\n/* TODO: add an entrance animation for .card. */\n');
+    },
+    lesson: {
+      slug: 'respect-prefers-reduced-motion',
+      title: 'Honor prefers-reduced-motion',
+      category: 'design',
+      severity: 'high',
+      keywords: ['motion', 'animation', 'reduced-motion', 'accessibility'],
+      lesson:
+        'Animation that ignores prefers-reduced-motion can trigger nausea or vestibular problems for users who asked to reduce motion; gating non-essential motion behind that media query respects the request.',
+      headline: 'Motion that ignores prefers-reduced-motion harms some users — gate it behind the query.'
+    },
+    check(dir) {
+      const files = readAll(dir);
+      const css = Object.entries(files).filter(([f]) => f.endsWith('.css')).map(([, c]) => c).join('\n');
+      const task_complete = /@keyframes|animation\s*:|transition\s*:/i.test(css);
+      const guardsMotion = /prefers-reduced-motion/i.test(css);
+      const caught = task_complete && guardsMotion;
+      return { caught, task_complete };
+    }
   }
 ];
 
