@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AGENTS, FLAGSHIPS, RECIPES, SPINE, renderAgent, renderRecipe } from '../src/lib/agents.js';
+import { AGENTS, EVAL_COVERAGE, RECIPES, SPINE, renderAgent, renderRecipe } from '../src/lib/agents.js';
 
 const VALID_MODELS = new Set(['haiku', 'sonnet', 'opus', 'inherit']);
 
@@ -13,8 +13,20 @@ test('the roster is exactly the 11 designed agents', () => {
   assert.equal(new Set(slugs).size, 11); // no duplicates
 });
 
-test('the flagships include Planner, Architect, Reviewer, Debugger, and Red Team', () => {
-  assert.deepEqual([...FLAGSHIPS].sort(), ['architect', 'debugger', 'planner', 'redteam', 'reviewer']);
+test('the flagship tier is retired — no agent carries a flagship flag', () => {
+  for (const a of AGENTS) {
+    assert.equal(a.flagship, undefined, `${a.slug} still has a flagship flag — the tier was retired`);
+  }
+  // renderAgent must not print a flagship tag on any agent's description.
+  for (const a of AGENTS) {
+    assert.ok(!renderAgent(a).includes('flagship'), `${a.slug} description still shows "flagship"`);
+  }
+});
+
+test('EVAL_COVERAGE names real roster slugs (the eval roadmap, not a quality tier)', () => {
+  const slugs = new Set(AGENTS.map((a) => a.slug));
+  assert.ok(EVAL_COVERAGE.length > 0);
+  for (const s of EVAL_COVERAGE) assert.ok(slugs.has(s), `EVAL_COVERAGE names a non-existent agent: ${s}`);
 });
 
 test('every agent carries a whenToUse trigger, and renderAgent puts it in the description', () => {
@@ -67,10 +79,29 @@ test('renderAgent embeds the spine, brain-pull, mission, and output in every age
   }
 });
 
-test('the spine names all five rules', () => {
-  for (const rule of ['Brain first', 'Free checks', 'Map, not the whole repo', 'Cheap → strong', 'Write back']) {
+test('the spine names all six rules (incl. one-decision-one-question)', () => {
+  for (const rule of ['Brain first', 'Free checks', 'Map, not the whole repo', 'Cheap → strong', 'Write back', 'One decision, one question']) {
     assert.ok(SPINE.includes(rule), `spine missing rule: ${rule}`);
   }
+});
+
+test('the finding-producing agents encode their named methodology (calibration + discipline)', () => {
+  const byslug = Object.fromEntries(AGENTS.map((a) => [a.slug, a]));
+  // reviewer: confidence-banding + quote-the-line
+  assert.match(byslug.reviewer.mission, /confidence/i);
+  assert.match(byslug.reviewer.mission, /quote/i);
+  // debugger: Iron Law + 3-strike + regression fails-then-passes
+  assert.match(byslug.debugger.mission, /iron law/i);
+  assert.match(byslug.debugger.mission, /three-strike|3-strike/i);
+  assert.match(byslug.debugger.mission, /FAILING without/);
+  // security: LLM/AI security as its own category
+  assert.match(byslug.security.mission, /LLM\/AI/i);
+  // planner + architect: mandatory NOT-in-scope / Error & Rescue Map
+  assert.match(byslug.planner.mission, /NOT in scope/i);
+  assert.match(byslug.architect.mission, /error & rescue map/i);
+  // design: names the AI-slop tells + the accessibility floor
+  assert.match(byslug.design.mission, /slop/i);
+  assert.match(byslug.design.mission, /4\.5:1|contrast/i);
 });
 
 test('recipes render as numbered, brain-first procedures', () => {
@@ -96,7 +127,7 @@ test('the pentest recipe leads with an authorization/scope confirmation (safety 
 });
 
 test('renderAgent degrades gracefully when an agent has no whenToUse (edge case)', () => {
-  const bare = { slug: 'x', name: 'X', flagship: false, model: 'sonnet', tools: ['Read'], role: 'does a thing', mission: 'm', output: 'o' };
+  const bare = { slug: 'x', name: 'X', model: 'sonnet', tools: ['Read'], role: 'does a thing', mission: 'm', output: 'o' };
   const md = renderAgent(bare);
   const descLine = md.split('\n').find((l) => l.startsWith('description:'));
   // no crash, no dangling "proactively when undefined" — just the role + tag.

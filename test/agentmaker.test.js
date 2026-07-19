@@ -9,6 +9,7 @@ import { AGENTS } from '../src/lib/agents.js';
 const goodSpec = {
   slug: 'data-scientist',
   role: 'the specialist who designs and reviews data pipelines and statistical checks',
+  whenToUse: 'a data pipeline or statistical analysis needs designing or reviewing for soundness',
   mission: 'From the spec, design the data flow, validation, and statistical soundness checks; pull the brain lessons about past data mistakes first.',
   output: 'A data pipeline design with validation, quality gates, and named statistical assumptions.',
   model: 'sonnet',
@@ -18,12 +19,17 @@ const goodSpec = {
 test('validateAgentProposal accepts a complete spec and rejects bad ones', () => {
   const ok = validateAgentProposal(goodSpec);
   assert.equal(ok.ok, true);
-  assert.equal(ok.entry.flagship, false);
+  assert.equal(ok.entry.flagship, undefined); // the flagship tier was retired
+  assert.equal(ok.entry.whenToUse, goodSpec.whenToUse); // every agent carries a trigger
   assert.equal(ok.entry.model, 'sonnet');
 
   assert.equal(validateAgentProposal({ ...goodSpec, slug: 'Bad Slug' }).ok, false);
   assert.equal(validateAgentProposal({ ...goodSpec, model: 'gpt' }).ok, false);
   assert.equal(validateAgentProposal({ ...goodSpec, role: 'x' }).ok, false);
+  // failure case: a proposal with no whenToUse trigger is refused (it could never auto-fire)
+  const noTrigger = validateAgentProposal({ ...goodSpec, whenToUse: undefined });
+  assert.equal(noTrigger.ok, false);
+  assert.ok(noTrigger.errors.some((e) => /when-to-use/.test(e)));
 });
 
 test('a slug already in the roster is refused', () => {

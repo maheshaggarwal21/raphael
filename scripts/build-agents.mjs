@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { AGENTS, RECIPES, FLAGSHIPS, SPINE, renderAgent, renderRecipe } from '../src/lib/agents.js';
+import { AGENTS, RECIPES, EVAL_COVERAGE, SPINE, renderAgent, renderRecipe } from '../src/lib/agents.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const agentsDir = path.join(root, 'plugin', 'agents');
@@ -28,11 +28,14 @@ const readme = [
   'not these. Each agent\'s `description` carries a "use proactively when…" trigger so',
   'Claude Code auto-delegates to it at the right moment (not only when named).',
   '',
-  '| Agent | Role | Flagship |',
-  '|---|---|---|',
-  ...AGENTS.map((a) => `| raphael-${a.slug} | ${a.role} | ${a.flagship ? '★' : ''} |`),
+  'Every agent is a specialist held to one bar — a named methodology (its mission),',
+  'calibrated output, and an eval-coverage roadmap. There is no second-class tier.',
   '',
-  `Flagships (deepest polish + eval scenarios first): ${FLAGSHIPS.join(', ')}.`,
+  '| Agent | Role | When to use it |',
+  '|---|---|---|',
+  ...AGENTS.map((a) => `| raphael-${a.slug} | ${a.role} | ${a.whenToUse} |`),
+  '',
+  `Eval coverage today (grows to the whole roster): ${EVAL_COVERAGE.join(', ')}.`,
   '',
   'Every agent embeds the same spine:',
   '',

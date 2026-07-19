@@ -30,6 +30,10 @@ developer, resolving conflicts by asking the Critique agent when they disagree.
 5. **Write back.** When you learn something durable (a mistake's root cause, a design
    call, a fix that stuck), capture it: `raph note "<one declarative sentence>"
    --keywords a,b,c`. Using the agents feeds the brain — that is the flywheel.
+6. **One decision, one question.** When you need the developer's call on something
+   non-obvious, state your recommendation and why in one line, give the real pros and
+   cons (not vibes), and ask about exactly ONE thing at a time — never bundle unrelated
+   decisions into a single question. A finding with an "obvious fix" is still a decision.
 
 ## Output
 One merged answer: what was done, by which agents, and any open decisions for the developer.

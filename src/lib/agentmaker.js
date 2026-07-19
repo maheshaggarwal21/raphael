@@ -29,10 +29,14 @@ export function validateAgentProposal(spec = {}, { roster = AGENTS } = {}) {
   if (output.length < 10) errors.push('E-AGENT: --output must say what the agent returns (>=10 chars)');
   const model = String(spec.model ?? 'inherit').trim();
   if (!MODELS.has(model)) errors.push(`E-AGENT: model must be one of ${[...MODELS].join(', ')}`);
+  // Every agent needs a whenToUse trigger — it is what Claude Code matches against to
+  // auto-delegate (agent-architecture-final.md; the flagship tier was retired).
+  const whenToUse = String(spec.whenToUse ?? '').trim();
+  if (whenToUse.length < 10) errors.push('E-AGENT: --when-to-use must name the situations that should invoke this agent (>=10 chars)');
 
   const tools = Array.isArray(spec.tools) && spec.tools.length ? spec.tools.map((t) => String(t).trim()).filter(Boolean) : DEFAULT_TOOLS;
 
-  const entry = { slug, name: spec.name?.trim() || titleCase(slug), flagship: false, model, tools, role, mission, output };
+  const entry = { slug, name: spec.name?.trim() || titleCase(slug), model, tools, role, whenToUse, mission, output };
   return { ok: errors.length === 0, errors, entry };
 }
 
@@ -47,10 +51,10 @@ export function rosterSnippet(entry) {
     '  {',
     `    slug: '${entry.slug}',`,
     `    name: ${JSON.stringify(entry.name)},`,
-    `    flagship: false,`,
     `    model: '${entry.model}',`,
     `    tools: [${toolList}],`,
     `    role: ${JSON.stringify(entry.role)},`,
+    `    whenToUse: ${JSON.stringify(entry.whenToUse)},`,
     `    mission: ${JSON.stringify(entry.mission)},`,
     `    output: ${JSON.stringify(entry.output)}`,
     '  },'
