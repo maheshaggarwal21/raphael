@@ -705,6 +705,30 @@ compaction (manual or automatic) can never lose progress.
   taste-conventions not recurring bugs -> share 18.2's open decay-policy question.
   415/415 untouched — docs-only, nothing built, awaits owner go. Log:
   .claude/logs/2026-07-19-01.md.
+- AGENT ARCHITECTURE FINALIZED (session 14 round 6, 2026-07-20): owner — "the complete
+  agent set should be flagship, each specialized; finalize the architecture and go with
+  your recommendation." Wrote docs/agent-architecture-final.md, the DECIDED design
+  (supersedes the open questions in Phase 19 + the agent half of Phase 20; all decisions
+  made). Central decision: RETIRE the two-tier `flagship` flag — a badge on everything is
+  meaningless, on a subset makes the rest look second-class; replace with ONE uniform bar
+  every agent meets (a named methodology + calibrated output [confidence-banding +
+  quote-the-line-or-suppress] + an eval-coverage roadmap). Roster 10 -> 11: add
+  raphael-frontend (a builder that can actually build UI — the confirmed gap; developer
+  kept as general/backend); only developer/frontend/debugger get edit tools, the rest stay
+  read-only. Model tiers unchanged (manager haiku, rest sonnet-first, opus escalation-only).
+  All 11 missions rewritten to named methodologies from studied sources (gstack's audited
+  versions of debug/review/security/architecture/planning + the Anthropic design skills);
+  6th spine rule (one-decision-one-question) on all. Cross-cutting decided: design pack +
+  `design` category + ledger-for-design IN; cross-model outside voice IN but narrow
+  (critique only, 2 recipes, never auto-apply, needs invariant #5e first); per-agent
+  outcome mining a SEPARATE later track; recipes -> 6 (add plan, frontend-build);
+  "flagship-quality" marketing claim ships only AFTER the eval roadmap's first wave.
+  Consolidated A1-A9 build order in §7. TASKS.md: FINALIZED banner + Phase 19 marked
+  superseded (kept for provenance) + Phase 20 agent-items-folded-in. Grounding: engineering:
+  */design:* Anthropic skills are SDK-provided (not on disk to re-read) — grounded each
+  agent in gstack's deeper audited equivalents instead. 415/415 untouched — design
+  finalized, NOT built; A1-A9 ready to build on owner's word (pre-build tasks: taste-decay
+  policy A4 [shared w/ 18.2], invariant #5e A8). Log: .claude/logs/2026-07-19-01.md.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

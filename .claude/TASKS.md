@@ -938,7 +938,27 @@ deterministic-graph bet re-confirmed against open-notebook, a second independent
 the gstack audit) and agent-driven unbounded external fetch (Agent-Reach's model; Raphael's
 existing bounded/user-initiated adopt fetch is the deliberate opposite choice). §6.
 
-## Phase 19 — Agent roster v2 (PROPOSED 2026-07-19, session 14; design in
+## >>> AGENT ARCHITECTURE FINALIZED 2026-07-20 (session 14) — see docs/agent-architecture-final.md
+## Owner: "the complete agent set should be flagship, each specialized; finalize the
+## architecture and go with your recommendation." I made ALL decisions. The finalized
+## design SUPERSEDES the open questions in Phase 19 and the agent half of Phase 20 below —
+## they remain for provenance, but the authoritative, decided plan is the A1-A9 build order
+## in docs/agent-architecture-final.md §7. Headline decisions: (1) retire the two-tier
+## `flagship` flag — whole 11-agent roster held to ONE specialization bar (a named
+## methodology + calibrated output + eval-coverage roadmap), because a badge that's on
+## everything means nothing and on a subset makes the rest look second-class; (2) roster
+## 10 -> 11, adding raphael-frontend (a builder that can actually build UI — the confirmed
+## gap), keeping developer as general/backend; (3) only developer/frontend/debugger get
+## edit tools, the rest stay read-only; (4) 6th spine rule (one-decision-one-question) on
+## all; (5) design pack + `design` category + ledger-for-design IN; cross-model outside
+## voice IN but narrow (critique, 2 recipes, never auto-apply); per-agent outcome mining a
+## separate later track; recipes -> 6 (add plan, frontend-build); (6) "flagship-quality"
+## marketing claim ships only after the eval roadmap's first wave. Nothing built yet — the
+## A1-A9 order is ready to execute on owner's word; the only genuine pre-build tasks are the
+## taste-convention decay policy (A4) and the invariant #5e amendment (A8), both flagged.
+
+## Phase 19 — Agent roster v2 (PROPOSED 2026-07-19; SUPERSEDED by the finalized architecture
+## above — see docs/agent-architecture-final.md. Kept for provenance. Design in
 ## docs/agent-roster-v2-plan.md, grounded in docs/gstack-agents-audit.md — NOT STARTED)
 Owner ask: deep-clone + read garrytan/gstack's full skill set (54 skills, not just a prior
 session's narrower scope) — architecture, system prompts, task approach for ALL of them —
@@ -982,9 +1002,11 @@ exceptions for agent output either); /ship-style automatic push+PR creation for
 raphael-deployer (deploy/spend/sign-in boundary unchanged — checklist only, always);
 blanket "Boil the Ocean" adoption (19.5 ships narrow on purpose). §8.
 
-## Phase 20 — Frontend design/dev as flagship (PROPOSED 2026-07-20, session 14;
-## design in docs/frontend-design-flagship-plan.md, grounded in
-## docs/frontend-design-skills-audit.md — NOT STARTED)
+## Phase 20 — Frontend design/dev as flagship (PROPOSED 2026-07-20; agent items FOLDED INTO
+## the finalized architecture above — docs/agent-architecture-final.md A2/A4/A5/A6/A7. The
+## milestones here (design pack, ledger-for-design, eval floor, token guard) remain the
+## concrete work the finalized A1-A9 order points to. design in
+## docs/frontend-design-flagship-plan.md, grounded in docs/frontend-design-skills-audit.md)
 Owner directive: frontend design/development is where AI lags most, so the agents/skills
 concerned with it should be Raphael's flagship. Studied two resources like gstack:
 nextlevelbuilder/ui-ux-pro-max-skill (a deterministic BM25-over-CSV design-rule DB + a
