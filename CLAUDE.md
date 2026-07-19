@@ -614,6 +614,25 @@ compaction (manual or automatic) can never lose progress.
   reality (415 tests, 41 verbs), and the two previously-underrepresented features
   the owner had flagged (`raph web`, Skill Factory) are now well covered. No code
   changes this session. Log: .claude/logs/2026-07-19-01.md.
+- V2 RESEARCH + BRAINSTORM (session 14 round 2, 2026-07-19): owner wants Raphael to
+  become an industry-standard "ritual," gave 2 Gemini research links (both auth-
+  walled, unreadable via fetch — flagged honestly, not fabricated) + 10 fast-growing
+  GitHub repos to study in depth. Deep-read all 10 via 4 parallel research agents
+  (mechanism + adoption psychology, cross-checked against raw source, one
+  hallucinated stat caught + discarded). Synthesized into docs/v2-vision.md: a
+  6-pull psychology model, a token-economics section (cache-stable injection
+  ordering + pointer/retrieve for marginal lessons — the two highest-leverage,
+  lowest-risk ideas, both strengthen rather than spend the "always net-lower than
+  no-Raphael" budget), a "luxury" section (developer-profile lesson category
+  through the existing chokepoint, ritual digest rewrite, console craft pass,
+  trust-at-point-of-action), a "reach" section (AGENTS.md canonical + thin per-CLI
+  wrappers — flagged as the single highest-leverage move for "industry standard,"
+  widens delivery beyond the Claude-Code-only plugin without touching the
+  chokepoint/curator/Atlas core), and an explicit "what NOT to build" section
+  (no embeddings, no unbounded agent-driven fetch — both re-confirmed by this
+  round's research independently of the earlier gstack audit). Phase 18 (10
+  milestones, TASKS.md) added as PROPOSED — brainstorm only, NOT started, awaiting
+  owner go. 415/415 tests untouched (docs-only). Log: .claude/logs/2026-07-19-01.md.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

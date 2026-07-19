@@ -854,6 +854,53 @@ e.g. agent about to Grep gets the atlas via PreToolUse, live since 16.3).
 Stays manual on purpose: adopt (user-initiated fetch, #5b), guard install (asked once at
 onboarding), curator mode preserved as opt-in.
 
+## Phase 18 — v2: the ritual, the luxury, the standard (PROPOSED 2026-07-19, session 14;
+## design in docs/v2-vision.md — NOT STARTED, awaiting owner go)
+Owner directive: make Raphael the industry standard — a ritual developers reach for, not
+a tool they installed once. Grounded in a deep-read study of 10 fast-growing GitHub repos
+(mechanism + psychology, not skimmed) plus the hard constraint that Raphael's token usage
+must always stay lower than not using Raphael at all. Two Gemini research links were also
+supplied but could not be fetched (auth-walled share pages returned only the nav shell) —
+flagged honestly in the doc; still awaiting the pasted content if the owner wants it folded in.
+- [ ] 18.1 Cache-stable injection ordering (pin unchanged-lesson order across a session so
+      provider prompt-cache isn't invalidated by re-ranking) + pointer/retrieve for
+      marginal-confidence lessons (one-line pointer instead of full body below the
+      injection bar, full text pulled on demand) — §3.2/§3.3 of the vision doc.
+- [ ] 18.2 Developer profile layer: new `category: preference` lesson type built only from
+      repeatedly-confirmed patterns, through the SAME chokepoint as every lesson — no
+      free-text side channel. §4.1.
+- [ ] 18.3 Ritual digest rewrite (lead with a felt, personal number) + `raph recall
+      quiet|normal|eager` dial (recall assertiveness, distinct from the auto-approve
+      dial). §4.2/§3.4.
+- [ ] 18.4 Trust-at-point-of-action: quarantine floor stated in-tool at the moment a
+      candidate is quarantined, not just in docs; adversarial/injection-shaped check
+      split out as its own named, visible flag (not folded into one confidence number).
+      §4.4.
+- [ ] 18.5 Console (`raph web`) visual-craft pass — audit against the same "AI slop" UI
+      patterns Raphael's own research flagged; pure design, zero backend/token change.
+      §4.3.
+- [ ] 18.6 AGENTS.md canonical file + thin per-CLI wrapper files, so automatic injection
+      works across Codex/OpenCode/Gemini CLI/etc., not just the Claude Code plugin —
+      repackages existing `raph inject` output, no chokepoint/curator/Atlas change.
+      Highest-leverage milestone for "industry standard"; may deserve reordering earlier
+      if the owner weighs reach over polish. §5.1.
+- [ ] 18.7 Skill Factory: align drafts with the open agentskills.io SKILL.md convention
+      (portability outside Raphael) + a `raph lint` check for frontmatter descriptions
+      that are too generic (fires on everything) or too narrow (never fires). §5.2/§5.4.
+- [ ] 18.8 Route `adopt`'s PDF/DOCX/PPTX legs through markitdown-style extraction instead
+      of bespoke parsing — downstream of the existing bounded-fetch boundary, no new
+      network/trust surface. §5.3.
+- [ ] 18.9 Theme bundle packs beyond security (e.g. testing, performance) — same
+      `pack.js` pattern, opt-in, chokepoint-enforced. §5.5.
+- [ ] 18.10 Effort-routing on lesson-match confidence (a step a high-confidence lesson
+      already answers is a good candidate for a cheaper model pass) + holdout-measured
+      savings surfaced in `raph stats`/`report weekly` (not just budget-cap compliance).
+      §3.5/§3.6.
+Explicitly rejected, recorded so it isn't "discovered" again: embeddings/vector DB (Atlas's
+deterministic-graph bet re-confirmed against open-notebook, a second independent case after
+the gstack audit) and agent-driven unbounded external fetch (Agent-Reach's model; Raphael's
+existing bounded/user-initiated adopt fetch is the deliberate opposite choice). §6.
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.
