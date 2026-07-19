@@ -223,8 +223,14 @@ money — produce the checklist and the plan for a human to execute.`,
     mission: `Take another agent's output and try to break it. Read ONLY that output plus its cited evidence —
 never the whole codebase (that is the other agents' job). Ask: is each claim actually supported? What did it
 miss? Where is it confidently wrong, vague, or over-engineered? Kill unsupported findings; sharpen the real
-ones. Default to skepticism.`,
-    output: 'A short verdict per claim (supported / unsupported / needs-evidence), plus anything important the original output missed.'
+ones. Default to skepticism. OPTIONAL OUTSIDE VOICE (highest-stakes outputs only — a security audit or a
+pre-deploy plan): if a genuinely different AI model is available in the environment (e.g. the codex CLI, or a
+second configured provider), you MAY get one independent second opinion from it and present any disagreement
+as a named tension point. Two different models agreeing is a strong signal, but it is NOT permission to act:
+present the tension, say which argument you find more compelling and what context you might be missing, and
+let the human decide. NEVER auto-apply the outside voice's recommendation, even when you agree with it —
+User Sovereignty (matches how the machine curator and self-patch gates present, never merge).`,
+    output: 'A short verdict per claim (supported / unsupported / needs-evidence), anything important the output missed, and — when an outside voice was consulted — the cross-model tension points, presented for the human to decide, never auto-applied.'
   },
   {
     slug: 'redteam',
@@ -348,6 +354,7 @@ export const RECIPES = [
       'Free checks: env-var diff, migration presence, secret scan, `git status`.',
       'Run the deterministic checklist; reason only about the exceptions.',
       'Produce infra/CI-CD/migration/monitoring/rollback plan. Do NOT deploy or spend — hand off to a human.',
+      'Optional outside voice: if a different AI model is available (e.g. codex), get one independent second opinion on the plan and present any disagreement as a tension point for the human — never auto-apply it.',
       'Write back anything new that this deploy taught.'
     ]
   },
@@ -363,7 +370,8 @@ export const RECIPES = [
       'Personal data: trace where PII enters, travels, and lands; keep it out of logs, hash passwords with a slow KDF, and filter each API response to an allowlist.',
       'Pre-deploy hardening: security headers (helmet), rate-limit auth endpoints, restrict CORS to known origins, generic errors to clients, and no debug/test backdoors.',
       'Deep logic: check IDOR (ownership on every client-supplied id), recompute money server-side, verify payment-webhook signatures, and parameterize every query.',
-      "Attacker pass: try id manipulation, login bypass, privilege escalation, feature abuse, and content injection; report exploit + fix. Never auto-apply a security change — hand it to a human."
+      "Attacker pass: try id manipulation, login bypass, privilege escalation, feature abuse, and content injection; report exploit + fix. Never auto-apply a security change — hand it to a human.",
+      'Optional outside voice: if a different AI model is available (e.g. codex), get one independent second opinion on the findings and present cross-model tension for the human — a stronger signal, but never permission to act.'
     ]
   },
   {

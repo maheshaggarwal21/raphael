@@ -153,6 +153,20 @@ test('renderAgent degrades gracefully when an agent has no whenToUse (edge case)
   assert.ok(!descLine.includes('proactively'), 'no proactive nudge when there is no trigger');
 });
 
+test('the cross-model outside voice is scoped to the two highest-stakes recipes and never auto-applies', () => {
+  const critique = AGENTS.find((a) => a.slug === 'critique');
+  // critique carries the outside-voice option with the User Sovereignty guarantee
+  assert.match(critique.mission, /outside voice/i);
+  assert.match(critique.mission, /never auto-apply/i);
+  // only security-audit and pre-deploy recipes mention an outside voice — not review/debug/plan/frontend-build
+  const withVoice = RECIPES.filter((r) => r.steps.join(' ').toLowerCase().includes('outside voice')).map((r) => r.slug).sort();
+  assert.deepEqual(withVoice, ['pre-deploy', 'security-audit']);
+  for (const slug of withVoice) {
+    const steps = RECIPES.find((r) => r.slug === slug).steps.join(' ').toLowerCase();
+    assert.ok(steps.includes('never auto-apply') || steps.includes('never permission to act'), `${slug} outside-voice step must state the never-auto-apply floor`);
+  }
+});
+
 test('manager routes on a cheap model; specialists reason on a stronger one', () => {
   const manager = AGENTS.find((a) => a.slug === 'manager');
   assert.equal(manager.model, 'haiku');

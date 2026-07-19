@@ -6,3 +6,4 @@
 4. Pre-deploy hardening: security headers (helmet), rate-limit auth endpoints, restrict CORS to known origins, generic errors to clients, and no debug/test backdoors.
 5. Deep logic: check IDOR (ownership on every client-supplied id), recompute money server-side, verify payment-webhook signatures, and parameterize every query.
 6. Attacker pass: try id manipulation, login bypass, privilege escalation, feature abuse, and content injection; report exploit + fix. Never auto-apply a security change — hand it to a human.
+7. Optional outside voice: if a different AI model is available (e.g. codex), get one independent second opinion on the findings and present cross-model tension for the human — a stronger signal, but never permission to act.
