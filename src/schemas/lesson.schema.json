@@ -47,7 +47,8 @@
         "process",
         "tooling",
         "api-design",
-        "data"
+        "data",
+        "design"
       ]
     },
     "severity": { "enum": ["critical", "high", "medium", "low"] },
@@ -78,15 +79,18 @@
               "planner",
               "architect",
               "developer",
+              "frontend",
               "reviewer",
               "security",
               "debugger",
+              "design",
               "designer",
               "deployer",
-              "critique"
+              "critique",
+              "redteam"
             ]
           },
-          "maxItems": 10,
+          "maxItems": 12,
           "uniqueItems": true
         }
       }

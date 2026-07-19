@@ -10,6 +10,7 @@
 // `raph approve`. Nothing here bypasses a single invariant.
 
 import { buildSecurityPack, PACK_SPECS } from '../lib/security-pack.js';
+import { buildDesignPack, DESIGN_PACK_SPECS } from '../lib/design-pack.js';
 import { writeCandidate } from '../lib/candidates.js';
 
 const PACKS = {
@@ -18,6 +19,12 @@ const PACKS = {
     blurb: 'The mistakes that cause most real-world breaches in shipped apps.',
     build: buildSecurityPack,
     specs: PACK_SPECS
+  },
+  design: {
+    title: 'Frontend-design starter pack',
+    blurb: 'What separates shipped-quality UI from generic "AI slop" — the slop tells, the accessibility floor, token + copy discipline.',
+    build: buildDesignPack,
+    specs: DESIGN_PACK_SPECS
   }
 };
 

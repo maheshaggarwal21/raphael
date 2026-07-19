@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PACK_SPECS, packLesson } from '../src/lib/security-pack.js';
+import { DESIGN_PACK_SPECS, packDesignLesson } from '../src/lib/design-pack.js';
 import { validateLesson } from '../src/lib/validate.js';
 import { serializeLessonFile } from '../src/lib/frontmatter.js';
 
@@ -30,9 +31,15 @@ const prevManifest = existsSync(manifestFile) ? JSON.parse(readFileSync(manifest
 
 const today = new Date().toISOString().slice(0, 10);
 const lessons = [];
-for (const spec of PACK_SPECS) {
+// The global brain seeds every fresh install: the owner-reviewed security pack +
+// the frontend-design pack (both curated tier). Each spec becomes a fixed-id lesson.
+const sources = [
+  ...PACK_SPECS.map((spec) => ({ spec, pack: packLesson })),
+  ...DESIGN_PACK_SPECS.map((spec) => ({ spec, pack: packDesignLesson }))
+];
+for (const { spec, pack } of sources) {
   const prev = prevBySlug.get(spec.slug);
-  const lesson = packLesson(spec, { today: prev?.evidence?.first_seen ?? today, id: prev?.id ?? null });
+  const lesson = pack(spec, { today: prev?.evidence?.first_seen ?? today, id: prev?.id ?? null });
   // stability: everything except the id comes from the spec deterministically
   const check = validateLesson(serializeLessonFile(lesson, ''));
   if (!check.ok) {

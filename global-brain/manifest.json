@@ -1,8 +1,8 @@
 {
  "schema": "raphael/global-brain/v1",
- "version": 1,
- "generated": "2026-07-18",
- "count": 26,
+ "version": 2,
+ "generated": "2026-07-19",
+ "count": 40,
  "lessons": [
   {
    "slug": "secrets-belong-in-env-vars",
@@ -185,6 +185,104 @@
    "category": "security",
    "severity": "critical",
    "sha256": "51130a1cd6def3c85b7bd846a191d82523798609f036f0ff66c30355c9ce586a"
+  },
+  {
+   "slug": "avoid-the-ai-slop-visual-defaults",
+   "id": "les_01KXY2GTWE1SM7GE3VAP229CNC",
+   "category": "design",
+   "severity": "high",
+   "sha256": "bbddb4c8d0a544f3589bff3554b825ad6b1402c2fc83228844de2126dc083f46"
+  },
+  {
+   "slug": "ground-the-design-in-the-subject",
+   "id": "les_01KXY2GTWEDM7DDMSPSQGBH0MJ",
+   "category": "design",
+   "severity": "high",
+   "sha256": "77f01e18e63c6996723707f76c069d0e1a14c8afbfd4e7e304cd703f9f9eb238"
+  },
+  {
+   "slug": "spend-boldness-in-one-place",
+   "id": "les_01KXY2GTWF0VN3T3AY2919FP9A",
+   "category": "design",
+   "severity": "medium",
+   "sha256": "43225e5ad63c6f25ab849ae27f78417368dd54103e04d5d3d00fc11e7c390288"
+  },
+  {
+   "slug": "body-contrast-at-least-4-5-to-1",
+   "id": "les_01KXY2GTWF3AZG2P7EABSN5GNH",
+   "category": "design",
+   "severity": "critical",
+   "sha256": "78b4502ffbe8ce8668374dc3a5bee2d07df74a476fc6e6c72759b484786e0774"
+  },
+  {
+   "slug": "touch-targets-at-least-44px",
+   "id": "les_01KXY2GTWG8PJPDSGKZ4ADQXR1",
+   "category": "design",
+   "severity": "high",
+   "sha256": "6f29da82e6ca6841c82034d68e68e27390d582c6dca9d455cc5fdf4a6893f17d"
+  },
+  {
+   "slug": "respect-prefers-reduced-motion",
+   "id": "les_01KXY2GTWHTDQ81JVKKJRXTVAS",
+   "category": "design",
+   "severity": "high",
+   "sha256": "681b57ac4ea31819f6f3491058bcc1bda1c46d1bba50632dd486c6b999fc490f"
+  },
+  {
+   "slug": "keep-a-visible-keyboard-focus",
+   "id": "les_01KXY2GTWHZ4WC0BA6MYRBG5WF",
+   "category": "design",
+   "severity": "critical",
+   "sha256": "531f58eef22a9e3e1490eb3287b7aa6250604837d8d45da01345c863c0c4a504"
+  },
+  {
+   "slug": "reference-tokens-not-raw-hex",
+   "id": "les_01KXY2GTWJ8TP2C8K8QQAVKGPG",
+   "category": "design",
+   "severity": "medium",
+   "sha256": "ac3c89c9484a05ff5ea8e7d3ee29961d97ee1ff36dded173806fa57b33e7a093"
+  },
+  {
+   "slug": "three-layer-token-architecture",
+   "id": "les_01KXY2GTWK9XFR8ZEZ28G886BM",
+   "category": "design",
+   "severity": "low",
+   "sha256": "8f189e1ef39871d0f362f7c1de2dc68ccbfdb4206d9130bbffc9bc8b80ce772c"
+  },
+  {
+   "slug": "copy-is-design-material",
+   "id": "les_01KXY2GTWKN3HGGXSFR3FWK3BE",
+   "category": "design",
+   "severity": "medium",
+   "sha256": "5654b1af02c62042be95ed4f3fe973a138f0a2fb458f6d3553986ed9f6ec224e"
+  },
+  {
+   "slug": "design-every-empty-loading-error-state",
+   "id": "les_01KXY2GTWMMQMTYV9M923W7MT4",
+   "category": "design",
+   "severity": "high",
+   "sha256": "e7a83412932d10ef79e47d5daf1fca0df7c38955c1433cb179a7e11552cc90b0"
+  },
+  {
+   "slug": "reserve-space-to-avoid-layout-shift",
+   "id": "les_01KXY2GTWMZY6Z7TJABYR0YJSM",
+   "category": "design",
+   "severity": "medium",
+   "sha256": "33601592b580b151c8ede03e5488ab79d7ca649cebe57ca17b6422a20c9b8fca"
+  },
+  {
+   "slug": "pair-type-deliberately-not-inter-by-default",
+   "id": "les_01KXY2GTWNZPQXF2PMS6RRVKAB",
+   "category": "design",
+   "severity": "medium",
+   "sha256": "5ceb966ce19d80eb49fadab49d02400f52516a6eb304520c6212bb31d926dc88"
+  },
+  {
+   "slug": "mobile-first-no-horizontal-scroll",
+   "id": "les_01KXY2GTWPXJNDM9HYHFJGR8Q3",
+   "category": "design",
+   "severity": "high",
+   "sha256": "4b074ffcf07333aeadf5e16d7cd9c1d3e5898b8aa57c4af1641aa2366af1704f"
   }
  ]
 }
