@@ -479,7 +479,7 @@ onboarding (the three permission questions, §0).
 before risky changes (deploys, migrations, auth, payments) — complementing the
 automatic *push* of the hooks.
 
-### The 11 agents — who they are and how to use them
+### The 12 agents — who they are and how to use them
 
 The plugin ships eleven specialist agents. What makes them different from generic
 personas is the shared **spine** baked into each one, in this order:
@@ -502,21 +502,23 @@ one. `/agents` (in Claude Code) lists them.
 
 | Agent | Job | Give it |
 |---|---|---|
-| `raphael-planner` ★ | turns a vague idea into a finalized, buildable spec | the raw idea + constraints (time, stack, budget, must/must-not) |
-| `raphael-architect` ★ | designs a production-grade architecture from a spec | the finalized spec; stack preferences; expected scale |
-| `raphael-developer` | implements in small verifiable diffs, lessons in hand | the plan or task + the files/dirs in scope |
-| `raphael-reviewer` ★ | reviews a diff like a senior engineer new to the codebase | the diff: branch, commit range, or "my uncommitted changes" |
-| `raphael-security` | audits for secrets, injection, authn/authz mistakes | repo path + one line on what the app does |
-| `raphael-debugger` ★ | root-cause finder, production-incident style | the exact error text + reproduction steps/environment |
-| `raphael-design` | UI/UX consistency against your recorded design decisions | the screens/components in question |
+| `raphael-planner` | turns a vague idea into a finalized, buildable spec (with a NOT-in-scope list) | the raw idea + constraints (time, stack, budget, must/must-not) |
+| `raphael-architect` | designs a production-grade architecture + an Error & Rescue Map | the finalized spec; stack preferences; expected scale |
+| `raphael-developer` | implements backend/general code in small verifiable diffs, lessons in hand | the plan or task + the files/dirs in scope |
+| `raphael-frontend` | BUILDS distinctive UI (token system + signature element, no "AI slop", accessibility floor) | the screen/component + the product's audience and vibe |
+| `raphael-reviewer` | reviews a diff like a senior engineer new to the codebase (confidence-banded, quote-the-line) | the diff: branch, commit range, or "my uncommitted changes" |
+| `raphael-security` | audits for secrets, injection, authn/authz, and LLM/AI-security mistakes | repo path + one line on what the app does |
+| `raphael-debugger` | root-cause finder (Iron Law, 3-strike, regression fails-then-passes) | the exact error text + reproduction steps/environment |
+| `raphael-design` | UI/UX taste + accessibility critic against your recorded design decisions | the screens/components in question |
 | `raphael-deployer` | pre-ship checks: migrations, env vars, rollback plan | the target platform — it prepares everything and **stops before deploying** |
 | `raphael-critique` | adversarial pass over another agent's output | that output verbatim (it reads only the output + cited evidence) |
-| `raphael-redteam` ★ | authorized attacker's-eye pentest of your OWN app/test env | the authorized target — it probes for real exploits (IDOR, auth bypass, injection, SSRF, business-logic abuse), proves them with a minimal PoC, reports the fix; advisory-only, never weaponizes, never destructive |
+| `raphael-redteam` | authorized attacker's-eye pentest of your OWN app/test env | the authorized target — it probes for real exploits (IDOR, auth bypass, injection, SSRF, business-logic abuse), proves them with a minimal PoC, reports the fix; advisory-only, never weaponizes, never destructive |
 | `raphael-manager` | routes multi-step work to the right specialists | just the goal |
 
-★ flagship — deepest polish, covered by eval scenarios first. From-scratch build
-order: planner → architect → developer (+ design) → reviewer + security →
-deployer, with critique over anything you want double-checked.
+Every agent is a specialist held to one bar — a named methodology, calibrated output, and
+eval coverage growing to the whole roster (no second-class tier). From-scratch build order:
+planner → architect → developer/frontend (+ design) → reviewer + security → deployer, with
+critique over anything you want double-checked.
 
 **4 recipes** (short playbooks in `plugin/recipes/` the agents follow when you ask
 — *"follow the pre-deploy recipe"*): `debug`, `review`, `pre-deploy`, and

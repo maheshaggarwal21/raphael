@@ -56,7 +56,7 @@ Proof, not vibes — every number below is measured by the code in this repo:
 | **147.9× fewer tokens** | to answer "where do I look?" using the Atlas knowledge graph vs. grep-and-read — measured on this very repo: 174,324 tokens down to 1,179 across 10 real questions (per-question range 55×–385×). Zero model tokens spent to measure it. |
 | **≤ 1,200 tokens/session** | the hard cap on everything recall may inject in one session. Typical prompts cost **0** (injection requires a trigger hit). `raph why` itemizes every token. |
 | **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart before it has learned a single thing from you. And that brain is community-fed by design: contributed lessons, scrubbed and human-reviewed, ship to every install via a weekly hash-verified sync. |
-| **41 CLI verbs · 11 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
+| **41 CLI verbs · 12 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
 | **415 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
 | **2 runtime dependencies** | `ajv` and `js-yaml`. That's the whole supply chain. No frameworks, no daemons, no cloud. |
 | **100% local** | the brain lives in `~/.raphael`, in its own git repo that structurally blocks pushes. Nothing leaves your machine except by your own explicit action. |
@@ -81,7 +81,7 @@ claude plugin install raphael-brain@raphael
 ```
 
 The plugin auto-wires recall into your sessions and adds the `/brain` commands and the
-eleven agents. Each agent's description carries a "use proactively when…" trigger, so
+twelve agents. Each agent's description carries a "use proactively when…" trigger, so
 Claude Code delegates to the right one automatically — you don't have to name it. Verify
 with `claude plugin list` — you should see `raphael-brain` enabled.
 
@@ -456,21 +456,23 @@ Run `/agents` inside Claude Code to see the roster.
 
 | Agent | Reach for it when… | What to give it |
 |---|---|---|
-| **raphael-planner** ★ | a fuzzy idea needs to become a sharp, buildable spec | the idea in a few sentences + constraints (time, stack, must-haves) |
-| **raphael-architect** ★ | the spec is done and you need the technical design | the spec, stack preferences, expected scale |
-| **raphael-developer** | it's time to write the code | the plan or concrete task + which files are in scope |
-| **raphael-reviewer** ★ | before you merge anything | the diff — branch, commit, or "review my uncommitted changes" |
+| **raphael-planner** | a fuzzy idea needs to become a sharp, buildable spec | the idea in a few sentences + constraints (time, stack, must-haves) |
+| **raphael-architect** | the spec is done and you need the technical design | the spec, stack preferences, expected scale |
+| **raphael-developer** | it's time to write backend / general code | the plan or concrete task + which files are in scope |
+| **raphael-frontend** | it's time to BUILD distinctive UI (not templated "AI slop") | the screen/component + the product's audience and vibe; it establishes a token system + one signature element, avoids the generic defaults, and meets the accessibility floor |
+| **raphael-reviewer** | before you merge anything | the diff — branch, commit, or "review my uncommitted changes" |
 | **raphael-security** | before shipping anything touching auth, payments, or user data | the repo path + one line on what the app does |
-| **raphael-debugger** ★ | something is broken and you don't know why | the exact error + how to reproduce it |
-| **raphael-design** | the UI feels off or inconsistent | the screens/components + any recorded design decisions |
+| **raphael-debugger** | something is broken and you don't know why | the exact error + how to reproduce it |
+| **raphael-design** | the UI feels off, generic, or inconsistent | the screens/components + any recorded design decisions |
 | **raphael-deployer** | you're about to ship | the target platform; it produces the checklist and **stops** — it never deploys |
 | **raphael-critique** | you want any output stress-tested | that output, verbatim — it reads only the output and its cited evidence |
-| **raphael-redteam** ★ | you want an attacker's-eye pentest of your OWN app or a test environment | the authorized target + what it does; it probes for real exploits (IDOR, auth bypass, injection, SSRF, logic abuse), proves them with a PoC, and reports the fix — never weaponizes, never touches production destructively |
+| **raphael-redteam** | you want an attacker's-eye pentest of your OWN app or a test environment | the authorized target + what it does; it probes for real exploits (IDOR, auth bypass, injection, SSRF, logic abuse), proves them with a PoC, and reports the fix — never weaponizes, never touches production destructively |
 | **raphael-manager** | multi-step work you don't want to route yourself | the goal; it picks specialists and merges their answers |
 
-★ = flagship (deepest polish, covered by eval scenarios). For a from-scratch build the
-natural order is **planner → architect → developer → reviewer + security → deployer**,
-with critique on anything you're unsure about.
+Every agent is a specialist held to one bar — a named methodology, calibrated output, and
+eval coverage that's growing to the whole roster (there's no second-class tier). For a
+from-scratch build the natural order is **planner → architect → developer/frontend →
+reviewer + security → deployer**, with critique on anything you're unsure about.
 
 **Recipes** — four short playbooks in [plugin/recipes/](plugin/recipes/) the agents
 follow on request: `debug`, `review`, `pre-deploy` (always runs `security-audit`

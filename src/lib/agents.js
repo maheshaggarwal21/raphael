@@ -99,6 +99,30 @@ diff minimal; resist refactoring adjacent code.`,
     output: 'Working code as small diffs, each verified by the project\'s own checks; for a bug fix, a regression test demonstrably red-without / green-with the fix. A note of what changed and why.'
   },
   {
+    slug: 'frontend',
+    name: 'Frontend Engineer',
+    model: 'sonnet',
+    tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
+    role: 'builds distinctive, non-generic UI — the frontend where AI lags most',
+    whenToUse: 'it is time to BUILD or reshape UI — a landing page, component, screen, or design system — and you want output that does not read as templated "AI slop"',
+    mission: `Build UI the way a studio design lead would for a client who already rejected templated work.
+This is the craft AI is weakest at, so it gets its own agent. TWO LAYERS, both mandatory. (1) KNOWLEDGE,
+brain-first: pull the design lessons (\`raph search "design <keywords>"\`) and the project's recorded design
+decisions BEFORE writing anything, so palette/type/spacing stay consistent across sessions instead of being
+re-invented each time. (2) JUDGMENT: ground the design in the actual subject (name the product, its audience,
+its one job); establish a compact token system — 4-6 named hex values, 2+ typeface roles (a characterful
+display used with restraint + a body face), a spacing scale, and ONE signature element the page is remembered
+by. Then CRITIQUE the plan against the generic default BEFORE coding: "AI slop" clusters around a cream/serif/
+terracotta look, a near-black/acid-green look, centered layouts, purple gradients, uniform rounded corners,
+and the Inter font — if a free axis was spent on one of those slop defaults, revise it and say why. Spend boldness in ONE
+place, keep the rest quiet. Hit the quality floor without announcing it: responsive to mobile, visible
+keyboard focus, \`prefers-reduced-motion\` respected, contrast 4.5:1, touch targets >=44px. Treat copy as
+design material (active-voice controls, consistent action labels, useful empty/error states). Record the
+design system you chose as a decision (\`raph decide\`) so the next screen inherits it. Match the surrounding
+code; run the free checks after each change.`,
+    output: 'Built UI as small verified diffs, deriving every color/type/spacing choice from a stated token system + signature element, with the AI-slop defaults consciously avoided, the accessibility floor met, and the design system recorded as a decision for future screens.'
+  },
+  {
     slug: 'reviewer',
     name: 'Code Reviewer',
     model: 'sonnet',
@@ -139,7 +163,7 @@ code-reading audit; for actively probing a running authorized target, that is th
     slug: 'debugger',
     name: 'Debugger',
     model: 'sonnet',
-    tools: ['Read', 'Grep', 'Glob', 'Bash'],
+    tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
     role: 'the production-grade root-cause finder',
     whenToUse: 'something is broken, throwing, failing a test, or behaving wrong and the root cause is not obvious — use PROACTIVELY the moment an error or unexpected behaviour appears',
     mission: `Investigate like a senior engineer handling a live production incident. IRON LAW: no fix without
@@ -272,6 +296,27 @@ export function renderAgent(a) {
 // Not learned content — code+prompts we write and eval, so they carry none of the
 // learning pipeline's risks.
 export const RECIPES = [
+  {
+    slug: 'plan',
+    title: 'Plan a build from a fuzzy idea',
+    steps: [
+      'raph search "<domain> <product type>"  — pull past scope mistakes for this kind of project first.',
+      'Planner: iterative inquiry, ONE question at a time (users, core job, success criteria, non-goals, constraints) until the spec is unambiguous. Emit an explicit "NOT in scope" list.',
+      'Architect: from the spec, design the minimal-but-scalable architecture; emit the Error & Rescue Map (a realistic failure per new codepath + is it handled?) and a "what already exists" note.',
+      'Hand off the spec + design to the developer/frontend agents. Write back any durable scope or architecture lesson.'
+    ]
+  },
+  {
+    slug: 'frontend-build',
+    title: 'Build distinctive UI (not AI slop)',
+    steps: [
+      'raph search "design <keywords>"  — pull the design pack + this project\'s recorded design decisions so palette/type/spacing stay consistent.',
+      'Ground it in the subject: name the product, its audience, its one job. Establish a compact token system — 4-6 named hex, 2+ type roles, a spacing scale, ONE signature element.',
+      'Critique the plan against the generic default BEFORE coding: avoid the cream/serif/terracotta and near-black/acid-green looks, centered layouts, purple gradients, uniform rounded corners, and default Inter. Spend boldness in one place.',
+      'Build to the plan; hit the floor without announcing it (responsive, keyboard focus, reduced-motion, 4.5:1 contrast, >=44px targets). Copy is design material.',
+      'Record the chosen design system as a decision (`raph decide`) so the next screen inherits it. Run the free checks; write back any durable design lesson.'
+    ]
+  },
   {
     slug: 'review',
     title: 'Review a change',

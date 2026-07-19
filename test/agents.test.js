@@ -4,13 +4,28 @@ import { AGENTS, EVAL_COVERAGE, RECIPES, SPINE, renderAgent, renderRecipe } from
 
 const VALID_MODELS = new Set(['haiku', 'sonnet', 'opus', 'inherit']);
 
-test('the roster is exactly the 11 designed agents', () => {
-  assert.equal(AGENTS.length, 11);
+test('the roster is exactly the 12 designed agents', () => {
+  assert.equal(AGENTS.length, 12);
   const slugs = AGENTS.map((a) => a.slug);
-  for (const expected of ['manager', 'planner', 'architect', 'developer', 'reviewer', 'security', 'debugger', 'design', 'deployer', 'critique', 'redteam']) {
+  for (const expected of ['manager', 'planner', 'architect', 'developer', 'frontend', 'reviewer', 'security', 'debugger', 'design', 'deployer', 'critique', 'redteam']) {
     assert.ok(slugs.includes(expected), `missing agent: ${expected}`);
   }
-  assert.equal(new Set(slugs).size, 11); // no duplicates
+  assert.equal(new Set(slugs).size, 12); // no duplicates
+});
+
+test('only the three code-producing agents can edit; reviewers/critics stay read-only', () => {
+  const canEdit = (a) => a.tools.includes('Edit') || a.tools.includes('Write');
+  const editors = AGENTS.filter(canEdit).map((a) => a.slug).sort();
+  assert.deepEqual(editors, ['debugger', 'developer', 'frontend'], 'exactly developer/frontend/debugger may edit');
+});
+
+test('the frontend agent is a builder (can edit) with the two-layer knowledge+judgment mission', () => {
+  const fe = AGENTS.find((a) => a.slug === 'frontend');
+  assert.ok(fe.tools.includes('Edit') && fe.tools.includes('Write'), 'frontend must be able to build');
+  assert.match(fe.mission, /slop/i);           // names the enemy
+  assert.match(fe.mission, /signature element/i); // the judgment layer
+  assert.match(fe.mission, /raph search "design/); // the knowledge layer, brain-first
+  assert.match(fe.mission, /reduced-motion|4\.5:1/); // the accessibility floor
 });
 
 test('the flagship tier is retired — no agent carries a flagship flag', () => {
@@ -105,9 +120,11 @@ test('the finding-producing agents encode their named methodology (calibration +
 });
 
 test('recipes render as numbered, brain-first procedures', () => {
-  assert.equal(RECIPES.length, 5);
+  assert.equal(RECIPES.length, 7);
   assert.ok(RECIPES.some((r) => r.slug === 'security-audit'), 'the five-check security audit recipe should ship');
   assert.ok(RECIPES.some((r) => r.slug === 'pentest'), 'the authorized penetration-test recipe should ship');
+  assert.ok(RECIPES.some((r) => r.slug === 'plan'), 'the plan recipe should ship');
+  assert.ok(RECIPES.some((r) => r.slug === 'frontend-build'), 'the frontend-build recipe should ship');
   for (const r of RECIPES) {
     const md = renderRecipe(r);
     assert.ok(md.startsWith(`# Recipe: ${r.title}`));

@@ -1,6 +1,6 @@
 # Raphael agents
 
-11 thin lenses over one shared brain of the developer's past lessons.
+12 thin lenses over one shared brain of the developer's past lessons.
 Generated from `src/lib/agents.js` by `scripts/build-agents.mjs` — edit the source,
 not these. Each agent's `description` carries a "use proactively when…" trigger so
 Claude Code auto-delegates to it at the right moment (not only when named).
@@ -14,6 +14,7 @@ calibrated output, and an eval-coverage roadmap. There is no second-class tier.
 | raphael-planner | the idea improver / finaliser who turns a vague idea into a sharp, buildable spec | the user has a fuzzy idea, feature request, or "let's build X" with no clear spec yet — run this BEFORE any design or code |
 | raphael-architect | the senior systems architect who designs a premium, scalable architecture from the spec | a spec or feature is agreed and needs a technical design, data model, or system structure before anyone writes implementation code |
 | raphael-developer | writes code with the relevant past lessons already in context | it is time to implement agreed backend or general (non-UI) code changes against a plan or a concrete task |
+| raphael-frontend | builds distinctive, non-generic UI — the frontend where AI lags most | it is time to BUILD or reshape UI — a landing page, component, screen, or design system — and you want output that does not read as templated "AI slop" |
 | raphael-reviewer | reviews a diff like a senior engineer who just joined the codebase | a diff, branch, commit, or uncommitted change is ready and should be reviewed before merging or shipping — use PROACTIVELY before any merge |
 | raphael-security | audits for secrets, injection, and auth mistakes | code touching auth, payments, user data, secrets, file uploads, or input handling is being written or shipped — a DEFENSIVE static audit of the code |
 | raphael-debugger | the production-grade root-cause finder | something is broken, throwing, failing a test, or behaving wrong and the root cause is not obvious — use PROACTIVELY the moment an error or unexpected behaviour appears |
@@ -48,5 +49,5 @@ Every agent embeds the same spine:
    decisions into a single question. A finding with an "obvious fix" is still a decision.
 
 Pipeline order for a from-scratch build: Manager → Planner → Architect →
-Developer (+ Design) → Reviewer / Security / Debugger → Deployer → Critique.
+Developer / Frontend (+ Design) → Reviewer / Security / Debugger → Deployer → Critique.
 Red Team runs the offensive counterpart to Security on an authorized target.

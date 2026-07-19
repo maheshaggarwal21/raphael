@@ -42,7 +42,7 @@ const readme = [
   SPINE,
   '',
   'Pipeline order for a from-scratch build: Manager → Planner → Architect →',
-  'Developer (+ Design) → Reviewer / Security / Debugger → Deployer → Critique.',
+  'Developer / Frontend (+ Design) → Reviewer / Security / Debugger → Deployer → Critique.',
   'Red Team runs the offensive counterpart to Security on an authorized target.',
   ''
 ].join('\n');
