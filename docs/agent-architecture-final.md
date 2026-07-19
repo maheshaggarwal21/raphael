@@ -15,6 +15,19 @@ docs/gstack-agents-audit.md, docs/frontend-design-skills-audit.md, and the curre
 Nothing is built yet — this is the finalized *design*, ready to build. The build order is
 §7. But there are no more open options: this is the roster Raphael ships.
 
+> **BUILD UPDATE 2026-07-20:** the owner requested a **Red Team** agent (an authorized,
+> attacker's-eye penetration tester) plus reliable auto-invocation, and both are now
+> **BUILT** ahead of the rest of the roster (src/lib/agents.js + regenerated plugin
+> files + a `pentest` recipe + tests, 419/419 green). This makes the finalized roster
+> **12 agents** (the 11 below + `redteam`). The Red Team agent follows every convention
+> in this doc — a named methodology (§4-style), advisory-only output, tool-restricted (no
+> Edit/Write — it reports, never weaponizes), and authorization-first safety gating. It
+> also delivered the auto-invocation mechanism the whole roster needed: every agent now
+> carries a `whenToUse` trigger rendered into its plugin `description` with a "use
+> proactively when…" nudge, which is what Claude Code matches against to auto-delegate.
+> So §1's "eval-coverage roadmap" and the A1-A9 order still stand for the rest; redteam
+> is the first live piece of the finalized roster, not a departure from it.
+
 ---
 
 ## 1. The central decision: retire the two-tier "flagship" flag

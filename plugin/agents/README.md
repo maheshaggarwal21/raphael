@@ -1,7 +1,9 @@
 # Raphael agents
 
-Ten thin lenses over one shared brain of the developer's past lessons. Generated
-from `src/lib/agents.js` by `scripts/build-agents.mjs` — edit the source, not these.
+11 thin lenses over one shared brain of the developer's past lessons.
+Generated from `src/lib/agents.js` by `scripts/build-agents.mjs` — edit the source,
+not these. Each agent's `description` carries a "use proactively when…" trigger so
+Claude Code auto-delegates to it at the right moment (not only when named).
 
 | Agent | Role | Flagship |
 |---|---|---|
@@ -15,8 +17,9 @@ from `src/lib/agents.js` by `scripts/build-agents.mjs` — edit the source, not 
 | raphael-design | reviews UI/UX and visual consistency |  |
 | raphael-deployer | pre-ship checks: migrations, env vars, rollback |  |
 | raphael-critique | the adversarial pass over any other agent's output before you see it |  |
+| raphael-redteam | the attacker's-eye penetration tester that tries to actually break a system you own, then reports what's exploitable | ★ |
 
-Flagships (deepest polish + eval scenarios first): planner, architect, reviewer, debugger.
+Flagships (deepest polish + eval scenarios first): planner, architect, reviewer, debugger, redteam.
 
 Every agent embeds the same spine:
 
@@ -39,3 +42,4 @@ Every agent embeds the same spine:
 
 Pipeline order for a from-scratch build: Manager → Planner → Architect →
 Developer (+ Design) → Reviewer / Security / Debugger → Deployer → Critique.
+Red Team runs the offensive counterpart to Security on an authorized target.

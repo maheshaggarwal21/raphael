@@ -56,7 +56,7 @@ Proof, not vibes — every number below is measured by the code in this repo:
 | **147.9× fewer tokens** | to answer "where do I look?" using the Atlas knowledge graph vs. grep-and-read — measured on this very repo: 174,324 tokens down to 1,179 across 10 real questions (per-question range 55×–385×). Zero model tokens spent to measure it. |
 | **≤ 1,200 tokens/session** | the hard cap on everything recall may inject in one session. Typical prompts cost **0** (injection requires a trigger hit). `raph why` itemizes every token. |
 | **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart before it has learned a single thing from you. And that brain is community-fed by design: contributed lessons, scrubbed and human-reviewed, ship to every install via a weekly hash-verified sync. |
-| **41 CLI verbs · 10 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
+| **41 CLI verbs · 11 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
 | **415 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
 | **2 runtime dependencies** | `ajv` and `js-yaml`. That's the whole supply chain. No frameworks, no daemons, no cloud. |
 | **100% local** | the brain lives in `~/.raphael`, in its own git repo that structurally blocks pushes. Nothing leaves your machine except by your own explicit action. |
@@ -81,7 +81,9 @@ claude plugin install raphael-brain@raphael
 ```
 
 The plugin auto-wires recall into your sessions and adds the `/brain` commands and the
-ten agents. Verify with `claude plugin list` — you should see `raphael-brain` enabled.
+eleven agents. Each agent's description carries a "use proactively when…" trigger, so
+Claude Code delegates to the right one automatically — you don't have to name it. Verify
+with `claude plugin list` — you should see `raphael-brain` enabled.
 
 > Using Claude Code **in a terminal**? You can type the same two lines as
 > `/plugin marketplace add …` and `/plugin install …` in the chat instead — same result.
@@ -463,6 +465,7 @@ Run `/agents` inside Claude Code to see the roster.
 | **raphael-design** | the UI feels off or inconsistent | the screens/components + any recorded design decisions |
 | **raphael-deployer** | you're about to ship | the target platform; it produces the checklist and **stops** — it never deploys |
 | **raphael-critique** | you want any output stress-tested | that output, verbatim — it reads only the output and its cited evidence |
+| **raphael-redteam** ★ | you want an attacker's-eye pentest of your OWN app or a test environment | the authorized target + what it does; it probes for real exploits (IDOR, auth bypass, injection, SSRF, logic abuse), proves them with a PoC, and reports the fix — never weaponizes, never touches production destructively |
 | **raphael-manager** | multi-step work you don't want to route yourself | the goal; it picks specialists and merges their answers |
 
 ★ = flagship (deepest polish, covered by eval scenarios). For a from-scratch build the

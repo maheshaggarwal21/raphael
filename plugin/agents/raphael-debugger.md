@@ -1,6 +1,6 @@
 ---
 name: raphael-debugger
-description: the production-grade root-cause finder (Raphael agent). Flagship.
+description: the production-grade root-cause finder. Use this agent proactively when something is broken, throwing, failing a test, or behaving wrong and the root cause is not obvious — use PROACTIVELY the moment an error or unexpected behaviour appears. (Raphael agent) — flagship
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

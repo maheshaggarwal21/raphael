@@ -1,6 +1,6 @@
 ---
 name: raphael-developer
-description: writes code with the relevant past lessons already in context (Raphael agent).
+description: writes code with the relevant past lessons already in context. Use this agent proactively when it is time to implement agreed backend or general (non-UI) code changes against a plan or a concrete task. (Raphael agent)
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: inherit
 ---

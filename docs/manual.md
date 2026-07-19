@@ -479,9 +479,9 @@ onboarding (the three permission questions, §0).
 before risky changes (deploys, migrations, auth, payments) — complementing the
 automatic *push* of the hooks.
 
-### The 10 agents — who they are and how to use them
+### The 11 agents — who they are and how to use them
 
-The plugin ships ten specialist agents. What makes them different from generic
+The plugin ships eleven specialist agents. What makes them different from generic
 personas is the shared **spine** baked into each one, in this order:
 1. **Brain first** — pull the relevant lessons (`raph search`) before doing anything.
 2. **Free checks before paid checks** — linters, grep, git stats cost zero tokens.
@@ -490,9 +490,13 @@ personas is the shared **spine** baked into each one, in this order:
 5. **Write back** — durable findings become `raph note` candidates. Using the
    agents feeds the brain.
 
-**Invoking one:** ask for it by name in plain words — *"Use the raphael-debugger
-agent on this stack trace"* — or let Claude Code auto-delegate when your request
-matches an agent's description. `/agents` (in Claude Code) lists them.
+**Invoking one:** you rarely have to. Each agent's `description` carries a
+"use proactively when…" trigger (e.g. the debugger fires on an error or failing
+test, the reviewer before a merge, the red-team agent on an authorized pentest
+request), so Claude Code **auto-delegates to the right one when your request
+matches** — no naming required. You can still ask by name in plain words —
+*"Use the raphael-debugger agent on this stack trace"* — when you want a specific
+one. `/agents` (in Claude Code) lists them.
 
 **What to hand each agent** (the better the input, the better the output):
 
@@ -507,6 +511,7 @@ matches an agent's description. `/agents` (in Claude Code) lists them.
 | `raphael-design` | UI/UX consistency against your recorded design decisions | the screens/components in question |
 | `raphael-deployer` | pre-ship checks: migrations, env vars, rollback plan | the target platform — it prepares everything and **stops before deploying** |
 | `raphael-critique` | adversarial pass over another agent's output | that output verbatim (it reads only the output + cited evidence) |
+| `raphael-redteam` ★ | authorized attacker's-eye pentest of your OWN app/test env | the authorized target — it probes for real exploits (IDOR, auth bypass, injection, SSRF, business-logic abuse), proves them with a minimal PoC, reports the fix; advisory-only, never weaponizes, never destructive |
 | `raphael-manager` | routes multi-step work to the right specialists | just the goal |
 
 ★ flagship — deepest polish, covered by eval scenarios first. From-scratch build

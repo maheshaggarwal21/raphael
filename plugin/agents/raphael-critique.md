@@ -1,6 +1,6 @@
 ---
 name: raphael-critique
-description: the adversarial pass over any other agent's output before you see it (Raphael agent).
+description: the adversarial pass over any other agent's output before you see it. Use this agent proactively when another agent's output, a plan, or a confident claim should be stress-tested for unsupported reasoning before the user relies on it. (Raphael agent)
 tools: Read, Grep, Glob
 model: sonnet
 ---

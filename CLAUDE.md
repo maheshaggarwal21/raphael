@@ -729,6 +729,31 @@ compaction (manual or automatic) can never lose progress.
   agent in gstack's deeper audited equivalents instead. 415/415 untouched — design
   finalized, NOT built; A1-A9 ready to build on owner's word (pre-build tasks: taste-decay
   policy A4 [shared w/ 18.2], invariant #5e A8). Log: .claude/logs/2026-07-19-01.md.
+- RED TEAM AGENT + AUTO-INVOCATION BUILT (session 14 round 7, 2026-07-20): first actual
+  code this session (rounds 1-6 were docs). Owner: a hacker/red-team agent that breaches
+  security in a testing env + reports vulns, and make the session actually auto-use agents.
+  (1) raphael-redteam (src/lib/agents.js, flagship, tools Read/Grep/Glob/Bash — NO Edit/
+  Write, so it reports never patches/weaponizes): the OFFENSIVE counterpart to the
+  defensive `security` agent — actively probes a system the user OWNS/authorizes and proves
+  real exploits (auth bypass, IDOR, injection, SSRF, business-logic abuse) with a minimal
+  PoC. Mission responsibly scoped: authorization-FIRST always; never third-party/mass-scan/
+  DoS/persistence/exfiltration, prefer disposable test env, non-destructive on prod,
+  advisory-to-a-human never auto-applied. + a `pentest` recipe (authorization-first
+  ordering). (2) Auto-invocation: Claude Code auto-delegates by matching a subagent's
+  plugin `description`; Raphael's were bare role statements (no trigger) so the host never
+  fired them unprompted. Added a `whenToUse` field to ALL 11 agents + renderAgent now emits
+  "Use this agent proactively when <trigger>" into the description (the host's documented
+  auto-delegation nudge). So debugger fires on an error, reviewer before a merge, redteam
+  on an authorized-pentest request, etc., without naming them — the pm-skills/gstack "the
+  description IS the router" lesson applied to Raphael's own agents. Tests (owner standard:
+  success+failure+edge): roster 10->11, flagships incl redteam, whenToUse+description-
+  trigger test, redteam-safety test (Bash yes / Edit-Write no / authorization + prohibitions
+  + advisory in mission), pentest-recipe-authorization-first-ordering test, renderAgent-
+  degrades-with-no-whenToUse edge test. 415 -> 419 green. Regenerated plugin agents +
+  pentest recipe; doctor healthy. Fixed stale "10 agents" counts in current-state docs
+  (README/manual/ARCHITECTURE/marketplace/agents.js) + added Red Team to the README+manual
+  rosters. Finalized roster is now 12 (11 + redteam); agent-architecture-final.md carries a
+  BUILD UPDATE note. This is BUILT + committed, not a proposal.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

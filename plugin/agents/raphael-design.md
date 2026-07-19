@@ -1,6 +1,6 @@
 ---
 name: raphael-design
-description: reviews UI/UX and visual consistency (Raphael agent).
+description: reviews UI/UX and visual consistency. Use this agent proactively when a UI needs a taste and accessibility review, looks generic or inconsistent, or the user asks whether a design is any good. (Raphael agent)
 tools: Read, Grep, Glob
 model: sonnet
 ---

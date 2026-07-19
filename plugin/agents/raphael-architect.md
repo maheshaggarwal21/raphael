@@ -1,6 +1,6 @@
 ---
 name: raphael-architect
-description: the senior systems architect who designs a premium, scalable architecture from the spec (Raphael agent). Flagship.
+description: the senior systems architect who designs a premium, scalable architecture from the spec. Use this agent proactively when a spec or feature is agreed and needs a technical design, data model, or system structure before anyone writes implementation code. (Raphael agent) — flagship
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

@@ -23,8 +23,10 @@ for (const r of RECIPES) {
 const readme = [
   '# Raphael agents',
   '',
-  'Ten thin lenses over one shared brain of the developer\'s past lessons. Generated',
-  'from `src/lib/agents.js` by `scripts/build-agents.mjs` — edit the source, not these.',
+  `${AGENTS.length} thin lenses over one shared brain of the developer's past lessons.`,
+  'Generated from `src/lib/agents.js` by `scripts/build-agents.mjs` — edit the source,',
+  'not these. Each agent\'s `description` carries a "use proactively when…" trigger so',
+  'Claude Code auto-delegates to it at the right moment (not only when named).',
   '',
   '| Agent | Role | Flagship |',
   '|---|---|---|',
@@ -38,6 +40,7 @@ const readme = [
   '',
   'Pipeline order for a from-scratch build: Manager → Planner → Architect →',
   'Developer (+ Design) → Reviewer / Security / Debugger → Deployer → Critique.',
+  'Red Team runs the offensive counterpart to Security on an authorized target.',
   ''
 ].join('\n');
 writeFileSync(path.join(agentsDir, 'README.md'), readme, 'utf8');

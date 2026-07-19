@@ -532,7 +532,7 @@ users install, demo, and talk about. Strategy: **agents bring users, users gener
 the session data the brain learns from, the brain makes the agents better than anyone
 else's.** That loop is the product. So the agent team ships in v1, not later.
 
-### The roster (10 agents, all thin lenses over the same brain)
+### The roster (11 agents, all thin lenses over the same brain)
 
 | Agent | Job | Main token-saving trick |
 |---|---|---|

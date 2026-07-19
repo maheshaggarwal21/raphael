@@ -1,6 +1,6 @@
 ---
 name: raphael-security
-description: audits for secrets, injection, and auth mistakes (Raphael agent).
+description: audits for secrets, injection, and auth mistakes. Use this agent proactively when code touching auth, payments, user data, secrets, file uploads, or input handling is being written or shipped — a DEFENSIVE static audit of the code. (Raphael agent)
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

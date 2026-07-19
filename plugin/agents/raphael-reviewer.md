@@ -1,6 +1,6 @@
 ---
 name: raphael-reviewer
-description: reviews a diff like a senior engineer who just joined the codebase (Raphael agent). Flagship.
+description: reviews a diff like a senior engineer who just joined the codebase. Use this agent proactively when a diff, branch, commit, or uncommitted change is ready and should be reviewed before merging or shipping — use PROACTIVELY before any merge. (Raphael agent) — flagship
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

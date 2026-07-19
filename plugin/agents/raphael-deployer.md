@@ -1,6 +1,6 @@
 ---
 name: raphael-deployer
-description: pre-ship checks: migrations, env vars, rollback (Raphael agent).
+description: pre-ship checks: migrations, env vars, rollback. Use this agent proactively when the user is about to ship, deploy, or release and needs a pre-flight checklist — it produces the plan and STOPS, never deploys. (Raphael agent)
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

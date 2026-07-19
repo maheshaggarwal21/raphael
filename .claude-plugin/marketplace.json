@@ -9,7 +9,7 @@
     {
       "name": "raphael-brain",
       "source": "./plugin",
-      "description": "Distills lessons from your real projects and injects the relevant ones back at the right moment. Ships 10 agents, a recall skill, and the /brain review flow. Requires the `raph` CLI: npm install -g maheshaggarwal21/raphael.",
+      "description": "Distills lessons from your real projects and injects the relevant ones back at the right moment. Ships 11 agents (incl. an authorized Red Team pentester), a recall skill, and the /brain review flow. Requires the `raph` CLI: npm install -g maheshaggarwal21/raphael.",
       "version": "0.2.4",
       "keywords": ["ai", "agents", "learning", "claude-code"]
     }

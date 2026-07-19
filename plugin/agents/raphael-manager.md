@@ -1,6 +1,6 @@
 ---
 name: raphael-manager
-description: the router that turns your request into the right specialists and merges their results (Raphael agent).
+description: the router that turns your request into the right specialists and merges their results. Use this agent proactively when a request spans several steps, or you are not sure which specialist it needs — this agent routes to the right ones and merges their answers. (Raphael agent)
 tools: Read, Grep, Glob, Task
 model: haiku
 ---

@@ -1,6 +1,6 @@
 ---
 name: raphael-planner
-description: the idea improver / finaliser who turns a vague idea into a sharp, buildable spec (Raphael agent). Flagship.
+description: the idea improver / finaliser who turns a vague idea into a sharp, buildable spec. Use this agent proactively when the user has a fuzzy idea, feature request, or "let's build X" with no clear spec yet — run this BEFORE any design or code. (Raphael agent) — flagship
 tools: Read, Grep, Glob
 model: sonnet
 ---
