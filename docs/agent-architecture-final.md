@@ -18,15 +18,30 @@ Nothing is built yet — this is the finalized *design*, ready to build. The bui
 > **BUILD UPDATE 2026-07-20:** the owner requested a **Red Team** agent (an authorized,
 > attacker's-eye penetration tester) plus reliable auto-invocation, and both are now
 > **BUILT** ahead of the rest of the roster (src/lib/agents.js + regenerated plugin
-> files + a `pentest` recipe + tests, 419/419 green). This makes the finalized roster
-> **12 agents** (the 11 below + `redteam`). The Red Team agent follows every convention
-> in this doc — a named methodology (§4-style), advisory-only output, tool-restricted (no
-> Edit/Write — it reports, never weaponizes), and authorization-first safety gating. It
-> also delivered the auto-invocation mechanism the whole roster needed: every agent now
-> carries a `whenToUse` trigger rendered into its plugin `description` with a "use
-> proactively when…" nudge, which is what Claude Code matches against to auto-delegate.
-> So §1's "eval-coverage roadmap" and the A1-A9 order still stand for the rest; redteam
-> is the first live piece of the finalized roster, not a departure from it.
+> files + a `pentest` recipe + tests). This makes the finalized roster **12 agents** (the
+> 11 below + `redteam`). Every agent now carries a `whenToUse` trigger rendered into its
+> plugin `description` with a "use proactively when…" nudge — what Claude Code matches
+> against to auto-delegate.
+>
+> **BUILD COMPLETE 2026-07-20 (A1–A8):** on the owner's "build according to plan, stop
+> after dev + testing," the whole A1–A8 order below is now **SHIPPED** (441 tests green,
+> `raph doctor` healthy):
+> - **A1/A3** — flagship tier retired (→ EVAL_COVERAGE roadmap); 6th spine rule; every
+>   mission specialized to its §4 methodology (calibration, Iron Law, Error & Rescue Map,
+>   etc.). **A2** — `raphael-frontend` builder added (roster → 12; debugger given edit
+>   tools too); `plan` + `frontend-build` recipes. **A4/A5** — `design` lesson category +
+>   14-lesson curated design pack seeded to the global brain (now 40 lessons); taste-decay
+>   resolved (curated tier already resists age-decay). **A6** — three checkable design-
+>   floor eval scenarios (tokens/focus/reduced-motion). **A7** — `raph guard scan --skills`
+>   (skill supply-chain) + `--design` (hardcoded-hex lint). **A8** — cross-model outside
+>   voice for critique on security-audit + pre-deploy, **safe form** (recipe/mission text,
+>   host-agent behavior, no new Raphael network surface).
+> - **Deferred for owner sign-off (only remaining piece):** A8's *deeper* form — Raphael's
+>   own `provider.js` shelling out to a second vendor (which would add a new outbound
+>   network path and require an explicit **invariant #5e** amendment). Amending a "NEVER
+>   violate" security invariant + adding network egress to a different vendor is an
+>   owner-level decision, not an autonomous one. **A9** (per-agent outcome mining) stays a
+>   separate later track by design, as §7 says. Everything else is done.
 
 ---
 

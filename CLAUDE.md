@@ -754,6 +754,43 @@ compaction (manual or automatic) can never lose progress.
   (README/manual/ARCHITECTURE/marketplace/agents.js) + added Red Team to the README+manual
   rosters. Finalized roster is now 12 (11 + redteam); agent-architecture-final.md carries a
   BUILD UPDATE note. This is BUILT + committed, not a proposal.
+- AGENT ARCHITECTURE BUILT A1-A8 (session 14 round 8, 2026-07-20): owner — "make sure
+  each agent has a proper whenToUse trigger like the hacker agent; now build according to
+  plan, stop after dev + testing." Executed the finalized A1-A8 order
+  (docs/agent-architecture-final.md), milestone by milestone, committing green at each
+  boundary. 415 -> 441 tests, `raph doctor` healthy, 42 verbs.
+  - A1/A3: RETIRED the two-tier flagship flag (FLAGSHIPS -> EVAL_COVERAGE roadmap; the
+    field is gone from agents.js + agentmaker + generated files/docs); added the 6th spine
+    rule (one-decision-one-question); specialized EVERY mission to its §4 methodology —
+    planner NOT-in-scope, architect Error & Rescue Map + what-already-exists, developer+
+    debugger regression-fails-then-passes, debugger Iron Law + 3-strike, reviewer
+    confidence-banding + quote-the-line, security LLM/AI-security category, design the
+    AI-slop tells + a11y floor. agentmaker now REQUIRES a whenToUse trigger.
+  - A2: added raphael-frontend (a builder that can actually build UI — Edit/Write/Bash;
+    two-layer knowledge+judgment mission); gave debugger Edit/Write too (it ships the
+    regression test); + `plan` and `frontend-build` recipes. Roster 11 -> 12; recipes 5 ->
+    7. Only developer/frontend/debugger can edit (test-enforced).
+  - A4/A5: added `design` to the schema category enum (+ fixed a stale scope.agents enum:
+    `designer` -> real slugs incl frontend/redteam); src/lib/design-pack.js = 14 curated
+    design lessons through the chokepoint; `raph pack add design`; seeded to global-brain
+    (40 lessons, manifest v2). TASTE-DECAY POLICY RESOLVED: design lessons ship curated
+    tier, which confidence.js already floors at 6 + makes resist age-decay, so they retire
+    only by explicit `raph retire` (no new code). Ledger-for-design folded into the
+    frontend/design missions.
+  - A6: 3 checkable design-floor eval scenarios (S30 tokens-not-hex, S31 visible-focus,
+    S32 reduced-motion), each defending a design-pack lesson; frontend+design added to
+    EVAL_COVERAGE. Honest boundary in-code: measure the checkable floor, taste stays human.
+  - A7: `raph guard scan --skills` (skill supply-chain: prompt-injection[high]/credential-
+    access[medium]/network-exfil[low], hard-blocks only on injection) + `--design`
+    (hardcoded-hex lint, ignores :root token blocks). Live-smoked both.
+  - A8: cross-model "outside voice" for critique on security-audit + pre-deploy, built in
+    the SAFE form (recipe/mission TEXT = host-agent behavior, NO new Raphael network
+    surface, so no invariant change). DEFERRED for owner sign-off: A8's deeper form
+    (provider.js shelling out to a second vendor + an invariant #5e amendment) — amending a
+    "NEVER violate" invariant + adding vendor egress is owner-level, not autonomous. A9
+    (per-agent outcome mining) stays a separate later track by design.
+  This is BUILT + committed (commits 9c169fc..f3bdf3c), not a proposal. Docs (README/
+  manual/marketplace/ARCHITECTURE) updated to the 12-agent roster + retired ★ markers.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
