@@ -982,6 +982,61 @@ exceptions for agent output either); /ship-style automatic push+PR creation for
 raphael-deployer (deploy/spend/sign-in boundary unchanged — checklist only, always);
 blanket "Boil the Ocean" adoption (19.5 ships narrow on purpose). §8.
 
+## Phase 20 — Frontend design/dev as flagship (PROPOSED 2026-07-20, session 14;
+## design in docs/frontend-design-flagship-plan.md, grounded in
+## docs/frontend-design-skills-audit.md — NOT STARTED)
+Owner directive: frontend design/development is where AI lags most, so the agents/skills
+concerned with it should be Raphael's flagship. Studied two resources like gstack:
+nextlevelbuilder/ui-ux-pro-max-skill (a deterministic BM25-over-CSV design-rule DB + a
+--design-system reasoning engine + MASTER.md persistence + variance/motion/density dials +
+3-layer tokens + a token-compliance validator — verified zero LLM/API calls in its
+scripts, i.e. the SAME deterministic-retrieval bet as Raphael's Atlas, applied to design)
+and Anthropic's own skills (frontend-design = a pure taste/judgment system prompt naming
+the exact AI-slop clusters + a two-pass brainstorm-then-critique gate; web-artifacts-
+builder = the React/Tailwind/shadcn build pipeline; brand-guidelines/canvas-design =
+brand-as-shared-context). Headline: the two resources are complementary (knowledge layer +
+judgment layer), and EVERY gap in Raphael maps to a mechanism it already has and hasn't
+pointed at design. Confirmed gaps in code: raphael-design is review-only (tools
+Read/Grep/Glob — literally can't build) and NOT flagship; no `design` lesson category in
+the schema; no design pack; the decision ledger isn't pointed at design; guard doesn't
+cover design tokens.
+- [ ] 20.1 (highest leverage — the knowledge layer, first) Add `design` to the lesson
+      schema category enum + author src/lib/design-pack.js (mirrors security-pack.js:
+      atomic design lessons distilled from the two resources — the named AI-slop clusters,
+      accessibility/touch/perf must-haves, no-raw-hex token discipline, ground-in-the-
+      subject, spend-boldness-in-one-place, copy-as-material — every one through
+      validateLesson(), curated tier, reviewable candidate) + seed into global-brain so a
+      fresh install starts design-literate. Same proven pattern as the security pack. §3.
+      CAVEAT: design lessons are taste-conventions, not recurring bugs — shares 18.2's
+      open decay/dispute-policy question; resolve once, apply to both.
+- [ ] 20.2 Sharpen raphael-design's mission with Anthropic frontend-design's judgment
+      language (named slop clusters, spend-boldness-in-one-place, two-pass critique,
+      copy-as-material, quality floor) + promote to flagship. Stays review-only tools.
+      Prose + a flag. §2.
+- [ ] 20.3 NEW raphael-frontend builder agent (flagship, tools Read/Grep/Glob/Edit/Write/
+      Bash) — the agent Raphael lacks: actually BUILDS distinctive UI, brain-first,
+      applying design lessons + recorded design decisions, then self-critiques against the
+      generic default before presenting. Flagship set 4 -> 5 (the design pair). §2.
+- [ ] 20.4 Point the existing decision ledger (raph decide / decisions.js) at design — the
+      MASTER.md / brand-as-shared-context pattern: record a project's palette/type/spacing/
+      signature ONCE, inherit it at every frontend task via the session-start decisions
+      envelope. Near-zero code (usage pattern + mission text; optional filtered view). §4.
+- [ ] 20.5 Eval scenarios for the CHECKABLE design floor (tokens-not-raw-hex, contrast/
+      focus/reduced-motion/alt-text, named-slop tells like Inter+centered+uniform-radius+
+      purple-gradient — all mechanically detectable) — gates calling the design pair
+      "flagship" honestly. Explicit boundary: measure the checkable floor, say plainly
+      that taste beyond it stays human-judged. Needs careful proxy design. §6.
+- [ ] 20.6 (optional, last) `raph guard scan --design` — deterministic hardcoded-hex-
+      where-a-token-belongs lint, reusing guard.js's pattern-scan (the token-validator
+      idea from ui-ux-pro-max). §5.
+Explicitly rejected, recorded: pptx/docx/slide/banner/logo generation (document/marketing-
+asset production, not coding-agent frontend — out of Raphael's domain); vendoring a second
+Python BM25 retrieval engine inside Raphael (the brain IS Raphael's deterministic retrieval
+— feed design knowledge through the chokepoint as lessons instead, and don't break the
+js-yaml/ajv-only dependency discipline); canvas-design's "repeat 'meticulously crafted'
+many times" prompt-padding trick (unmeasured prompt-superstition — borrow the aim-high
+idea, not the incantation, unless an eval shows it helps). §6 of the audit.
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.

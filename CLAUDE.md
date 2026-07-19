@@ -680,6 +680,31 @@ compaction (manual or automatic) can never lose progress.
   be shown failing-then-passing. Research clones (hermes-agent, gstack) live outside
   the repo, not committed. 415/415 untouched — docs-only session; nothing built, all
   still awaiting owner go. Log: .claude/logs/2026-07-19-01.md.
+- FRONTEND-DESIGN-AS-FLAGSHIP research (session 14 round 5, 2026-07-20): owner — "frontend
+  design/dev is where AI lags most, make those agents/skills flagship." Studied two
+  resources like gstack: nextlevelbuilder/ui-ux-pro-max-skill and the "EZYE Design Stack"
+  (which is really a marketing wrapper around anthropics/skills — flagged, studied
+  Anthropic's actual files). Cloned both; VERIFIED ui-ux-pro-max is fully deterministic
+  (BM25 over CSVs, zero LLM/API calls in its scripts) = the SAME bet as Raphael's Atlas
+  applied to design (most architecturally-aligned repo of the whole research effort); it
+  also has a --design-system reasoning engine, MASTER.md persistence (= Raphael's decision
+  ledger), variance/motion/density dials (3rd independent occurrence of the named-dial
+  pattern), 3-layer tokens, a deterministic token validator (= guard's shape). Anthropic's
+  frontend-design = the pure taste/judgment layer (names the exact AI-slop clusters,
+  two-pass critique gate). Headline: knowledge layer + judgment layer are complementary,
+  4 independent sources name the SAME slop clusters, and EVERY Raphael gap maps to a
+  mechanism it already has and hasn't pointed at design. Verified the gaps in code:
+  raphael-design is review-only (Read/Grep/Glob — can't build) + not flagship; no `design`
+  schema category; no design pack; decision ledger not pointed at design; guard doesn't
+  cover tokens. Wrote docs/frontend-design-skills-audit.md + docs/frontend-design-flagship-
+  plan.md + TASKS.md Phase 20 (20.1-20.6): design category + curated design-pack seeded to
+  global-brain (highest leverage, security-pack pattern); sharpen+promote raphael-design;
+  NEW raphael-frontend builder agent (can actually build); point decision ledger at design;
+  eval scenarios for the checkable design floor (taste beyond it stays human-judged);
+  optional design-token guard. Carried architecture-audit discipline: design lessons are
+  taste-conventions not recurring bugs -> share 18.2's open decay-policy question.
+  415/415 untouched — docs-only, nothing built, awaits owner go. Log:
+  .claude/logs/2026-07-19-01.md.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
