@@ -37,7 +37,7 @@ transfer" honestly rather than forced into relevance.
 | [last30days-skill](https://github.com/mvanhorn/last30days-skill) | Cross-platform aggregator; ranks by native engagement signal (upvotes/views/trading volume), clusters convergent stories, cites evidence | FOMO + distrust of editorial framing — "people voting with attention, not editors" | Cross-project convergence as a confidence signal; inline evidence weight at injection time |
 | [headroom](https://github.com/chopratejas/headroom) | Content-aware compression (JSON/code/prose), **cache-alignment** to protect provider KV-cache hits, reversible compression with on-demand retrieval | Acute, quantified pain: "I'm burning tokens and dollars, my context fills with junk" | **Cache-stable injection ordering** (§3.2) and **pointer+retrieve for marginal lessons** (§3.3) — the two highest-leverage ideas in this whole document |
 | [taste-skill](https://github.com/Leonxlnx/taste-skill) | Named, bounded 1–10 tuning dials (variance/motion/density) injected as instructions — no actual slop-detector, thinner than its marketing | Status/aesthetic anxiety: "my AI-built product visibly looks cheap" | Named dial UX pattern for recall behavior (§3.4); console visual-craft pass (§4.3) |
-| [hermes-agent](https://github.com/NousResearch/hermes-agent) | Agent-authored skills at runtime + a persistent per-user model ("Honcho") separate from task memory; FTS5 session index | "The agent that grows with you" — permanence, no re-explaining yourself | **Developer profile layer** distinct from episodic lessons (§4.1) — the most "premium-feeling" idea here |
+| [hermes-agent](https://github.com/NousResearch/hermes-agent) | Agent-authored skills at runtime; persistent per-user modeling via **Honcho, a third-party SaaS** (`app.honcho.dev`) hermes-agent is a thin client of — verified by reading `plugins/memory/honcho/*.py` directly, not the README | "The agent that grows with you" — permanence, no re-explaining yourself | **Developer profile layer** distinct from episodic lessons (§4.1, revised after the source read) — the most "premium-feeling" idea here, rebuilt local-only rather than modeled on the SaaS |
 | [Agent-Reach](https://github.com/Panniantong/Agent-Reach) | Routing/dispatch layer over existing scrapers/CLIs per platform, with fallback chains and a `doctor` health check | "One CLI instead of ten broken scrapers" | **Thin transfer** — validates `raph doctor`'s existing shape; the "agent installs itself from a pasted URL" pattern is the *opposite* of Raphael's deliberate bounded-fetch stance — noted as a philosophical divergence, not adopted |
 | [career-ops](https://github.com/santifer/career-ops) | `AGENTS.md` canonical file + thin per-CLI wrapper files (works identically across 7 agent CLIs); composite A–F scoring with a named "legitimacy" sub-check; never auto-sends | "My job search is unpaid labor — automate the grind, I keep the send button" | **AGENTS.md canonical + thin wrappers for multi-CLI support** (§5.1) — the single highest-leverage idea for "industry standard"; in-product trust disclaimers (§4.4); a named adversarial sub-flag on confidence (§4.4) |
 | [markitdown](https://github.com/microsoft/markitdown) | Uniform `.convert()` over per-format converters (pdfminer/mammoth/olefile), vision-LLM as just another converter, explicit narrowest-privilege API guidance | The boring-but-essential utility every LLM pipeline needs once and nobody wants to own | Vendor/shell out to it for `adopt`'s PDF/DOCX/PPTX legs instead of maintaining bespoke parsing (§5.3) |
@@ -153,21 +153,83 @@ claim the README makes.
 
 ## 4. Luxury — the agent that feels like it knows you
 
-### 4.1 A developer profile layer (the single most "premium" idea here)
-Lessons are episodic — "this mistake, this fix." Nothing in Raphael today builds a
-slow, standing model of *the developer* — naming conventions, risk tolerance,
-preferred libraries, verbosity preference. hermes-agent's "Honcho" does this, but
-notably with **no described governance** — no scrubbing, no chokepoint, no review;
-corrections land as free text in `CLAUDE.local.md`. That gap is Raphael's opening,
-not a reason to skip the idea: build the same "it knows me" feeling, but through the
-exact same door as everything else.
+### 4.1 A developer profile layer (revised 2026-07-19 after reading hermes-agent's actual source, not just its README)
 
-Concretely: a new lesson `category: preference` (schema addition, not a new
-pipeline), populated only from *repeatedly confirmed* patterns (the existing
-confidence/breadth machinery already measures this), through `validateLesson()`
-like every other lesson — no exception, per invariant #1. Injected as a small,
-separately-labeled, stable-ordered header block (ties into §3.2) so it reads as "the
-agent recognizes me" rather than another lesson in the pile.
+**Correction first.** The original version of this section (and the walkthrough
+given for it) said Honcho's corrections "land as free text in `CLAUDE.local.md`
+with no governance." That sentence was a conflation — that detail belongs to
+`headroom`'s `learn` feature (a different repo in this research set), not
+hermes-agent. Caught by reading hermes-agent's actual code
+(`plugins/memory/honcho/{client,session}.py`, cloned and read directly) rather than
+trusting the earlier README-level pass. Recorded here rather than silently fixed,
+per this project's own standing practice of surfacing corrections instead of
+quietly overwriting them.
+
+**What Honcho actually is, now verified against source:** a **third-party paid SaaS**
+(`app.honcho.dev`, self-hostable) — not something hermes-agent computes itself.
+hermes-agent's `plugins/memory/honcho/` is a thin client: it resolves peer/session
+identity, queues message writes, and calls Honcho's *remote* API for two distinct
+things —
+- a **"peer card"**: a cheap, structured list of fact strings Honcho has inferred
+  about a peer (`get_peer_card()`, explicitly documented as "fast, no LLM
+  reasoning" on the client side — the extraction happened earlier, server-side).
+- a **"dialectic" query / representation**: an on-demand, LLM-backed synthesis
+  (`peer.chat()`), expensive enough that hermes-agent always fires it in a
+  background thread and prefetches it during idle time rather than blocking a turn.
+
+Individual facts are called **"conclusions"** — created via `create_conclusion()`,
+no client-side schema, no scrubbing, no review queue visible anywhere in this code
+(the extraction/curation logic, if any, is opaque and lives entirely on Honcho's
+servers). Tellingly, `delete_conclusion()`'s own docstring says "**use only for PII
+removal**" — there is no first-class correction or retirement workflow; wrong
+conclusions are expected to simply persist unless they're a privacy problem
+specifically. That is a real, code-confirmed governance gap, and it's the single
+strongest argument *for* routing Raphael's equivalent through the full existing
+lifecycle (chokepoint → confidence decay → retire) rather than inventing a lighter
+one, because this is what the lighter version actually looks like in production.
+
+**What's actually worth borrowing, now that it's grounded in real mechanism:**
+- The **card vs. dialectic split** — cheap structured facts, no per-query LLM cost,
+  versus expensive on-demand narrative synthesis — maps cleanly onto a design
+  constraint for Raphael's version: a `preference` lesson must stay in "card" territory
+  (short, atomic, already-curated fact strings) and never become a "dialectic"
+  (a live, per-session LLM-synthesized user narrative). The latter would cost real
+  tokens on every session and violate the "always net-lower" rule by construction;
+  the former costs the same as any other cached lesson.
+- The **prefetch-in-a-background-thread, consumed-next-turn pattern**
+  (`prefetch_context()`/`pop_context_result()`, with a small bounded synchronous
+  wait only on turn 1) is a genuinely transferable *engineering* pattern, and it
+  happens to solve a problem Raphael already has open: CLAUDE.md's own parked item
+  is "Phase 5 inject latency ~390ms cold... needing a warm-resident daemon." This
+  gives that a concrete shape — prefetch the injection block (lessons + Atlas
+  digest + any profile block) in the background the moment a session is detected
+  starting, and have the hook consume whatever's ready rather than compute
+  synchronously on the critical path.
+- The **tagged-envelope-for-prior/foundational context** pattern
+  (`<prior_conversation_history>`, `<prior_memory_file>` — explicitly marking
+  migrated content as data/context, not instructions) is an independent validation
+  of Raphael's own `<raphael-lessons>` data-envelope framing. Confirmation, not a
+  new idea.
+- Fail-open on every single remote call, no exceptions — the same discipline
+  Raphael already applies throughout `pulse.js` and friends.
+
+**What does NOT transfer, stated plainly:** Raphael must not become a client of a
+third-party memory SaaS, or resemble one architecturally. That would add exactly
+the "another loose external service to trust" cost this whole research effort's
+own §7.6 argues Raphael's positioning stands *against*, and it would be a direct
+invariant #5 violation (no network access beyond the four explicitly carved-out
+cases). The revised proposal below stays 100% local by construction — it isn't a
+weaker version of Honcho, it's a differently-governed one.
+
+**The revised concrete proposal:** a new lesson `category: preference` (schema
+addition to `lesson.schema.json`, not a new pipeline) — short, atomic fact strings
+only (never a synthesized narrative), populated only from *repeatedly confirmed*
+patterns using the confidence/breadth machinery that already exists, through
+`validateLesson()` like every other lesson with **no exception** (invariant #1),
+subject to the same retire/confidence-decay/dedupe lifecycle as any other lesson
+(explicitly not the weaker delete-for-PII-only model). Injected as a small,
+separately-labeled block, built via the prefetch-and-cache pattern above so it adds
+zero perceived latency rather than compounding the existing cold-start cost.
 
 ### 4.2 Weekly digest becomes a ritual, not a status line
 The ≤150-token weekly digest is functional and honest but not something anyone
@@ -215,7 +277,7 @@ recall engine legible in the same way, and doubles as a debugging tool when a le
 
 ## 5. Reach — becoming the standard, not just a good plugin
 
-### 5.1 AGENTS.md canonical + thin per-CLI wrappers (highest leverage for "industry standard")
+### 5.1 AGENTS.md canonical + thin per-CLI wrappers (highest leverage for "industry standard") — FINALIZED 2026-07-19
 This is the one idea in this document that most directly serves "industry standard."
 Today Raphael's automatic injection is wired specifically to Claude Code's hook
 system (`plugin/hooks/hooks.json`, SessionStart/UserPromptSubmit/PreToolUse). A
@@ -229,6 +291,29 @@ Claude-Code-only plugin. This is a distribution/reach project, not a core-engine
 change — the chokepoint, curator, and Atlas stay exactly as they are; only the
 *delivery* surface widens.
 
+**Decision (owner delegated the call — "do as you see fit"):**
+
+1. **Sequencing:** pull 18.6 forward, but not to first place. Order: 18.1 (cache-
+   stable ordering) first, because it's the correctness fix everything else's
+   "always net-lower" claim depends on — shipping wider distribution on top of a
+   budget claim that isn't yet honest under cache economics would be building reach
+   on a shaky foundation. Then 18.11 (the memory-poisoning reviewer check — cheap,
+   defensive, no reason to delay it). Then 18.6. Reach has compounding daily cost
+   when delayed (every day it's not built, every non-Claude-Code developer gets
+   zero value); the remaining luxury/polish items (digest wording, console craft)
+   only affect users Raphael already has, so they can trail.
+2. **Scope for v1 — deliberately narrow, not the full 3-4-CLI vision:** build the
+   canonical `AGENTS.md` generation from `raph inject`'s existing output, plus
+   exactly **one** real wrapper target to prove the pattern end-to-end, not all of
+   Codex/OpenCode/Gemini CLI/Cursor at once. Reasoning: Raphael's own brain already
+   holds an adopted lesson against exactly this failure mode — building speculative
+   breadth before one integration is proven working end-to-end is gold-plating.
+   Prove it once, real, then expand only once there's a reason to (a second CLI a
+   user actually asked for), not because four looked more impressive in the README.
+   The wrapper target isn't chosen here — that's a real decision (which CLI has
+   the userbase overlap worth the first slot) worth a short discussion before
+   scoping, not defaulted to whichever is easiest to test against.
+
 ### 5.2 Open skill-format compatibility for the Skills Factory
 Both hermes-agent and pm-skills target the same open `agentskills.io`-style
 `SKILL.md` convention. Raphael's Skill Factory already drafts `SKILL.md` files —
@@ -236,15 +321,6 @@ checking (and where needed, aligning) drafts against that open format means a
 drafted skill is portable outside Raphael entirely, which is a real distribution
 lever: every skill draft becomes a small piece of marketing that works even where
 Raphael itself isn't installed.
-
-### 5.3 Vendor markitdown-style extraction for `adopt`'s document legs
-`adopt`'s PDF/DOCX/PPTX handling is bespoke, hand-maintained parsing logic that sits
-*upstream* of the chokepoint (it's format transcoding, not lesson-writing — no
-security boundary is weakened by outsourcing it). markitdown is a battle-tested,
-Microsoft-maintained normalizer built exactly for this. Shelling out to (or vendoring
-a slimmed subset of) it lowers Raphael's own maintenance surface for a part of the
-pipeline that doesn't differentiate Raphael from anyone else — freeing effort for
-the parts that do (curation, scoring, retirement).
 
 ### 5.4 Frontmatter-quality lint for Skill Factory drafts
 pm-skills' entire "100+ skills without overwhelming context" answer is disciplined
@@ -434,39 +510,38 @@ that's already governed") rather than leaving it implicit. Positioning only, no 
 
 ## 8. Proposed build order (Phase 18 — draft, awaiting owner go)
 
-Not started. Grouped by leverage-to-effort, matching how Phases 16/17 were staged.
-Every milestone must ship with a token-accounting note proving the net-lower claim
-still holds — that check is not optional per-milestone.
+Not started. IDs below are stable reference numbers (cross-linked from §3-§7) — they
+are NOT the build order. The actual build order is the priority list immediately
+below, decided 2026-07-19. Every milestone must ship with a token-accounting note
+proving the net-lower claim still holds — that check is not optional per-milestone.
+
+**Build priority order (decided, not just listed):**
+1. **18.1** — foundation correctness. Everything else's "always net-lower" claim
+   depends on this being true first.
+2. **18.11** — best evidence-to-effort ratio in the document; a schema/prompt
+   change to a gate that already exists, no reason to delay it.
+3. **18.6** — pulled forward from its topical position (see §5.1's finalized
+   decision). Reach has compounding daily cost when delayed; the remaining
+   luxury/polish items only affect users Raphael already has.
+4. Everything else — 18.2, 18.3, 18.4, 18.5, 18.7, 18.9, 18.10, 18.12, 18.13, 18.14
+   in any reasonable order after the top three; none of them block each other.
 
 | # | Milestone | Core idea(s) | New network/token surface? |
 |---|---|---|---|
 | 18.1 | Cache-stable injection ordering + pointer/retrieve marginal lessons | §3.2, §3.3 | None — pure ordering/format change over existing budget |
-| 18.2 | Developer profile layer (`category: preference`) | §4.1 | None — same chokepoint, same mining source |
+| 18.2 | Developer profile layer (`category: preference`, atomic facts only, prefetch-cached) | §4.1 (revised) | None — same chokepoint, same mining source, local-only |
 | 18.3 | Ritual digest rewrite + `raph recall` dial | §4.2, §3.4 | None — pure presentation + existing dial pattern |
 | 18.4 | Trust-at-point-of-action + named adversarial flag | §4.4 | None — surfacing existing computed data |
 | 18.5 | Console visual-craft pass | §4.3 | None — no new backend calls |
-| 18.6 | AGENTS.md canonical + thin CLI wrappers | §5.1 | None — repackages existing `raph inject` output |
+| 18.6 | AGENTS.md canonical + ONE thin CLI wrapper (v1 scope, deliberately narrow — see §5.1) | §5.1 | None — repackages existing `raph inject` output |
 | 18.7 | Skill Factory: open-format alignment + frontmatter lint | §5.2, §5.4 | None |
-| 18.8 | `adopt` document parsing via markitdown-style extraction | §5.3 | None — same bounded-fetch surface, just a better parser downstream of it |
+| ~~18.8~~ | ~~DROPPED 2026-07-19 (owner instruction) — was: markitdown-style extraction for `adopt`'s document legs~~ | — | — |
 | 18.9 | Theme bundle packs (testing/performance/…) | §5.5 | None — same pack.js pattern |
 | 18.10 | Effort-routing on lesson-match confidence + holdout-measured savings | §3.5, §3.6 | None — reuses existing policy/eval machinery |
 | 18.11 | `unverifiable-claim` risk kind in the reviewer screen (memory-poisoning-aware) | §7.3 | None — schema/prompt change to an existing gate |
 | 18.12 | Slopsquatting-defense lesson in the security pack | §7.4 | None — same `pack.js` pattern |
 | 18.13 | Surface the mined "why," not just the "what," in the injection envelope | §7.5 | None — same lesson text, a labeled field |
 | 18.14 | README/handbook positioning rewrite: comprehension debt + decision fatigue | §7.2, §7.6 | None — copy only |
-
-18.6 is the one milestone that changes Raphael's *distribution* shape (multi-CLI,
-not Claude-Code-only) rather than deepening the existing single-CLI experience — it
-is also the one most directly aimed at "industry standard" as stated, so it may
-deserve to move earlier in sequence than its position here if the owner weighs reach
-over polish. That's a real trade-off, not a formatting choice, and is flagged for
-the owner's call rather than decided here.
-
-18.11 is arguably the milestone with the best evidence-to-effort ratio in the whole
-list: it closes a real, named, academically-documented attack class (MemoryGraft-
-style memory poisoning) with a schema field and a prompt-instruction addition to a
-gate that already exists — no new pipeline, no new surface, a few hours of work.
-Worth pulling forward regardless of how the rest of the sequence is ordered.
 
 **Awaiting owner go before any code changes.** This document is the brainstorm the
 owner asked for; nothing above has been built.

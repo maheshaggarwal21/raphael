@@ -650,6 +650,36 @@ compaction (manual or automatic) can never lose progress.
   Phase 18 extended to 18.14. Explicitly out of scope: grammar-constrained decoding, KV-
   cache/MLA, guardrail-model training — model-serving internals Raphael doesn't own. 415/415
   untouched. Still brainstorm-only, awaiting owner go. Log: .claude/logs/2026-07-19-01.md.
+- V2 ROUND 4 (session 14, same day): owner directive to verify before reproposing.
+  (a) 18.2 reproposed after cloning + reading hermes-agent's real source (not its
+  README) — caught + corrected a real conflation error (a "free-text CLAUDE.local.md"
+  detail wrongly attributed to Honcho, actually headroom's); Honcho turned out to be a
+  third-party SaaS hermes-agent is a thin client of, sharpening 18.2 into atomic-facts-
+  only, same chokepoint + lifecycle as every lesson, no resemblance to a third-party
+  memory service. (b) 18.6 finalized on my own call (owner delegated it): pulled
+  forward to 3rd in build priority, v1 scope narrowed to ONE real CLI wrapper (not
+  four), citing Raphael's own adopted no-gold-plating lesson. (c) 18.8 dropped
+  entirely per instruction. (d) Cloned + read ALL of garrytan/gstack inline (54
+  skills; avoided the documented parallel-agent rate-limit trap from the prior gstack
+  audit) -> docs/gstack-agents-audit.md — shared AskUserQuestion protocol, adaptive
+  per-specialist hit-rate gating, red-team-runs-last, a pre-emit "quote the line or
+  get suppressed" gate, cross-model Outside Voice with hard User Sovereignty, and a
+  reconfirmed-from-code finding that gstack's `learn` memory is unvalidated vs.
+  Raphael's chokepoint. (e) docs/agent-roster-v2-plan.md + TASKS.md Phase 19
+  (19.1-19.6): a spine decision-discipline rule, sharpened debugger/reviewer/security
+  missions, confidence-banded agent findings, `raph guard scan --skills`, opt-in
+  cross-model outside voice (security-audit + pre-deploy only), per-agent outcome
+  mining (flagged as needing its own design pass). (f) docs/architecture-audit-v2.md
+  — adversarial senior-architect pass over both shipped and proposed work; verified 3
+  real code claims before writing anything (compile.js DOES re-validate every lesson
+  at build time; confirmed via grep that status:active has no provenance check tying
+  it to approve.js — a real, framed-as-a-decision-not-a-bug gap); 5 gaps each in
+  shipped architecture and new proposals, a "what's actually solid" section, and a
+  5-item decide-before-building punch list. (g) new CLAUDE.md testing convention:
+  success + failure + edge cases mandatory for every function, regression tests must
+  be shown failing-then-passing. Research clones (hermes-agent, gstack) live outside
+  the repo, not committed. 415/415 untouched — docs-only session; nothing built, all
+  still awaiting owner go. Log: .claude/logs/2026-07-19-01.md.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
@@ -659,6 +689,20 @@ compaction (manual or automatic) can never lose progress.
   atomic writes via tmp+rename (`src/lib/files.js`). Git Bash `/tmp` maps to
   `C:\Program Files\Git\` when passed to Node — always use real Windows paths.
 - Coded errors: `E-<NAME>` prefix (E-SCHEMA, E-URL, E-SECRET, E-FRONTMATTER...).
+- **Testing standard (owner directive, session 14, 2026-07-19):** every function/path
+  gets BOTH a success-case test and a failure/error-handling test — never just the
+  happy path. Concretely, for each new function or CLI path: (a) the normal-input
+  success case, (b) at least one failure/error-handling case (invalid input, a
+  dependency erroring, a missing file — whatever it can plausibly fail on), and
+  (c) edge cases relevant to that function (empty/null/boundary values, the first-run/
+  no-prior-state case). A regression test for a bug fix must be shown to FAIL without
+  the fix and PASS with it — a test that always passes proves nothing (independently
+  confirmed by two sources this session: gstack's `investigate` and `plan-eng-review`
+  skills enforce this exact rule, and Raphael's own v0.2.0 CI miss — lesson
+  `truncated-test-output-hides-failures` — was itself a case of a check that looked
+  green without actually proving what it claimed). Don't skim coverage for a "should
+  work" function — the working ritual's `npm test` gate exists to catch exactly the
+  cases skimmed coverage misses.
 
 ## Security invariants — NEVER violate these, they are the product
 1. `validateLesson()` (src/lib/validate.js) is the ONLY path for anything entering the

@@ -872,9 +872,16 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       provider prompt-cache isn't invalidated by re-ranking) + pointer/retrieve for
       marginal-confidence lessons (one-line pointer instead of full body below the
       injection bar, full text pulled on demand) — §3.2/§3.3 of the vision doc.
-- [ ] 18.2 Developer profile layer: new `category: preference` lesson type built only from
-      repeatedly-confirmed patterns, through the SAME chokepoint as every lesson — no
-      free-text side channel. §4.1.
+- [ ] 18.2 (REVISED 2026-07-19 after reading hermes-agent's actual source — see §4.1)
+      Developer profile layer: new `category: preference` lesson type, ATOMIC FACTS
+      ONLY (never a synthesized narrative — that would cost real tokens per session),
+      built only from repeatedly-confirmed patterns, through the SAME chokepoint as
+      every lesson, subject to the SAME retire/decay/dedupe lifecycle as any other
+      lesson (explicitly not a PII-only-deletion model). Built via a prefetch-in-
+      background-thread + consume-next-turn pattern so it also chips away at the
+      existing parked "inject latency ~390ms cold" item rather than adding to it.
+      100% local — no dependency on or resemblance to a third-party memory service.
+      §4.1.
 - [ ] 18.3 Ritual digest rewrite (lead with a felt, personal number) + `raph recall
       quiet|normal|eager` dial (recall assertiveness, distinct from the auto-approve
       dial). §4.2/§3.4.
@@ -885,24 +892,27 @@ yet check for, closeable with a schema/prompt change to an existing gate.
 - [ ] 18.5 Console (`raph web`) visual-craft pass — audit against the same "AI slop" UI
       patterns Raphael's own research flagged; pure design, zero backend/token change.
       §4.3.
-- [ ] 18.6 AGENTS.md canonical file + thin per-CLI wrapper files, so automatic injection
-      works across Codex/OpenCode/Gemini CLI/etc., not just the Claude Code plugin —
-      repackages existing `raph inject` output, no chokepoint/curator/Atlas change.
-      Highest-leverage milestone for "industry standard"; may deserve reordering earlier
-      if the owner weighs reach over polish. §5.1.
+- [ ] 18.6 (FINALIZED 2026-07-19, owner delegated the call) AGENTS.md canonical file +
+      exactly ONE thin CLI wrapper for v1 (deliberately narrow scope — building all of
+      Codex/OpenCode/Gemini CLI/Cursor up front is the gold-plating failure mode
+      Raphael's own adopted brain already warns against; prove one integration end-to-
+      end, expand only on real demand). Repackages existing `raph inject` output, no
+      chokepoint/curator/Atlas change. PULLED FORWARD in build priority (see build-
+      priority list above the milestone table in docs/v2-vision.md §8) to run 3rd,
+      right after 18.1 and 18.11 — reach has compounding daily cost when delayed; the
+      wrapper's first target CLI is still an open decision, not defaulted. §5.1.
 - [ ] 18.7 Skill Factory: align drafts with the open agentskills.io SKILL.md convention
       (portability outside Raphael) + a `raph lint` check for frontmatter descriptions
       that are too generic (fires on everything) or too narrow (never fires). §5.2/§5.4.
-- [ ] 18.8 Route `adopt`'s PDF/DOCX/PPTX legs through markitdown-style extraction instead
-      of bespoke parsing — downstream of the existing bounded-fetch boundary, no new
-      network/trust surface. §5.3.
+- [x] ~~18.8~~ DROPPED 2026-07-19 (owner instruction) — was: route `adopt`'s PDF/DOCX/PPTX
+      legs through markitdown-style extraction. Not pursued.
 - [ ] 18.9 Theme bundle packs beyond security (e.g. testing, performance) — same
       `pack.js` pattern, opt-in, chokepoint-enforced. §5.5.
 - [ ] 18.10 Effort-routing on lesson-match confidence (a step a high-confidence lesson
       already answers is a good candidate for a cheaper model pass) + holdout-measured
       savings surfaced in `raph stats`/`report weekly` (not just budget-cap compliance).
       §3.5/§3.6.
-- [ ] 18.11 (BEST evidence-to-effort ratio — consider pulling forward) Add an
+- [ ] 18.11 (BEST evidence-to-effort ratio — PULLED FORWARD, runs 2nd in build order) Add an
       `unverifiable-claim` risk kind to the `REVIEW_TOOL` schema + `REVIEW_SYSTEM` prompt
       in src/lib/adopt.js, and the same instruction in curator.js's reviewer prompt: flag
       candidates asserting an outcome ("this always fixes X," "guarantees Y") with no
@@ -927,6 +937,50 @@ Explicitly rejected, recorded so it isn't "discovered" again: embeddings/vector 
 deterministic-graph bet re-confirmed against open-notebook, a second independent case after
 the gstack audit) and agent-driven unbounded external fetch (Agent-Reach's model; Raphael's
 existing bounded/user-initiated adopt fetch is the deliberate opposite choice). §6.
+
+## Phase 19 — Agent roster v2 (PROPOSED 2026-07-19, session 14; design in
+## docs/agent-roster-v2-plan.md, grounded in docs/gstack-agents-audit.md — NOT STARTED)
+Owner ask: deep-clone + read garrytan/gstack's full skill set (54 skills, not just a prior
+session's narrower scope) — architecture, system prompts, task approach for ALL of them —
+write findings to a durable doc, then propose a dedicated plan for adding/improving
+Raphael's own 10-agent roster. Read in full: review + its 7 specialists (adaptive per-
+specialist hit-rate gating, red-team-runs-last-and-sees-others'-findings, a pre-emit
+"quote the motivating line or get suppressed" verification gate), plan-eng-review,
+plan-ceo-review (11-section review with mandatory Error & Rescue Map + NOT-in-scope +
+what-already-exists sections, one-AskUserQuestion-per-issue discipline), cso's 14-phase
+security audit (incl. a dedicated LLM/AI-security phase and a skill-supply-chain scan),
+learn (confirms gstack's memory is unvalidated/unscrubbed vs Raphael's chokepoint — same
+finding as the session-10 audit, now code-grounded), investigate (Iron Law + 3-strike rule
++ regression-test-must-fail-without-fix discipline), ETHOS.md (Boil the Ocean / Search
+Before Building / User Sovereignty). Frontmatter catalog covers all 54 skills.
+- [ ] 19.1 Decision-discipline spine addition: one-decision-one-question +
+      recommendation+reasoning+pros/cons, applied to all 10 agents via one shared SPINE
+      edit in src/lib/agents.js. Prose only. §2 of the plan doc.
+- [ ] 19.2 Sharpen raphael-debugger (3-strike rule, regression test must fail-then-pass),
+      raphael-reviewer (quote-the-line-or-suppress), raphael-security (explicit LLM/AI-
+      security checklist item) mission text. Prose only, src/lib/agents.js. §7.
+- [ ] 19.3 Confidence-banded findings for reviewer/security/debugger output (9-10 shown,
+      5-6 caveated, 3-4 appendix-only, 1-2 critical-only) — extends the same discipline
+      confidence.js already applies to lessons, to live agent findings. §3.
+- [ ] 19.4 `raph guard scan --skills` — scan a project's installed .claude/skills/ for
+      exfiltration/credential-access/prompt-injection patterns (gstack's CSO "skill supply
+      chain" phase, new threat class guard.js doesn't cover today). §6.
+- [ ] 19.5 Opt-in cross-model "outside voice" for security-audit + pre-deploy recipes only
+      (deliberately narrow v1, not all 4 recipes — same scope discipline as 18.6): second
+      AI provider (Codex CLI or a distinct configured provider) gives an independent
+      second opinion, presented as a tension point, NEVER auto-applied (User Sovereignty,
+      matches invariant #4 + curator's canary-gate-then-present pattern). §4.
+- [ ] 19.6 (largest, needs its own design pass first) Mine per-agent outcome data: did a
+      finding get applied/reverted/ignored, as a new episodes.js detector, surfaced in
+      raph stats/portfolio — the Raphael-shaped version of gstack's per-specialist
+      adaptive hit-rate gating, applied to Raphael's own 10-agent roster rather than a
+      fixed review-time specialist panel. §5.
+Explicitly rejected, recorded: gstack's heavy telemetry/feature-discovery/upgrade-nag
+preamble (Raphael's injection stays light by design); unvalidated self-reported-confidence
+output written straight to the brain (validateLesson() stays the only door in, no
+exceptions for agent output either); /ship-style automatic push+PR creation for
+raphael-deployer (deploy/spend/sign-in boundary unchanged — checklist only, always);
+blanket "Boil the Ocean" adoption (19.5 ships narrow on purpose). §8.
 
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
