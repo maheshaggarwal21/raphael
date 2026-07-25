@@ -830,6 +830,21 @@ compaction (manual or automatic) can never lose progress.
     fixed a latent test-fixture bug this surfaced — curator fixtures generated the SAME
     sentence with an incrementing number, so the gate correctly flagged them; they are now
     6 genuinely-distinct topics (a true positive, not a false alarm).
+- v0.3.0 PUBLISHED (2026-07-25, owner ran `npm publish`) — "the agent release". registry
+  latest=0.3.0, tag v0.3.0 pushed, CI green on a19aeef. Carried 22 commits that had been
+  sitting unreleased at 0.2.4 (roster 10->12 w/ redteam+frontend, auto-invocation via
+  whenToUse, flagship tier retired, every mission specialized, design category + 14-lesson
+  pack, 3 design-floor eval scenarios, guard --skills/--design, the near-duplicate gate).
+  CHANGELOG.md added + shipped in the package (it was NOT in package.json files -> would
+  have been omitted). PUBLISH GOTCHA worth remembering: `npm publish` failed with a
+  MISLEADING "E404 not in this registry" — the real cause was an expired login (npm whoami
+  = 401). npm returns 404 instead of 403 on an unauthenticated publish so it does not leak
+  package existence. Fix = `npm login` (account mahesh2112 / developermahesh21@gmail.com,
+  which is NOT the owner's Claude account email). Verified after publish from the PUBLIC
+  registry into a clean prefix: version 0.3.0, arise --autopilot seeds 40 curated lessons
+  (26 security + 14 design), 12 agents present incl. redteam+frontend, guard --skills/
+  --design in help, "Use this agent proactively when" present in shipped agents, doctor
+  healthy. Owner brain: 87 active lessons (73 + the design pack).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
