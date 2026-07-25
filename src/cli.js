@@ -22,6 +22,7 @@ const COMMANDS = {
   why: () => import('./commands/why.js'),
   on: () => import('./commands/on.js'),
   off: () => import('./commands/off.js'),
+  recall: () => import('./commands/recall.js'),
   eval: () => import('./commands/eval.js'),
   map: () => import('./commands/map.js'),
   atlas: () => import('./commands/atlas.js'),
@@ -89,6 +90,7 @@ Commands:
   stats       Self-use report: token cost, which lessons earn their keep, and
               which never fire (retrieval miss) (raph stats [--json])
   on / off    Enable / disable injection (mining and review keep working)
+  recall      How assertive recall is: quiet | normal | eager
   inject      Hook plumbing: reads the hook JSON on stdin, prints context
               (raph inject --event session-start|user-prompt; always exits 0)
   eval        Prove it with numbers: canary gate + brain ON/OFF lift table

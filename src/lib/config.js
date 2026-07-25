@@ -124,6 +124,65 @@ export function isInjectionEnabled(cfg) {
   return (cfg?.injection?.enabled) !== false;
 }
 
+// 18.3 — the RECALL dial: how assertive recall is, deliberately separate from the
+// auto-approve dial (that one governs what may ACTIVATE; this one governs how much
+// of what is already active gets SPOKEN). Named settings beat raw numbers because
+// the trade-off is legible: quiet = fewer interruptions, eager = more coverage.
+//
+// Explicit injection.* numbers in config still win, so anyone who tuned by hand
+// keeps their tuning — the dial only supplies the defaults.
+export const RECALL_LEVELS = ['quiet', 'normal', 'eager'];
+
+const RECALL_PRESETS = {
+  // digestMax/promptMax = how many lines may appear; the thresholds are the
+  // score a lesson must clear to be worth saying at all.
+  quiet:  { digestMax: 3,  promptMax: 1, digestThreshold: 2.0, promptThreshold: 6.0, sessionCap: 600 },
+  normal: { digestMax: 10, promptMax: 3, digestThreshold: 1.0, promptThreshold: 4.0, sessionCap: 1200 },
+  eager:  { digestMax: 15, promptMax: 5, digestThreshold: 0.5, promptThreshold: 3.0, sessionCap: 1800 }
+};
+
+export function getRecallLevel(cfg = loadConfig()) {
+  const raw = String(cfg?.injection?.recall ?? 'normal').trim().toLowerCase();
+  return RECALL_LEVELS.includes(raw) ? raw : 'normal'; // fail to the middle, never louder
+}
+
+// Resolved knobs for inject.js.
+//
+// THE DIAL OWNS THESE. `raph init` has always written session_start_max /
+// per_prompt_max / session_cap_tokens into config.yaml as defaults, and until
+// 18.3 inject.js ignored them entirely (it used hardcoded constants). So letting
+// those top-level keys override the preset would leave the dial dead on arrival
+// for every existing install — you would set "eager" and nothing would change.
+// They stay ignored; the dial is the source of truth.
+//
+// A genuine power-user override lives under injection.overrides.* instead, where
+// it is unambiguously something a human chose rather than a default init wrote.
+export function recallProfile(cfg = loadConfig()) {
+  const level = getRecallLevel(cfg);
+  const preset = RECALL_PRESETS[level];
+  const ov = cfg?.injection?.overrides ?? {};
+  const num = (v, fallback) => (Number.isFinite(v) && v > 0 ? v : fallback);
+  return {
+    level,
+    digestMax: num(ov.session_start_max, preset.digestMax),
+    promptMax: num(ov.per_prompt_max, preset.promptMax),
+    digestThreshold: num(ov.digest_threshold, preset.digestThreshold),
+    promptThreshold: num(ov.prompt_threshold, preset.promptThreshold),
+    sessionCap: num(ov.session_cap_tokens, preset.sessionCap)
+  };
+}
+
+export function setRecallLevel(level) {
+  const v = String(level ?? '').trim().toLowerCase();
+  if (!RECALL_LEVELS.includes(v)) {
+    throw new Error(`E-CONFIG: recall must be one of ${RECALL_LEVELS.join(', ')}, got "${level}"`);
+  }
+  const cfg = loadConfig();
+  cfg.injection = { ...(cfg.injection ?? {}), recall: v };
+  saveConfig(cfg);
+  return v;
+}
+
 export function setInjectionEnabled(enabled) {
   if (typeof enabled !== 'boolean') {
     throw new Error(`E-CONFIG: injection.enabled must be boolean, got ${typeof enabled}`);

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { lessonId } from '../lib/ulid.js';
 import { slugify } from '../lib/slug.js';
+import { quarantineNotice } from '../lib/trust.js';
 import { writeCandidate } from '../lib/candidates.js';
 
 const schemaPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'schemas', 'lesson.schema.json');
@@ -112,8 +113,7 @@ export default async function note(args) {
     return 0;
   }
   if (result.quarantined) {
-    console.log(`raph: QUARANTINED -> ${result.path}`);
-    console.log('      the text reads as agent-directed; a human must review the full body before it can ever activate');
+    console.log('raph: ' + quarantineNotice({ codes: result.codes, ref: result.id, path: result.path }));
     return 0;
   }
   console.log(`raph: candidate saved -> ${result.path}`);

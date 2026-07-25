@@ -11,7 +11,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, rmSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { loadConfig, isInjectionEnabled, getMode } from './config.js';
+import { loadConfig, isInjectionEnabled, recallProfile, getMode } from './config.js';
 import { readEvents } from './events.js';
 import { loadIndex } from './compile.js';
 import { detectStacks } from './stacks.js';
@@ -368,7 +368,8 @@ export function runInjection(event, payload = {}) {
   const sessionId = payload.session_id;
   const state = loadSessionState(sessionId);
   const injected = new Set(Object.keys(state.injected));
-  const capReached = state.tokens >= SESSION_CAP_TOKENS;
+  const profile = recallProfile(cfg);
+  const capReached = state.tokens >= profile.sessionCap;
 
   let text = '';
   let picks = [];
@@ -377,10 +378,10 @@ export function runInjection(event, payload = {}) {
     const ctx = { stacks: detectStacks(cwd), text: '', paths: [], project, injected };
     // digest = stack-relevant lessons only (an explicit stack match, or a
     // lesson that declares no stack and therefore applies anywhere)
-    const ranked = rank(lessons, ctx, 1.0).filter((r) =>
+    const ranked = rank(lessons, ctx, profile.digestThreshold).filter((r) =>
       r.reasons.some((x) => x.startsWith('stack:') || x.startsWith('any-stack'))
     );
-    picks = takeWithinBudget(ranked, DIGEST_BUDGET, DIGEST_MAX, capReached);
+    picks = takeWithinBudget(ranked, DIGEST_BUDGET, profile.digestMax, capReached);
     const pullHint = `${lessons.length} lesson(s) in the brain — pull more with: raph search "<terms>" / raph show <id>`;
     // 18.1: stable presentation order (cache-friendly), then one shared pointer
     // line for anything that ranked but did not fit.
@@ -413,8 +414,8 @@ export function runInjection(event, payload = {}) {
     };
     // threshold 4.0: nothing fires without at least one trigger hit — this is
     // what keeps the typical prompt at ZERO injected tokens
-    const ranked = rank(lessons, ctx, 4.0);
-    picks = takeWithinBudget(ranked, PROMPT_BUDGET, PROMPT_MAX, capReached);
+    const ranked = rank(lessons, ctx, profile.promptThreshold);
+    picks = takeWithinBudget(ranked, PROMPT_BUDGET, profile.promptMax, capReached);
     if (picks.length === 0) return { text: '', injected: [], tokens: 0 };
     // 18.1: same stable ordering on the per-prompt block
     picks = stableOrder(picks);

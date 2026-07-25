@@ -882,10 +882,10 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       existing parked "inject latency ~390ms cold" item rather than adding to it.
       100% local — no dependency on or resemblance to a third-party memory service.
       §4.1.
-- [ ] 18.3 Ritual digest rewrite (lead with a felt, personal number) + `raph recall
+- [x] 18.3  — SHIPPED 2026-07-25 (`raph recall` dial). Ritual digest rewrite (lead with a felt, personal number) + `raph recall
       quiet|normal|eager` dial (recall assertiveness, distinct from the auto-approve
       dial). §4.2/§3.4.
-- [ ] 18.4 Trust-at-point-of-action: quarantine floor stated in-tool at the moment a
+- [x] 18.4  — SHIPPED 2026-07-25. Trust-at-point-of-action: quarantine floor stated in-tool at the moment a
       candidate is quarantined, not just in docs; adversarial/injection-shaped check
       split out as its own named, visible flag (not folded into one confidence number).
       §4.4.

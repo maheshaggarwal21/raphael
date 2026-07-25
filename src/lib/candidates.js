@@ -23,8 +23,17 @@ export function writeCandidate(data, body = '') {
   const filePath = path.join(dir, `C-${hash}.md`);
 
   if (existsSync(filePath)) {
-    return { id: data.id, path: filePath, quarantined: result.quarantine, existed: true };
+    return { id: data.id, path: filePath, quarantined: result.quarantine, codes: quarantineCodes(result), existed: true };
   }
   atomicWrite(filePath, content);
-  return { id: data.id, path: filePath, quarantined: result.quarantine, existed: false };
+  return { id: data.id, path: filePath, quarantined: result.quarantine, codes: quarantineCodes(result), existed: false };
+}
+
+// The codes that explain a quarantine, so the caller can NAME the flag instead of
+// showing an opaque verdict (18.4 — trust at the point of action).
+function quarantineCodes(result) {
+  return [
+    ...(result.errors ?? []).map((e) => e.code),
+    ...(result.warnings ?? []).map((w) => w.code)
+  ];
 }
