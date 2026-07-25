@@ -973,19 +973,19 @@ learn (confirms gstack's memory is unvalidated/unscrubbed vs Raphael's chokepoin
 finding as the session-10 audit, now code-grounded), investigate (Iron Law + 3-strike rule
 + regression-test-must-fail-without-fix discipline), ETHOS.md (Boil the Ocean / Search
 Before Building / User Sovereignty). Frontmatter catalog covers all 54 skills.
-- [ ] 19.1 Decision-discipline spine addition: one-decision-one-question +
+- [x] 19.1 Decision-discipline spine addition: one-decision-one-question +  — SHIPPED A1 (2026-07-20)
       recommendation+reasoning+pros/cons, applied to all 10 agents via one shared SPINE
       edit in src/lib/agents.js. Prose only. §2 of the plan doc.
-- [ ] 19.2 Sharpen raphael-debugger (3-strike rule, regression test must fail-then-pass),
+- [x] 19.2 Sharpen raphael-debugger (3-strike rule, regression test must fail-then-pass),  — SHIPPED A1/A3 (2026-07-20)
       raphael-reviewer (quote-the-line-or-suppress), raphael-security (explicit LLM/AI-
       security checklist item) mission text. Prose only, src/lib/agents.js. §7.
-- [ ] 19.3 Confidence-banded findings for reviewer/security/debugger output (9-10 shown,
+- [x] 19.3 Confidence-banded findings for reviewer/security/debugger output (9-10 shown,  — SHIPPED A3 (2026-07-20)
       5-6 caveated, 3-4 appendix-only, 1-2 critical-only) — extends the same discipline
       confidence.js already applies to lessons, to live agent findings. §3.
-- [ ] 19.4 `raph guard scan --skills` — scan a project's installed .claude/skills/ for
+- [x] 19.4 `raph guard scan --skills` — scan a project's installed .claude/skills/ for  — SHIPPED A7 (2026-07-20)
       exfiltration/credential-access/prompt-injection patterns (gstack's CSO "skill supply
       chain" phase, new threat class guard.js doesn't cover today). §6.
-- [ ] 19.5 Opt-in cross-model "outside voice" for security-audit + pre-deploy recipes only
+- [x] 19.5 Opt-in cross-model "outside voice" for security-audit + pre-deploy recipes only  — SHIPPED A8 (safe form) (2026-07-20)
       (deliberately narrow v1, not all 4 recipes — same scope discipline as 18.6): second
       AI provider (Codex CLI or a distinct configured provider) gives an independent
       second opinion, presented as a tension point, NEVER auto-applied (User Sovereignty,
@@ -1022,7 +1022,7 @@ pointed at design. Confirmed gaps in code: raphael-design is review-only (tools
 Read/Grep/Glob — literally can't build) and NOT flagship; no `design` lesson category in
 the schema; no design pack; the decision ledger isn't pointed at design; guard doesn't
 cover design tokens.
-- [ ] 20.1 (highest leverage — the knowledge layer, first) Add `design` to the lesson
+- [x] 20.1 (highest leverage — the knowledge layer, first) Add `design` to the lesson  — SHIPPED A4 (2026-07-20)
       schema category enum + author src/lib/design-pack.js (mirrors security-pack.js:
       atomic design lessons distilled from the two resources — the named AI-slop clusters,
       accessibility/touch/perf must-haves, no-raw-hex token discipline, ground-in-the-
@@ -1031,24 +1031,24 @@ cover design tokens.
       fresh install starts design-literate. Same proven pattern as the security pack. §3.
       CAVEAT: design lessons are taste-conventions, not recurring bugs — shares 18.2's
       open decay/dispute-policy question; resolve once, apply to both.
-- [ ] 20.2 Sharpen raphael-design's mission with Anthropic frontend-design's judgment
+- [x] 20.2 Sharpen raphael-design's mission with Anthropic frontend-design's judgment  — SHIPPED A1/A3 (2026-07-20)
       language (named slop clusters, spend-boldness-in-one-place, two-pass critique,
       copy-as-material, quality floor) + promote to flagship. Stays review-only tools.
       Prose + a flag. §2.
-- [ ] 20.3 NEW raphael-frontend builder agent (flagship, tools Read/Grep/Glob/Edit/Write/
+- [x] 20.3 NEW raphael-frontend builder agent (flagship, tools Read/Grep/Glob/Edit/Write/  — SHIPPED A2 (2026-07-20)
       Bash) — the agent Raphael lacks: actually BUILDS distinctive UI, brain-first,
       applying design lessons + recorded design decisions, then self-critiques against the
       generic default before presenting. Flagship set 4 -> 5 (the design pair). §2.
-- [ ] 20.4 Point the existing decision ledger (raph decide / decisions.js) at design — the
+- [x] 20.4 Point the existing decision ledger (raph decide / decisions.js) at design — the  — SHIPPED A5 (2026-07-20)
       MASTER.md / brand-as-shared-context pattern: record a project's palette/type/spacing/
       signature ONCE, inherit it at every frontend task via the session-start decisions
       envelope. Near-zero code (usage pattern + mission text; optional filtered view). §4.
-- [ ] 20.5 Eval scenarios for the CHECKABLE design floor (tokens-not-raw-hex, contrast/
+- [x] 20.5 Eval scenarios for the CHECKABLE design floor (tokens-not-raw-hex, contrast/  — SHIPPED A6 (2026-07-20)
       focus/reduced-motion/alt-text, named-slop tells like Inter+centered+uniform-radius+
       purple-gradient — all mechanically detectable) — gates calling the design pair
       "flagship" honestly. Explicit boundary: measure the checkable floor, say plainly
       that taste beyond it stays human-judged. Needs careful proxy design. §6.
-- [ ] 20.6 (optional, last) `raph guard scan --design` — deterministic hardcoded-hex-
+- [x] 20.6 (optional, last) `raph guard scan --design` — deterministic hardcoded-hex-  — SHIPPED A7 (2026-07-20)
       where-a-token-belongs lint, reusing guard.js's pattern-scan (the token-validator
       idea from ui-ux-pro-max). §5.
 Explicitly rejected, recorded: pptx/docx/slide/banner/logo generation (document/marketing-
