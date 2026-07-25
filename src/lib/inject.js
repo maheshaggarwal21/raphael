@@ -130,6 +130,39 @@ function takeWithinBudget(ranked, budget, max, capReached) {
   return picks;
 }
 
+// 18.1 — CACHE-STABLE ORDERING.
+//
+// SELECTION stays rank-based (we still want the best lessons). PRESENTATION is
+// then re-sorted by lesson id, and that is the whole trick: ids are ULIDs, which
+// sort chronologically, so
+//   (a) the same set of lessons always renders byte-identically — a provider
+//       prompt-cache hit instead of a miss, and
+//   (b) a newly-learned lesson sorts to the TAIL, leaving the earlier prefix
+//       untouched rather than shuffling the whole block.
+// Without this, re-scoring on every session start reorders an unchanged lesson
+// set (recency/evidence drift), silently invalidating the cache each time — so
+// the real cost of the ≤1,200-token budget was worse than the raw count implied.
+export function stableOrder(picks) {
+  return [...picks].sort((a, b) => {
+    const x = a.entry?.id ?? '';
+    const y = b.entry?.id ?? '';
+    return x < y ? -1 : x > y ? 1 : 0;
+  });
+}
+
+// 18.1 (second half) — POINTER LINE for lessons that ranked but did not fit.
+// They cost one shared line naming their ids instead of a line each, so more of
+// the brain stays REACHABLE (`raph show <id>`) without raising the floor spend.
+// Returns '' when nothing missed out or the line would not fit.
+export function pointerLine(ranked, picks, budgetLeft) {
+  const chosen = new Set(picks.map((p) => p.entry.id));
+  const missed = ranked.filter((r) => !chosen.has(r.entry.id)).map((r) => r.entry.id);
+  if (missed.length === 0) return '';
+  const ids = missed.slice(0, 5).sort();
+  const line = `also relevant, pull on demand: ${ids.join(' ')}  (raph show <id>)`;
+  return estTokens(line) <= budgetLeft ? line : '';
+}
+
 function envelope(frame, lines) {
   return ['<raphael-lessons>', frame, ...lines, '</raphael-lessons>'].join('\n');
 }
@@ -349,7 +382,12 @@ export function runInjection(event, payload = {}) {
     );
     picks = takeWithinBudget(ranked, DIGEST_BUDGET, DIGEST_MAX, capReached);
     const pullHint = `${lessons.length} lesson(s) in the brain — pull more with: raph search "<terms>" / raph show <id>`;
-    text = envelope(PREAMBLE, [pullHint, ...picks.map((x) => x.line)]);
+    // 18.1: stable presentation order (cache-friendly), then one shared pointer
+    // line for anything that ranked but did not fit.
+    const ordered = stableOrder(picks);
+    const spent = ordered.reduce((n, x) => n + estTokens(x.line), 0);
+    const ptr = pointerLine(ranked, ordered, DIGEST_BUDGET - spent);
+    text = envelope(PREAMBLE, [pullHint, ...ordered.map((x) => x.line), ...(ptr ? [ptr] : [])]);
     // 16.3: append the project atlas digest, capability-checked (only if built)
     // and only while there is still session budget. Its own envelope + budget.
     if (!capReached) {
@@ -378,6 +416,8 @@ export function runInjection(event, payload = {}) {
     const ranked = rank(lessons, ctx, 4.0);
     picks = takeWithinBudget(ranked, PROMPT_BUDGET, PROMPT_MAX, capReached);
     if (picks.length === 0) return { text: '', injected: [], tokens: 0 };
+    // 18.1: same stable ordering on the per-prompt block
+    picks = stableOrder(picks);
     text = envelope(SHORT_FRAME, picks.map((x) => x.line));
   } else {
     return { text: '', injected: [], tokens: 0 };

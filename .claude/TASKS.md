@@ -868,7 +868,7 @@ driver.js's already-real bounded retry/circuit-breaker, the adopt gauntlet's lay
 shape) and surfaces genuinely new items (18.11-18.14 below), the sharpest being 18.11 — a
 named academic attack class (MemoryGraft-style memory poisoning) the reviewer screen doesn't
 yet check for, closeable with a schema/prompt change to an existing gate.
-- [ ] 18.1 Cache-stable injection ordering (pin unchanged-lesson order across a session so
+- [x] 18.1 Cache-stable injection ordering  — SHIPPED 2026-07-25 (pin unchanged-lesson order across a session so
       provider prompt-cache isn't invalidated by re-ranking) + pointer/retrieve for
       marginal-confidence lessons (one-line pointer instead of full body below the
       injection bar, full text pulled on demand) — §3.2/§3.3 of the vision doc.

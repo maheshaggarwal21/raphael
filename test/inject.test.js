@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
-import { runInjection, loadSessionState, saveSessionState, PREAMBLE, estTokens, atlasDigestBlock } from '../src/lib/inject.js';
+import { runInjection, loadSessionState, saveSessionState, PREAMBLE, estTokens, atlasDigestBlock, stableOrder, pointerLine } from '../src/lib/inject.js';
 import { setInjectionEnabled } from '../src/lib/config.js';
 import { writeActiveLesson } from './helpers.js';
 import { recordDecision } from '../src/lib/decisions.js';
@@ -271,5 +271,76 @@ test('16.3 pre-tool nudge: Bash grep detected as search-shaped', async () => {
     // a non-search Bash command does not
     const plain = runInjection('pre-tool', { session_id: 'nud-4', cwd: proj, tool_name: 'Bash', tool_input: { command: 'npm test' } });
     assert.equal(plain.text, '');
+  });
+});
+
+// --- 18.1 cache-stable ordering ----------------------------------------------
+// Re-ranking used to reorder an UNCHANGED lesson set on every session start,
+// which invalidates the provider prompt cache. Selection stays rank-based;
+// presentation is pinned by ULID id, so new lessons append at the tail.
+
+test('stableOrder pins presentation by id regardless of incoming rank order', () => {
+  const a = { entry: { id: 'les_01AAA', severity: 'high' } };
+  const b = { entry: { id: 'les_01BBB', severity: 'low' } };
+  const c = { entry: { id: 'les_01CCC', severity: 'high' } };
+  const ids = (picks) => stableOrder(picks).map((p) => p.entry.id);
+  // three different rank orders of the SAME set must render identically
+  assert.deepEqual(ids([c, a, b]), ['les_01AAA', 'les_01BBB', 'les_01CCC']);
+  assert.deepEqual(ids([b, c, a]), ['les_01AAA', 'les_01BBB', 'les_01CCC']);
+  assert.deepEqual(ids([a, b, c]), ['les_01AAA', 'les_01BBB', 'les_01CCC']);
+});
+
+test('a newly-learned lesson appends at the TAIL, leaving the earlier prefix intact', () => {
+  // ULIDs sort chronologically, so a later-created lesson sorts last
+  const older = [{ entry: { id: 'les_01AAA' } }, { entry: { id: 'les_01BBB' } }];
+  const withNew = [{ entry: { id: 'les_01ZZZ' } }, ...older]; // arrives ranked first
+  const before = stableOrder(older).map((p) => p.entry.id);
+  const after = stableOrder(withNew).map((p) => p.entry.id);
+  assert.deepEqual(after.slice(0, before.length), before, 'prefix must be unchanged');
+  assert.equal(after[after.length - 1], 'les_01ZZZ', 'the new lesson goes last');
+});
+
+test('stableOrder does not mutate its input and tolerates empty/missing ids (edge)', () => {
+  const input = [{ entry: { id: 'les_01BBB' } }, { entry: { id: 'les_01AAA' } }];
+  const copy = [...input];
+  stableOrder(input);
+  assert.deepEqual(input, copy, 'input array must not be reordered in place');
+  assert.deepEqual(stableOrder([]), []);
+  assert.equal(stableOrder([{ entry: {} }, { entry: {} }]).length, 2); // no crash
+});
+
+test('pointerLine names ranked-but-unfitted lessons, and stays silent when everything fit', () => {
+  const ranked = [{ entry: { id: 'les_A' } }, { entry: { id: 'les_B' } }, { entry: { id: 'les_C' } }];
+  const picks = [{ entry: { id: 'les_A' } }];
+  const line = pointerLine(ranked, picks, 100);
+  assert.match(line, /les_B/);
+  assert.match(line, /les_C/);
+  assert.match(line, /raph show/);
+  assert.ok(!line.includes('les_A'), 'already-injected lessons are not repeated');
+  // nothing missed => no line at all (never an empty ceremony)
+  assert.equal(pointerLine(ranked, ranked, 100), '');
+  // no room => no line (must never bust the budget)
+  assert.equal(pointerLine(ranked, picks, 1), '');
+});
+
+test('session-start renders byte-identically for an unchanged brain (the cache property)', async () => {
+  await withSandbox(async (dir, proj) => {
+    // NOTE: makeLesson takes FLAT overrides — scope/triggers are nested, so passing
+    // `stacks`/`keywords` at the top level would be unknown fields and the strict
+    // schema would reject the lesson (it would silently never reach the index).
+    for (const slug of ['zeta-lesson', 'alpha-lesson', 'mid-lesson']) {
+      writeActiveLesson({ slug, title: `${slug} title` });
+    }
+    const run = (id) => runInjection('session-start', { session_id: id, cwd: proj }).text;
+    const first = run('cache-1');
+    const second = run('cache-2');
+    // guard against a vacuously-passing test: the block must actually have lessons
+    const lessonLines = first.split(String.fromCharCode(10)).filter((l) => l.startsWith('['));
+    assert.ok(lessonLines.length >= 3, `expected injected lessons, got: ${JSON.stringify(first)}`);
+    // and they must be in ascending id order (the cache-stable property)
+    const ids = lessonLines.map((l) => l.slice(1, l.indexOf(']')));
+    assert.deepEqual(ids, [...ids].sort(), 'lesson lines must be in stable ascending id order');
+    // different sessions, same brain -> identical bytes (a cache hit, not a miss)
+    assert.equal(first, second, 'an unchanged brain must render the same bytes every session');
   });
 });
