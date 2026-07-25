@@ -271,10 +271,12 @@ export function scanDesignText(text) {
   // blank out the token-definition blocks so their hex doesn't count.
   const masked = text.replace(/(:root|:host)\b[^{]*\{[^}]*\}/gi, (blk) => blk.replace(/#[0-9a-fA-F]{3,8}\b/g, '#______'));
   const findings = [];
-  const rx = /#[0-9a-fA-F]{3,8}\b/g;
+  // Skip HTML numeric entities (&#128274;) — they merely LOOK like hex. Found as a
+  // false positive by running this scanner over Raphael own console.
+  const rx = /(^|[^&\w])(#[0-9a-fA-F]{3,8})\b/g;
   let m;
   while ((m = rx.exec(masked)) !== null) {
-    findings.push({ line: lineOf(masked, m.index), type: 'hardcoded-hex' });
+    findings.push({ line: lineOf(masked, m.index + m[1].length), type: 'hardcoded-hex' });
   }
   // de-dupe by line
   const seen = new Set();

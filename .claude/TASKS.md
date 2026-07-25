@@ -889,7 +889,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       candidate is quarantined, not just in docs; adversarial/injection-shaped check
       split out as its own named, visible flag (not folded into one confidence number).
       §4.4.
-- [ ] 18.5 Console (`raph web`) visual-craft pass — audit against the same "AI slop" UI
+- [x] 18.5  — SHIPPED 2026-07-25 (tokenized + light-dark; guard --design clean). Console (`raph web`) visual-craft pass — audit against the same "AI slop" UI
       patterns Raphael's own research flagged; pure design, zero backend/token change.
       §4.3.
 - [x] 18.6  — SHIPPED 2026-07-25 (`raph agents-md`; target CLI decided = codex, which reads AGENTS.md natively). (FINALIZED 2026-07-19, owner delegated the call) AGENTS.md canonical file +
@@ -927,7 +927,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       shows preserve skill formation (Conceptual Inquiry / Gen-then-Comprehension) over
       the ones that erode it (Delegation / blind Iterative Debugging). Already in the
       mined text for most episode types; a surfacing change, not new mining. §7.5.
-- [ ] 18.14 README/handbook positioning rewrite: lead with "comprehension debt" (the
+- [x] 18.14  — SHIPPED 2026-07-25 (comprehension-debt section added; no unverifiable stats cited). README/handbook positioning rewrite: lead with "comprehension debt" (the
       literature's own term + citable industry numbers — GitClear, Faros AI, the
       Anthropic/METR skill-formation study) as the reason Raphael matters, with "fewer
       tokens" as the mechanism, not the headline; name ecosystem decision-fatigue

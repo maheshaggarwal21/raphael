@@ -371,7 +371,11 @@ function shellPage() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Raphael console</title>
 <style>
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif;
+    --color-danger: light-dark(#c0392b, #ff6b5e);
+    --color-success: light-dark(#27ae60, #4ade80);
+    --color-warn: light-dark(#d35400, #fb923c);
+    --color-quarantine: light-dark(#8e44ad, #c084fc); }
   body { margin: 1.5rem auto; max-width: 52rem; padding: 0 1rem; line-height: 1.5; }
   h1 { font-size: 1.25rem; margin-bottom: .25rem; }
   h2 { font-size: 1.05rem; margin: 1.25rem 0 .5rem; }
@@ -382,26 +386,26 @@ function shellPage() {
   .card { border: 1px solid rgba(127,127,127,.35); border-radius: 8px; padding: .8rem 1rem; margin: .6rem 0; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .6rem; }
   .kpi { font-size: 1.4rem; font-weight: 700; } .kpi small { font-size: .8rem; font-weight: 400; opacity: .7; display: block; }
-  .muted { opacity: .7; } .err { color: #c0392b; } .ok { color: #27ae60; }
+  .muted { opacity: .7; } .err { color: var(--color-danger); } .ok { color: var(--color-success); }
   .badge { display: inline-block; border-radius: 4px; padding: 0 .45em; font-size: .75rem; font-weight: 600;
     border: 1px solid rgba(127,127,127,.5); margin-right: .35rem; vertical-align: middle; }
-  .badge.critical, .badge.security { border-color: #c0392b; color: #c0392b; }
-  .badge.high { border-color: #d35400; color: #d35400; }
-  .badge.quarantined { border-color: #8e44ad; color: #8e44ad; }
+  .badge.critical, .badge.security { border-color: var(--color-danger); color: var(--color-danger); }
+  .badge.high { border-color: var(--color-warn); color: var(--color-warn); }
+  .badge.quarantined { border-color: var(--color-quarantine); color: var(--color-quarantine); }
   .row { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
   .row .title { font-weight: 600; flex: 1; min-width: 12rem; }
   .actions { display: flex; gap: .5rem; margin-top: .5rem; flex-wrap: wrap; align-items: center; }
   button.act { font: inherit; font-size: .85rem; padding: .25rem .7rem; border-radius: 6px; cursor: pointer;
     border: 1px solid rgba(127,127,127,.5); background: rgba(127,127,127,.12); color: inherit; }
-  button.act.primary { border-color: #27ae60; }
-  button.act.danger { border-color: #c0392b; }
+  button.act.primary { border-color: var(--color-success); }
+  button.act.danger { border-color: var(--color-danger); }
   button.act:disabled { opacity: .45; cursor: not-allowed; }
   input[type=text] { font: inherit; font-size: .85rem; padding: .25rem .5rem; border-radius: 6px;
     border: 1px solid rgba(127,127,127,.5); background: transparent; color: inherit; }
   pre { background: rgba(127,127,127,.12); border-radius: 6px; padding: .6rem .8rem; overflow-x: auto;
     font-size: .8rem; white-space: pre-wrap; word-break: break-word; }
   .full { border-top: 1px dashed rgba(127,127,127,.4); margin-top: .6rem; padding-top: .6rem; }
-  .confirmrow { border: 1px solid #c0392b; border-radius: 6px; padding: .5rem .7rem; margin-top: .5rem; }
+  .confirmrow { border: 1px solid var(--color-danger); border-radius: 6px; padding: .5rem .7rem; margin-top: .5rem; }
   #msg { position: sticky; top: 0; z-index: 2; }
   #msg .card { background: Canvas; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
   code { background: rgba(127,127,127,.15); padding: .1em .3em; border-radius: 4px; }

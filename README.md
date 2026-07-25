@@ -47,6 +47,36 @@ token budget exactly when they're relevant. Known mistakes stop recurring. Settl
 decisions stop being re-litigated. And the whole thing runs itself in the background,
 on the Claude subscription you already pay for.
 
+## 🧠 The deeper cost: comprehension debt
+
+Amnesia is the symptom. The thing it actually costs you has a name.
+
+When an agent writes code faster than anyone rebuilds an understanding of it, the
+code races ahead of the comprehension. The repo grows, the diffs land green, and
+the number of people who could confidently explain *why* it works quietly goes to
+zero. That gap is **comprehension debt**, and like any debt it is invisible right
+up until the day you have to pay it — usually at 2am, in a system nobody remembers
+designing.
+
+Re-explaining the same context every morning is how the debt gets serviced. It is
+also why "the agent is fast" and "the project is getting harder to change" are
+not a contradiction.
+
+Raphael attacks the debt directly. Every lesson it keeps carries **why** it exists,
+what it cost the first time, and when it does *not* apply — so the reasoning
+survives the session that produced it, and the next person (or agent) inherits the
+understanding rather than just the code.
+
+**Fewer tokens is the mechanism, not the point.** A strict recall budget is how
+Raphael can afford to do this on every session without making your bill worse. The
+point is that the knowledge stops evaporating.
+
+> **And the other tax: decision fatigue.** Every week brings a new agent, a new
+> memory tool, a new protocol to evaluate. Raphael's answer is deliberately boring
+> — *one* governed brain, with one way in, that outlives whichever CLI you happen
+> to be using this quarter. It is a place to put what you learn, not another thing
+> to keep up with.
+
 ## 📊 Raphael by the numbers
 
 Proof, not vibes — every number below is measured by the code in this repo:
