@@ -155,3 +155,40 @@ export function checkRosterAlignment() {
   }
   return mismatches;
 }
+
+// 18.10 — effort routing on lesson-match confidence.
+//
+// The idea, stated honestly: when a high-confidence lesson ALREADY answers the
+// step about to run, the model has less to work out for itself, so that step is a
+// good candidate for a cheaper pass. This returns a RECOMMENDATION plus the reason
+// — it never silently downgrades anything, because a wrong downgrade is a quality
+// regression the user did not ask for.
+//
+// Deliberately conservative: it only fires on a strong, well-evidenced match, and
+// it never touches escalation (a step that already escalated is not a candidate).
+export const EFFORT_ORDER = ['low', 'medium', 'high', 'xhigh', 'max'];
+export const ROUTE_MIN_CONFIDENCE = 7;   // out of 10 — a well-evidenced lesson
+export const ROUTE_MIN_SCORE = 6.0;      // rank() score — a real trigger hit, not an any-stack drift
+
+export function routeEffortWithLessons(base, matches = [], { escalated = false } = {}) {
+  const current = EFFORT_ORDER.includes(base) ? base : 'medium';
+  const unchanged = { effort: current, downgraded: false, why: null };
+  if (escalated) return { ...unchanged, why: 'already escalated — not a downgrade candidate' };
+
+  const strong = (matches ?? []).find(
+    (m) => (m.confidence ?? 0) >= ROUTE_MIN_CONFIDENCE && (m.score ?? 0) >= ROUTE_MIN_SCORE
+  );
+  if (!strong) return unchanged;
+
+  const idx = EFFORT_ORDER.indexOf(current);
+  if (idx <= 0) return { ...unchanged, why: 'already at the cheapest effort' };
+
+  const effort = EFFORT_ORDER[idx - 1];
+  return {
+    effort,
+    downgraded: true,
+    from: current,
+    lesson: strong.slug ?? strong.id ?? null,
+    why: `a confidence-${strong.confidence} lesson already covers this step, so ${current} -> ${effort} is unlikely to cost quality`
+  };
+}

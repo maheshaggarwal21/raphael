@@ -113,3 +113,41 @@ export function renderSkillSuggestions(result) {
   L.push('Draft one (staged, NOT installed): raph skills draft <slug>. Review before installing.');
   return L.join('\n');
 }
+
+// 18.7 — description-quality lint for SKILL.md drafts.
+//
+// A skill's `description` is its ROUTER: the host matches against it to decide
+// whether to load the skill at all. Two ways that fails, and they are opposites:
+// too GENERIC and it fires on everything (noise, wasted context on every task);
+// too NARROW and it never fires (dead weight nobody notices). Both are cheap to
+// spot deterministically, and neither shows up as an error anywhere else.
+const VAGUE_WORDS = ['helper', 'utility', 'various', 'stuff', 'things', 'general', 'misc', 'assorted'];
+
+export function lintSkillDescription(description, { name = '' } = {}) {
+  const desc = String(description ?? '').trim();
+  const issues = [];
+  const words = desc.split(/\s+/).filter(Boolean);
+
+  if (!desc) {
+    issues.push({ level: 'error', code: 'SKILL-DESC-MISSING', msg: 'no description — the host has nothing to match on, so the skill can never fire' });
+    return issues;
+  }
+  if (words.length < 6) {
+    issues.push({ level: 'warn', code: 'SKILL-DESC-THIN', msg: `only ${words.length} word(s) — too thin to route on; name the situation that should trigger it` });
+  }
+  if (words.length > 60) {
+    issues.push({ level: 'warn', code: 'SKILL-DESC-BLOATED', msg: `${words.length} words — a description this long dilutes the match and costs context on every load` });
+  }
+  const vague = VAGUE_WORDS.filter((w) => new RegExp(`\\b${w}\\b`, 'i').test(desc));
+  if (vague.length) {
+    issues.push({ level: 'warn', code: 'SKILL-DESC-VAGUE', msg: `vague wording (${vague.join(', ')}) makes it match almost any task — say what it is FOR` });
+  }
+  // A description that never names a trigger situation tends to never fire.
+  if (!/\b(use|when|for|before|after|if)\b/i.test(desc)) {
+    issues.push({ level: 'warn', code: 'SKILL-DESC-NO-TRIGGER', msg: 'names no situation ("use when…") — the host has no cue for when to load it' });
+  }
+  if (name && desc.toLowerCase().trim() === String(name).toLowerCase().replace(/-/g, ' ').trim()) {
+    issues.push({ level: 'warn', code: 'SKILL-DESC-ECHO', msg: 'the description just restates the name and adds no routing signal' });
+  }
+  return issues;
+}

@@ -901,14 +901,14 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       priority list above the milestone table in docs/v2-vision.md §8) to run 3rd,
       right after 18.1 and 18.11 — reach has compounding daily cost when delayed; the
       wrapper's first target CLI is still an open decision, not defaulted. §5.1.
-- [ ] 18.7 Skill Factory: align drafts with the open agentskills.io SKILL.md convention
+- [x] 18.7  — SHIPPED 2026-07-25 (description lint; drafts already used the SKILL.md convention). Skill Factory: align drafts with the open agentskills.io SKILL.md convention
       (portability outside Raphael) + a `raph lint` check for frontmatter descriptions
       that are too generic (fires on everything) or too narrow (never fires). §5.2/§5.4.
 - [x] ~~18.8~~ DROPPED 2026-07-19 (owner instruction) — was: route `adopt`'s PDF/DOCX/PPTX
       legs through markitdown-style extraction. Not pursued.
 - [x] 18.9  — SHIPPED 2026-07-25 (testing + performance). Theme bundle packs beyond security (e.g. testing, performance) — same
       `pack.js` pattern, opt-in, chokepoint-enforced. §5.5.
-- [ ] 18.10 Effort-routing on lesson-match confidence (a step a high-confidence lesson
+- [x] 18.10  — SHIPPED 2026-07-25 (recommendation engine; holdout measurement stays future work). Effort-routing on lesson-match confidence (a step a high-confidence lesson
       already answers is a good candidate for a cheaper model pass) + holdout-measured
       savings surfaced in `raph stats`/`report weekly` (not just budget-cap compliance).
       §3.5/§3.6.
