@@ -845,6 +845,42 @@ compaction (manual or automatic) can never lose progress.
   (26 security + 14 design), 12 agents present incl. redteam+frontend, guard --skills/
   --design in help, "Use this agent proactively when" present in shipped agents, doctor
   healthy. Owner brain: 87 active lessons (73 + the design pack).
+- PHASE 18 COMPLETE + v0.4.0 TAGGED (session 15, 2026-07-25) — autonomous run on the
+  owner's "work autonomously and complete the project". 496 -> 499 tests, 44 verbs,
+  doctor healthy; every milestone committed green at its own boundary.
+  - 18.1 cache-stable ordering: SELECTION stays rank-based, PRESENTATION is pinned by
+    lesson id — ids are ULIDs, so the same set renders byte-identically (cache hit) AND a
+    new lesson appends at the tail. Plus a pointer line for ranked-but-unfitted lessons.
+  - 18.3 `raph recall quiet|normal|eager`. FOUND A REAL BUG: injection.session_start_max /
+    per_prompt_max / session_cap_tokens are written by init but inject.js IGNORED them
+    (hardcoded constants). My first cut let them override the preset, which would have left
+    the dial dead on arrival for every existing install. The dial now OWNS those knobs; a
+    deliberate override lives under injection.overrides.*.
+  - 18.4 quarantine floor stated in-tool (src/lib/trust.js), each reason a named flag.
+  - 18.11 unverifiable-claim risk kind on BOTH reviewer screens (adopt + curator).
+  - 18.6 `raph agents-md`: the canonical AGENTS.md IS the integration (codex and others
+    read it natively) — decided against bespoke per-CLI wrappers. Refuses to clobber a
+    human-written AGENTS.md.
+  - 18.9 testing + performance packs; 18.12 slopsquatting lesson (security pack -> 27).
+  - 18.2 preference category + DECAY POLICY: a stated preference does not rot with age, it
+    dies when REVERSED — so it holds a floor (below curated) and retires via the
+    contradiction lint or an explicit retire.
+  - 18.13 the mined boundary renders as "not when: …" — digest-only, after a test showed it
+    cost the per-prompt block a lesson (3 -> 2) against its 150-token budget.
+  - 18.7 skill-description lint; 18.10 effort routing (recommends, never silently
+    downgrades); 18.5 console tokenized + light-dark; 18.14 comprehension-debt section.
+  - THREE of my own bugs caught by testing, not luck, all now regression-tested: (a) a
+    byte-identical test that called runInjection with the wrong signature and compared ""
+    to "" — vacuously passing; (b) \b inside a JS template literal is BACKSPACE, not a word
+    boundary, so the skill lint could never fire; (c) the design scanner flagged HTML
+    numeric entities as colours, and my first fix also excluded every real CSS value.
+  - REMAINING (deliberate): 19.6 / A9 per-agent outcome mining still needs its own design
+    pass (transcript evidence cannot separate ignored-because-wrong from
+    ignored-because-busy). Phase 10 self-use is calendar. Owner switch: publishing 0.4.0.
+- **NEVER put backticks inside a string passed to `node -e` / `bash -c`.** Session 15: a
+  CLAUDE.md update whose prose contained backticked command names was evaluated by bash as
+  COMMAND SUBSTITUTION and actually ran `npm publish`. It failed only because npm required
+  a 2FA one-time password. Write prose with the Write/Edit tools, never through the shell.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
