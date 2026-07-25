@@ -48,7 +48,8 @@
         "tooling",
         "api-design",
         "data",
-        "design"
+        "design",
+        "preference"
       ]
     },
     "severity": { "enum": ["critical", "high", "medium", "low"] },

@@ -72,6 +72,7 @@ export function buildIndex() {
         last_seen: d.evidence?.last_seen ?? null
       },
       injection: d.injection,
+      counter_indications: d.counter_indications ?? null,
       file: relToLessons(file),
       hash: contentHash(file)
     });

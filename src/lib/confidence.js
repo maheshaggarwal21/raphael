@@ -40,6 +40,14 @@ export function computeConfidence(lesson, { now = new Date() } = {}) {
   if (tier === 'curated') c = Math.max(c, 6);              // expert floor, resists age
   else if (tier === 'auto' || tier === 'machine') c *= 0.9; // machine-derived discount (probation)
 
+  // 18.2 DECAY POLICY for stated preferences. A preference ("this developer wants
+  // money as integer cents") does not become false by getting old the way an
+  // observation about a fast-moving library does — it becomes false when it is
+  // REVERSED. So age must not quietly retire it; the contradiction lint (16.6) and
+  // an explicit `raph retire` are the correct ways for it to die. Same reasoning as
+  // the curated floor for design lessons: a convention is not evidence.
+  if (lesson.category === 'preference') c = Math.max(c, 5);
+
   return Math.max(0, Math.min(10, Number(c.toFixed(1))));
 }
 

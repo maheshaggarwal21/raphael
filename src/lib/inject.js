@@ -52,10 +52,27 @@ export function estTokens(text) {
   return Math.ceil(String(text).length / 4);
 }
 
-export function renderLine(entry) {
+// 18.13 — surface the mined BOUNDARY ("when this does not apply") as its own
+// labeled clause rather than leaving it buried in the full body that recall never
+// shows. A corrective "what" alone invites blind application; naming the limit is
+// what lets the reader judge whether the lesson is even relevant here, which is
+// the difference between using a tool and being steered by it.
+const WHY_BUDGET_CHARS = 120;
+
+// withBoundary is ON for the session-start digest and OFF for the per-prompt
+// nudge: mid-task you want the terse reminder and every token counts against a
+// 150-token budget, while at session start there is room for the fuller picture.
+export function renderLine(entry, { withBoundary = false } = {}) {
   const obs = entry.evidence?.observations ?? 0;
   const dp = entry.evidence?.distinct_projects ?? 0;
-  return `[${entry.id}] (seen ${obs}x / ${dp} project${dp === 1 ? '' : 's'}) ${entry.injection?.headline ?? entry.title}`;
+  const head = entry.injection?.headline ?? entry.title;
+  let boundary = '';
+  const ci = withBoundary ? String(entry.counter_indications ?? '').replace(/\s+/g, ' ').trim() : '';
+  if (ci) {
+    const short = ci.length > WHY_BUDGET_CHARS ? `${ci.slice(0, WHY_BUDGET_CHARS - 1).replace(/[\s,;:—-]+$/, '')}…` : ci;
+    boundary = ` — not when: ${short}`;
+  }
+  return `[${entry.id}] (seen ${obs}x / ${dp} project${dp === 1 ? '' : 's'}) ${head}${boundary}`;
 }
 
 function safeSessionId(raw) {
@@ -115,13 +132,13 @@ function pruneSessions() {
 
 // Take ranked results until the token budget or the count cap is hit.
 // Past the session cap, only high/critical severity may still inject.
-function takeWithinBudget(ranked, budget, max, capReached) {
+function takeWithinBudget(ranked, budget, max, capReached, { withBoundary = false } = {}) {
   const picks = [];
   let used = 0;
   for (const r of ranked) {
     if (picks.length >= max) break;
     if (capReached && r.entry.severity !== 'high' && r.entry.severity !== 'critical') continue;
-    const line = renderLine(r.entry);
+    const line = renderLine(r.entry, { withBoundary });
     const cost = estTokens(line);
     if (used + cost > budget) continue;
     used += cost;
@@ -381,7 +398,7 @@ export function runInjection(event, payload = {}) {
     const ranked = rank(lessons, ctx, profile.digestThreshold).filter((r) =>
       r.reasons.some((x) => x.startsWith('stack:') || x.startsWith('any-stack'))
     );
-    picks = takeWithinBudget(ranked, DIGEST_BUDGET, profile.digestMax, capReached);
+    picks = takeWithinBudget(ranked, DIGEST_BUDGET, profile.digestMax, capReached, { withBoundary: true });
     const pullHint = `${lessons.length} lesson(s) in the brain — pull more with: raph search "<terms>" / raph show <id>`;
     // 18.1: stable presentation order (cache-friendly), then one shared pointer
     // line for anything that ranked but did not fit.

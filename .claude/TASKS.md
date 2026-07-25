@@ -872,7 +872,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       provider prompt-cache isn't invalidated by re-ranking) + pointer/retrieve for
       marginal-confidence lessons (one-line pointer instead of full body below the
       injection bar, full text pulled on demand) — §3.2/§3.3 of the vision doc.
-- [ ] 18.2 (REVISED 2026-07-19 after reading hermes-agent's actual source — see §4.1)
+- [x] 18.2  — SHIPPED 2026-07-25 (category + decay policy; mining it is the next step). (REVISED 2026-07-19 after reading hermes-agent's actual source — see §4.1)
       Developer profile layer: new `category: preference` lesson type, ATOMIC FACTS
       ONLY (never a synthesized narrative — that would cost real tokens per session),
       built only from repeatedly-confirmed patterns, through the SAME chokepoint as
@@ -922,7 +922,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
 - [x] 18.12  — SHIPPED 2026-07-25. Slopsquatting-defense lesson in the security pack: verify an AI-suggested
       package exists + has real registry history before installing; never trust a
       plausible-sounding name alone. Same `pack.js` chokepoint as the other 26. §7.4.
-- [ ] 18.13 Surface the mined "why" as its own labeled field in the injection envelope,
+- [x] 18.13  — SHIPPED 2026-07-25. Surface the mined "why" as its own labeled field in the injection envelope,
       not just the corrective "what" — nudges toward the interaction patterns research
       shows preserve skill formation (Conceptual Inquiry / Gen-then-Comprehension) over
       the ones that erode it (Delegation / blind Iterative Debugging). Already in the
