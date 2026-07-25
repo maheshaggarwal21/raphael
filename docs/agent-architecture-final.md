@@ -36,12 +36,16 @@ Nothing is built yet — this is the finalized *design*, ready to build. The bui
 >   (skill supply-chain) + `--design` (hardcoded-hex lint). **A8** — cross-model outside
 >   voice for critique on security-audit + pre-deploy, **safe form** (recipe/mission text,
 >   host-agent behavior, no new Raphael network surface).
-> - **Deferred for owner sign-off (only remaining piece):** A8's *deeper* form — Raphael's
->   own `provider.js` shelling out to a second vendor (which would add a new outbound
->   network path and require an explicit **invariant #5e** amendment). Amending a "NEVER
->   violate" security invariant + adding network egress to a different vendor is an
->   owner-level decision, not an autonomous one. **A9** (per-agent outcome mining) stays a
->   separate later track by design, as §7 says. Everything else is done.
+> - **A8-deeper: DECLINED by the owner 2026-07-20 — this question is now CLOSED.** Asked
+>   whether Raphael's own code should be allowed to call a second AI vendor directly
+>   (`provider.js` shelling out to e.g. codex), which would have required amending security
+>   invariant #5 with a new "#5e" clause. The owner's answer was **"leave it"**: Raphael's
+>   own code stays **single-vendor**. There is no invariant #5e, invariant #5 is unchanged,
+>   and the cross-model outside voice ships **only** in the safe form already built. Do not
+>   re-litigate this — it is in the decision ledger (`raph decide list`). **A9** (per-agent
+>   outcome mining) remains a separate later track by design, as §7 says.
+>
+> **Net: the finalized agent architecture is fully built. Nothing in A1–A8 is outstanding.**
 
 ---
 

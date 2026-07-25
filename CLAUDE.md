@@ -785,12 +785,25 @@ compaction (manual or automatic) can never lose progress.
     (hardcoded-hex lint, ignores :root token blocks). Live-smoked both.
   - A8: cross-model "outside voice" for critique on security-audit + pre-deploy, built in
     the SAFE form (recipe/mission TEXT = host-agent behavior, NO new Raphael network
-    surface, so no invariant change). DEFERRED for owner sign-off: A8's deeper form
-    (provider.js shelling out to a second vendor + an invariant #5e amendment) — amending a
-    "NEVER violate" invariant + adding vendor egress is owner-level, not autonomous. A9
-    (per-agent outcome mining) stays a separate later track by design.
+    surface, so no invariant change). A9 (per-agent outcome mining) stays a separate later
+    track by design.
+  - **A8-deeper DECLINED — CLOSED 2026-07-20.** I asked the owner the one open question
+    (should Raphael's OWN code be allowed to call a second AI vendor directly, which would
+    need an invariant #5 amendment adding a "#5e" clause). Owner: **"leave it."** So
+    Raphael's own code stays SINGLE-VENDOR, invariant #5 is UNCHANGED, there is no #5e, and
+    the outside voice exists only in the safe/host-executed form. Recorded in the decision
+    ledger (`raph decide list`) — do NOT re-propose this.
   This is BUILT + committed (commits 9c169fc..f3bdf3c), not a proposal. Docs (README/
   manual/marketplace/ARCHITECTURE) updated to the 12-agent roster + retired ★ markers.
+- HANDOVER DOC WRITTEN (session 14 round 9, 2026-07-20): `docs/HANDOVER.md` — the cold-start
+  orientation for whoever (AI or human) picks this project up next. Covers: what Raphael is,
+  verified current state, what rounds 1-8 built, the CLOSED decisions that must not be
+  re-litigated, what is genuinely open (15 pending candidates, Phase 18, A9, the audit punch
+  list, owner-gated switches), the owner's working style (simple language; act don't ask;
+  stop only at deploy/sign-in/spend/invariant-changes; verify against real code; no
+  AskUserQuestion tool; run builds inline), the hard rules (6 invariants, testing standard,
+  working ritual), practical mechanics, and the traps hit this session. Linked from
+  docs/README.md as the first "start here" entry.
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

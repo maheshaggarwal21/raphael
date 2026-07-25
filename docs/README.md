@@ -8,6 +8,7 @@ add **[ARCHITECTURE.md](../ARCHITECTURE.md)**.
 
 | Doc | What it gives you | Read it when… |
 |---|---|---|
+| [**HANDOVER**](HANDOVER.md) | Current state, open items, closed decisions, the owner's working style, and the traps to avoid | **an AI model (or a person) is picking this project up cold** |
 | [**README**](../README.md) | The full tour — every feature, the command atlas, the security model | you're deciding whether to install |
 | [**The Manual**](manual.md) | Every command: how, when, and why to use it, in workflow order | you've installed and want to drive |
 | [**ARCHITECTURE.md**](../ARCHITECTURE.md) | The complete design: invariants, threat model, data shapes, every subsystem | you want to know *why* it's built this way — or you're auditing it |
