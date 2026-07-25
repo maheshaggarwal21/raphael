@@ -892,7 +892,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
 - [ ] 18.5 Console (`raph web`) visual-craft pass — audit against the same "AI slop" UI
       patterns Raphael's own research flagged; pure design, zero backend/token change.
       §4.3.
-- [ ] 18.6 (FINALIZED 2026-07-19, owner delegated the call) AGENTS.md canonical file +
+- [x] 18.6  — SHIPPED 2026-07-25 (`raph agents-md`; target CLI decided = codex, which reads AGENTS.md natively). (FINALIZED 2026-07-19, owner delegated the call) AGENTS.md canonical file +
       exactly ONE thin CLI wrapper for v1 (deliberately narrow scope — building all of
       Codex/OpenCode/Gemini CLI/Cursor up front is the gold-plating failure mode
       Raphael's own adopted brain already warns against; prove one integration end-to-
