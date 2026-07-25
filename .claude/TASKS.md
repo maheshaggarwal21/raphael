@@ -1059,6 +1059,38 @@ js-yaml/ajv-only dependency discipline); canvas-design's "repeat 'meticulously c
 many times" prompt-padding trick (unmeasured prompt-superstition — borrow the aim-high
 idea, not the incantation, unless an eval shows it helps). §6 of the audit.
 
+## Phase 21 — audit remediation (PROPOSED 2026-07-26, session 16; awaits owner go)
+Source: docs/codebase-audit-2026-07-26.md — a fresh-eyes multi-agent audit of the whole
+codebase (9 independent auditors + adversarial verification; 115 findings, 59 confirmed /
+2 partial / 0 refuted on the high+medium set). The P0 list below is the confirmed
+correctness/security set; P1/P2 live in the report §8.
+- [ ] 21.1 E-LIMIT family: envelope-first parsing (provider.js), limit-safe curateStaged
+      (gate-or-rollback partial batch + exit 4 in distill/adopt), structural limit
+      detection in driver.js + eval/runner.js (never regex the model's own answer).
+- [ ] 21.2 Recall invariants made structural: hard session-dedupe filter + require a
+      keyword:/path: reason on the user-prompt path; boundary tests (obs>=5 case).
+- [ ] 21.3 fetch.js SSRF guard: block loopback/link-local/private ranges; the http-loopback
+      carve-out never applies to redirect targets; add the missing refusal tests.
+- [ ] 21.4 Atlas identity: path-hash cache key + root stored/verified in the doc (also in
+      inject.atlasDigestBlock + freshness.atlasFileLabels).
+- [ ] 21.5 Hook hot path: reorder atlas_nudged before the parse + size-cap atlasDigestBlock;
+      lazy ajv compile; stat fast-path in verifyIndex; digest throttle to a marker file.
+- [ ] 21.6 academy readState: corrupt != missing (rename .corrupt-<ts>, warn, E-ACADEMY).
+- [ ] 21.7 Activation-path parity: near-dup gate into autoApproveStaged; console adopt
+      calls curateStaged like the CLI.
+- [ ] 21.8 curator counter_indications string fix (+ fixture that carries the field).
+- [ ] 21.9 Scrub-before-truncate at the four episodes.js sites; kv-secret compound names +
+      quoted values; dec_ id exemption; table-driven SECRET_RULES tests incl. E-BASE64.
+- [ ] 21.10 guard: -z staged file lists (quoted-path evasion) + warn on unreadable blobs.
+- [ ] 21.11 Eval honesty pass: diff-based/behavioral checkers + no-agent meta-test; fix
+      S15/S31 reverse bias; print Wilson CIs; wire or remove declarative canaries.
+- [ ] 21.12 Wire 18.7 skill lint + 18.10 effort router into their commands (both currently
+      have no production caller — recorded shipped, reachable only from tests).
+- [ ] 21.13 Generated-agents byte-equality test (plugin/agents vs renderAgent).
+- [ ] 21.14 P1/P2 sweep per report §8 (CLI-drift probe, events rotation, latency_ms,
+      console nonce+static asset, shared walker + lib/args.js, NUL bytes in match.js,
+      doc-number drift, npm files whitelist).
+
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.
