@@ -258,3 +258,25 @@ test('scanStaged skips allowlisted files but still blocks the rest', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// --- scanDesignText regressions found by dogfooding on Raphael's own console ----
+
+test('an HTML numeric entity is not a colour (false positive found on the console)', () => {
+  // &#128274; matched the hex pattern and was reported as a hardcoded colour
+  assert.deepEqual(scanDesignText('.lock:after { content: "&#128274;"; }'), []);
+  assert.deepEqual(scanDesignText('<span title="x">&#9888;</span>'), []);
+});
+
+test('real CSS hex is still caught after that fix (guards the over-correction)', () => {
+  // the first fix used a (?!;) lookahead, which also excluded every real CSS
+  // value — those end in a semicolon too. This pins both halves.
+  assert.equal(scanDesignText('.btn { color: #c0392b; }').length, 1);
+  assert.equal(scanDesignText('.btn { color: #c0392b }').length, 1, 'also without the semicolon');
+  const two = scanDesignText('.a { color: #111111; }\n.b { color: #222222; }');
+  assert.equal(two.length, 2, 'one finding per line');
+});
+
+test('a token reference is clean but a token plus a stray hex still reports', () => {
+  assert.deepEqual(scanDesignText('.btn { color: var(--color-danger); }'), []);
+  assert.equal(scanDesignText(':root { --a: #fff; }\n.btn { border: 1px solid #abc; }').length, 1);
+});

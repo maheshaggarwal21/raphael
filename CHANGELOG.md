@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.4.0 — 2026-07-25
+
+Phase 18 complete. This release is about making the promises measurable: recall
+that actually pays for itself, a memory that resists poisoning, and knowledge that
+reaches beyond one CLI.
+
+### Recall
+
+- **Cache-stable injection ordering.** Re-ranking used to reshuffle an unchanged
+  lesson set on every session, quietly invalidating the provider's prompt cache.
+  Order is now pinned by lesson id — and because ids are ULIDs, which sort
+  chronologically, the same set renders byte-identically while newly-learned
+  lessons append at the tail instead of shuffling the block.
+- **A pointer line** names lessons that ranked but did not fit, so more of the
+  brain stays reachable without raising the floor spend.
+- **`raph recall quiet|normal|eager`** — a recall-assertiveness dial, deliberately
+  separate from `raph auto` so turning recall down can never weaken a safety gate.
+- **The boundary is surfaced.** Recall now shows the mined "not when …" limit for
+  lessons that carry one, so you can judge whether a lesson applies instead of
+  applying it blindly. Session-start only, to keep the mid-task nudge terse.
+
+### Trust and safety
+
+- **`unverifiable-claim`** is now a reviewer risk kind on both the adopt and
+  curator screens, closing the memory-poisoning shape where a fabricated past
+  outcome is planted to be believed and reused.
+- **The quarantine floor is stated in-tool**, at the moment something is
+  quarantined, with each reason as its own named flag rather than one opaque
+  verdict — because that is when a human decides whether to look.
+- **A slopsquatting-defense lesson** ships in the security pack: AI-suggested
+  package names are often invented, and attackers register them.
+
+### Reach
+
+- **`raph agents-md`** writes a canonical AGENTS.md, so coding CLIs that read that
+  convention from the repo root get the brain with no plugin and no glue. It
+  refuses to overwrite an AGENTS.md it did not write.
+
+### Knowledge
+
+- **Two new packs** — testing and performance — alongside security and design.
+- **`preference` lessons**, with the decay policy that was blocking them: a stated
+  preference does not rot with age, it dies when it is reversed.
+
+### Craft
+
+- **The console is token-clean.** Its colours are semantic tokens wrapped in
+  `light-dark()`, and `raph guard scan --design` now passes on this repo —
+  Raphael's own design lessons applied to Raphael's own UI.
+- **Skill-description lint** catches the two opposite routing failures:
+  descriptions too generic to mean anything, and too narrow to ever fire.
+- **Effort routing** recommends a cheaper pass when a high-confidence lesson
+  already covers the step — a recommendation with its reason, never a silent
+  downgrade.
+
+### Positioning
+
+The README now names **comprehension debt** as the real cost, with fewer tokens as
+the mechanism rather than the headline.
+
+499 tests. No new dependencies, no new network surface, all six security
+invariants unchanged.
+
 ## 0.3.0 — 2026-07-20
 
 The agent release. The roster grew, every agent became a real specialist, frontend design

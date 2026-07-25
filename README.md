@@ -10,7 +10,7 @@ back into your agent's context at the right moment. Install it once. It runs its
 
 [![npm](https://img.shields.io/npm/v/raphael-brain?color=cb3837&label=npm)](https://www.npmjs.com/package/raphael-brain)
 [![CI](https://github.com/maheshaggarwal21/raphael/actions/workflows/ci.yml/badge.svg)](https://github.com/maheshaggarwal21/raphael/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-415%20passing-brightgreen)](test/)
+[![tests](https://img.shields.io/badge/tests-499%20passing-brightgreen)](test/)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-2-blue)](package.json)
 [![license](https://img.shields.io/badge/license-MIT-black)](LICENSE)
@@ -86,8 +86,8 @@ Proof, not vibes — every number below is measured by the code in this repo:
 | **147.9× fewer tokens** | to answer "where do I look?" using the Atlas knowledge graph vs. grep-and-read — measured on this very repo: 174,324 tokens down to 1,179 across 10 real questions (per-question range 55×–385×). Zero model tokens spent to measure it. |
 | **≤ 1,200 tokens/session** | the hard cap on everything recall may inject in one session. Typical prompts cost **0** (injection requires a trigger hit). `raph why` itemizes every token. |
 | **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart before it has learned a single thing from you. And that brain is community-fed by design: contributed lessons, scrubbed and human-reviewed, ship to every install via a weekly hash-verified sync. |
-| **41 CLI verbs · 12 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
-| **415 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
+| **44 CLI verbs · 12 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
+| **499 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
 | **2 runtime dependencies** | `ajv` and `js-yaml`. That's the whole supply chain. No frameworks, no daemons, no cloud. |
 | **100% local** | the brain lives in `~/.raphael`, in its own git repo that structurally blocks pushes. Nothing leaves your machine except by your own explicit action. |
 
@@ -660,7 +660,7 @@ run through gates:
 
 ---
 
-# 📖 The command atlas — all 41 verbs
+# 📖 The command atlas — all 44 verbs
 
 Everything `raph` can do, grouped by job. Every command supports the same brain in
 `~/.raphael` (point `RAPHAEL_HOME` elsewhere to sandbox anything).
