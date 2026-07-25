@@ -1251,6 +1251,56 @@
  },
  {
   "schema": "raphael/lesson/v1",
+  "id": "les_01KYD558WCHAZ4B4Q5RZ9JEXTA",
+  "slug": "verify-a-package-exists-before-installing-it",
+  "title": "Verify an AI-suggested package is real before installing it",
+  "status": "candidate",
+  "category": "security",
+  "severity": "high",
+  "scope": {
+   "stacks": [],
+   "task_kinds": [],
+   "projects": [],
+   "agents": [
+    "security",
+    "reviewer",
+    "developer"
+   ]
+  },
+  "triggers": {
+   "keywords": [
+    "dependency",
+    "package",
+    "npm",
+    "pip",
+    "install",
+    "supply chain",
+    "hallucination",
+    "typosquat"
+   ],
+   "paths": []
+  },
+  "lesson": "Coding assistants routinely invent plausible-sounding package names that do not exist, and attackers register those exact names to catch the installs — a plausible name is not evidence a package is real. A package suggested rather than chosen is checked on its registry first: that it exists, has a publish history and a real repository, and is not a near-miss spelling of the popular one it is imitating.",
+  "evidence": {
+   "refs": [],
+   "observations": 0,
+   "distinct_projects": 0,
+   "first_seen": "2026-07-25",
+   "last_seen": "2026-07-25"
+  },
+  "provenance": {
+   "created_by": "raphael/security-pack (based on ECC Security Review)",
+   "source_kind": "imported",
+   "human_edited": false,
+   "tier": "curated"
+  },
+  "injection": {
+   "headline": "AI-suggested package names are often invented, and attackers register them — check the registry, history, and spelling before installing.",
+   "tokens": 35
+  }
+ },
+ {
+  "schema": "raphael/lesson/v1",
   "id": "les_01KXY2GTWE1SM7GE3VAP229CNC",
   "slug": "avoid-the-ai-slop-visual-defaults",
   "title": "Avoid the generic looks AI-built UI clusters around",

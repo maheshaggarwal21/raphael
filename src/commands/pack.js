@@ -11,6 +11,7 @@
 
 import { buildSecurityPack, PACK_SPECS } from '../lib/security-pack.js';
 import { buildDesignPack, DESIGN_PACK_SPECS } from '../lib/design-pack.js';
+import { buildTestingPack, TESTING_PACK_SPECS, buildPerformancePack, PERFORMANCE_PACK_SPECS } from '../lib/theme-packs.js';
 import { writeCandidate } from '../lib/candidates.js';
 
 const PACKS = {
@@ -25,6 +26,18 @@ const PACKS = {
     blurb: 'What separates shipped-quality UI from generic "AI slop" — the slop tells, the accessibility floor, token + copy discipline.',
     build: buildDesignPack,
     specs: DESIGN_PACK_SPECS
+  },
+  testing: {
+    title: 'Testing starter pack',
+    blurb: 'Why a green suite can still prove nothing — regression tests that never failed, existence assertions, untested error paths, flaky-by-construction tests.',
+    build: buildTestingPack,
+    specs: TESTING_PACK_SPECS
+  },
+  performance: {
+    title: 'Performance starter pack',
+    blurb: 'The costs that only appear on real data — N+1 queries, unbounded results, guessed hot spots, stale caches, blocking the request path.',
+    build: buildPerformancePack,
+    specs: PERFORMANCE_PACK_SPECS
   }
 };
 

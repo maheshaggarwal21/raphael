@@ -309,6 +309,17 @@ export const PACK_SPECS = [
     lesson:
       'The Supabase anon key is designed for the browser, but only when Row Level Security is enabled on every table; without RLS it exposes the entire database to anyone who reads the page. The service_role key bypasses RLS and must never appear in client code under any circumstances.',
     headline: 'A Supabase anon key without RLS exposes the whole database — enable RLS, keep service_role server-side.'
+  },
+  {
+    slug: 'verify-a-package-exists-before-installing-it',
+    title: 'Verify an AI-suggested package is real before installing it',
+    severity: 'high',
+    based_on: 'ECC Security Review',
+    agents: ['security', 'reviewer', 'developer'],
+    keywords: ['dependency', 'package', 'npm', 'pip', 'install', 'supply chain', 'hallucination', 'typosquat'],
+    lesson:
+      'Coding assistants routinely invent plausible-sounding package names that do not exist, and attackers register those exact names to catch the installs — a plausible name is not evidence a package is real. A package suggested rather than chosen is checked on its registry first: that it exists, has a publish history and a real repository, and is not a near-miss spelling of the popular one it is imitating.',
+    headline: 'AI-suggested package names are often invented, and attackers register them — check the registry, history, and spelling before installing.'
   }
 ];
 

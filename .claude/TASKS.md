@@ -906,7 +906,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       that are too generic (fires on everything) or too narrow (never fires). §5.2/§5.4.
 - [x] ~~18.8~~ DROPPED 2026-07-19 (owner instruction) — was: route `adopt`'s PDF/DOCX/PPTX
       legs through markitdown-style extraction. Not pursued.
-- [ ] 18.9 Theme bundle packs beyond security (e.g. testing, performance) — same
+- [x] 18.9  — SHIPPED 2026-07-25 (testing + performance). Theme bundle packs beyond security (e.g. testing, performance) — same
       `pack.js` pattern, opt-in, chokepoint-enforced. §5.5.
 - [ ] 18.10 Effort-routing on lesson-match confidence (a step a high-confidence lesson
       already answers is a good candidate for a cheaper model pass) + holdout-measured
@@ -919,7 +919,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       supporting evidence in the source material. Closes a named attack class (MemoryGraft-
       style memory poisoning, per the research literature) the reviewer screen doesn't
       check today — schema/prompt change to an existing gate, no new pipeline. §7.3.
-- [ ] 18.12 Slopsquatting-defense lesson in the security pack: verify an AI-suggested
+- [x] 18.12  — SHIPPED 2026-07-25. Slopsquatting-defense lesson in the security pack: verify an AI-suggested
       package exists + has real registry history before installing; never trust a
       plausible-sounding name alone. Same `pack.js` chokepoint as the other 26. §7.4.
 - [ ] 18.13 Surface the mined "why" as its own labeled field in the injection envelope,

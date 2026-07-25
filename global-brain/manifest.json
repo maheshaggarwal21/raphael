@@ -1,8 +1,8 @@
 {
  "schema": "raphael/global-brain/v1",
- "version": 2,
- "generated": "2026-07-19",
- "count": 40,
+ "version": 3,
+ "generated": "2026-07-25",
+ "count": 41,
  "lessons": [
   {
    "slug": "secrets-belong-in-env-vars",
@@ -185,6 +185,13 @@
    "category": "security",
    "severity": "critical",
    "sha256": "51130a1cd6def3c85b7bd846a191d82523798609f036f0ff66c30355c9ce586a"
+  },
+  {
+   "slug": "verify-a-package-exists-before-installing-it",
+   "id": "les_01KYD558WCHAZ4B4Q5RZ9JEXTA",
+   "category": "security",
+   "severity": "high",
+   "sha256": "759821bce4e4968ae5d4065bbc1a90720dfdcda92eeccb13543f87d6f2ea64be"
   },
   {
    "slug": "avoid-the-ai-slop-visual-defaults",
