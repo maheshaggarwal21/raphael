@@ -912,7 +912,7 @@ yet check for, closeable with a schema/prompt change to an existing gate.
       already answers is a good candidate for a cheaper model pass) + holdout-measured
       savings surfaced in `raph stats`/`report weekly` (not just budget-cap compliance).
       §3.5/§3.6.
-- [ ] 18.11 (BEST evidence-to-effort ratio — PULLED FORWARD, runs 2nd in build order) Add an
+- [x] 18.11  — SHIPPED 2026-07-25. (BEST evidence-to-effort ratio — PULLED FORWARD, runs 2nd in build order) Add an
       `unverifiable-claim` risk kind to the `REVIEW_TOOL` schema + `REVIEW_SYSTEM` prompt
       in src/lib/adopt.js, and the same instruction in curator.js's reviewer prompt: flag
       candidates asserting an outcome ("this always fixes X," "guarantees Y") with no
