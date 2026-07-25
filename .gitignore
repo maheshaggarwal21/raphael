@@ -1,3 +1,7 @@
 node_modules/
 *.tmp
 .DS_Store
+
+# Owner scratch files (not part of the project)
+Loop Engineering.md
+posh_trainer_website_analysis.md
