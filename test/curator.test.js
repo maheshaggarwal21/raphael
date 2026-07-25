@@ -28,20 +28,32 @@ function cleanup(home) {
 
 const FULL = { mode: 'autopilot', auto_approve: { level: 'full' } };
 
+// Each generated candidate must be a GENUINELY different lesson, not the same
+// sentence with a different number — the curator now holds near-duplicates, so
+// fixtures that restate one another would (correctly) be held instead of activated.
+const TOPICS = [
+  { slug: 'retry-backoff', title: 'Retry storms without backoff amplify an outage', body: 'Repeated retries fired without exponential backoff multiply load against an already-failing dependency and turn a brief blip into a sustained outage.' },
+  { slug: 'utc-timestamps', title: 'Store timestamps in UTC and convert only at the edge', body: 'Persisting local times makes every comparison depend on the writer machine, so daylight-saving shifts silently reorder records; UTC in storage keeps ordering stable.' },
+  { slug: 'bounded-queues', title: 'Give background queues a bounded size', body: 'An unbounded work queue absorbs a producer spike until memory runs out and the process dies, losing everything queued; a bounded queue sheds load in a way you can observe.' },
+  { slug: 'idempotent-migrations', title: 'Make data migrations idempotent', body: 'A migration that cannot be re-run safely blocks recovery, because a partial failure leaves no path forward except manual repair of half-migrated rows.' },
+  { slug: 'pin-ci-images', title: 'Pin CI base images to a digest', body: 'A floating image tag lets the build environment change underneath a green pipeline, so a build that passed yesterday fails today for reasons absent from the diff.' },
+  { slug: 'close-file-handles', title: 'Close file handles on the error path too', body: 'A handle leaked when an exception skips the close call exhausts the descriptor limit under sustained failure, which then breaks unrelated parts of the process.' }
+];
 let n = 0;
 function candData(overrides = {}) {
+  const topic = TOPICS[n % TOPICS.length];
   n++;
   return {
     schema: 'raphael/lesson/v1',
     id: lessonId(),
-    slug: `cur-test-lesson-${n}`,
-    title: `Curator test lesson number ${n} stays unique`,
+    slug: `cur-${topic.slug}-${n}`,
+    title: `${topic.title} (case ${n})`,
     status: 'candidate',
     category: 'reliability',
     severity: 'medium',
     scope: { stacks: ['node'], task_kinds: [], projects: [], agents: [] },
     triggers: { keywords: [`curtest${n}`], paths: [] },
-    lesson: `Synthetic but valid lesson body number ${n}: repeated retries without backoff amplify outages instead of recovering from them.`,
+    lesson: topic.body,
     evidence: {
       refs: [], observations: 1, distinct_projects: 1,
       source_mix: { mined: 1 }, first_seen: '2026-07-18', last_seen: '2026-07-18'
@@ -265,6 +277,54 @@ test('sweepQuarantine tombstones only items older than 30 days', async () => {
     assert.match(memory, /quarantine-expired/);
     const events = readEvents();
     assert.equal(events.filter((e) => e.event === 'quarantine-expired').length, 1);
+  } finally {
+    cleanup(home);
+  }
+});
+
+// --- near-duplicate gate on the UNATTENDED path -------------------------------
+// This is the path the real duplicate slipped through: autopilot activates with no
+// human watching, so a re-worded restatement of an existing lesson must be HELD.
+
+test('curator HOLDS a re-worded duplicate of an already-active lesson (never auto-activates it)', async () => {
+  const home = sandbox();
+  try {
+    const first = stage({
+      slug: 'engines-node-floor-is-a-minimum',
+      title: 'Treat an engines.node floor as a minimum, not a pin',
+      lesson: 'A package.json engines.node range like >=18 is a minimum floor, not a pin: it still allows current Node, so an end-of-life floor is a nudge to raise the minimum rather than a hard failure.'
+    });
+    const r1 = await curateStaged([first], { origin: 'mined', config: FULL, project: 'projX', callModel: fakeModel() });
+    assert.equal(r1.activated.length, 1, 'the first one activates normally');
+
+    // same rule, different words and slug — exactly what the trigram dedupe misses
+    const twin = stage({
+      slug: 'open-floor-treated-as-hard-eol-pin',
+      title: 'Open floor version constraint treated as hard EOL pin',
+      lesson: 'A version constraint like engines.node >=18 declares a minimum floor, not a pinned release. Flagging >=18 as a failure because 18 is EOL overlooks that the constraint still allows supported versions above 18.'
+    });
+    const model = fakeModel();
+    const r2 = await curateStaged([twin], { origin: 'mined', config: FULL, project: 'projX', callModel: model });
+
+    assert.equal(r2.activated.length, 0, 'the duplicate must NOT be machine-activated');
+    assert.equal(r2.skipped.length, 1);
+    assert.match(r2.skipped[0].why, /near-duplicate/);
+    assert.equal(r2.skipped[0].duplicates[0].slug, 'engines-node-floor-is-a-minimum');
+    // held BEFORE the reviewer call — a duplicate should not even cost a model round-trip
+    assert.equal(model.calls.length, 0, 'no reviewer tokens spent on a known duplicate');
+    // and it survives as a candidate for a human to judge, not silently deleted
+    assert.equal(existsSync(twin.path), true, 'the held candidate stays on disk');
+  } finally {
+    cleanup(home);
+  }
+});
+
+test('curator still activates a genuinely distinct lesson alongside an existing one', async () => {
+  const home = sandbox();
+  try {
+    await curateStaged([stage()], { origin: 'mined', config: FULL, project: 'projX', callModel: fakeModel() });
+    const res = await curateStaged([stage()], { origin: 'mined', config: FULL, project: 'projX', callModel: fakeModel() });
+    assert.equal(res.activated.length, 1, 'a different lesson must not be held');
   } finally {
     cleanup(home);
   }

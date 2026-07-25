@@ -17,6 +17,7 @@ import { atomicWrite } from './files.js';
 import { logEvent } from './events.js';
 import { commitBrain } from './braingit.js';
 import { buildIndex } from './compile.js';
+import { nearDuplicates } from './similarity.js';
 import { p } from './paths.js';
 
 function activeSlugExists(slug) {
@@ -63,11 +64,40 @@ function findActiveByRef(ref) {
   return null;
 }
 
+// Every ACTIVE lesson as { slug, title, text } for near-duplicate shortlisting.
+// Read once per approveRefs() call, not per candidate.
+export function activeCorpus() {
+  const root = p.lessons();
+  const out = [];
+  if (!existsSync(root)) return out;
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.name.endsWith('.md')) {
+        try {
+          const { data } = parseLessonFile(readFileSync(full, 'utf8'));
+          if (data.status !== 'active') continue;
+          out.push({ slug: data.slug, title: data.title, text: `${data.title}\n${data.lesson}` });
+        } catch {
+          continue;
+        }
+      }
+    }
+  }
+  return out;
+}
+
 // Approve a set of refs. Returns { results, approved, failed } where every
 // result is { ref, outcome, message, slug?, target? } and outcome is one of:
 // approved | already-active | not-found | refused-batch | refused-unconfirmed
-// | slug-collision | invalid. "already-active" is a no-op, not a failure.
-export function approveRefs(refs, { confirmed = false } = {}) {
+// | slug-collision | near-duplicate | invalid. "already-active" is a no-op, not a failure.
+//
+// dupOk skips the near-duplicate gate (the caller has looked and judged them distinct).
+export function approveRefs(refs, { confirmed = false, dupOk = false } = {}) {
+  const corpus = dupOk ? [] : activeCorpus();
   const items = listCandidates();
   const batch = refs.length > 1;
   const results = [];
@@ -105,6 +135,27 @@ export function approveRefs(refs, { confirmed = false } = {}) {
       continue;
     }
 
+    // Near-duplicate gate. A matching SLUG is caught above; this catches the same
+    // RULE under a different slug, which is what actually gets past the distill-time
+    // dedupe (that one compares wording, and a re-worded duplicate scores low).
+    // The corpus grows as we go, so two duplicates inside ONE batch are caught too.
+    if (!dupOk) {
+      const dups = nearDuplicates(`${data.title}\n${data.lesson}`, corpus);
+      if (dups.length) {
+        const detail = dups
+          .map((d) => `      "${d.slug}" (${d.signal} overlap ${d.score.toFixed(2)})`)
+          .join('\n');
+        results.push({
+          ref,
+          outcome: 'near-duplicate',
+          slug: data.slug,
+          duplicates: dups,
+          message: `HELD "${ref}" — "${data.slug}" looks like it already exists:\n${detail}\n      Read both; if they really are different rules, re-run with --dup-ok. If not, reject this one.`
+        });
+        continue;
+      }
+    }
+
     // validate-on-write, always: approval is a write path into the brain
     const content = serializeLessonFile(data, item.body);
     const check = validateLesson(content);
@@ -119,6 +170,8 @@ export function approveRefs(refs, { confirmed = false } = {}) {
     rmSync(item.file, { force: true });
     logEvent({ event: 'approved', id: data.id, slug: data.slug, category: data.category, from: item.quarantined ? 'quarantine' : 'candidates' });
     approved++;
+    // it is active now, so the rest of this batch is checked against it too
+    corpus.push({ slug: data.slug, title: data.title, text: `${data.title}\n${data.lesson}` });
     results.push({ ref, outcome: 'approved', slug: data.slug, target, message: `APPROVED  ${data.slug} -> ${target}` });
   }
 

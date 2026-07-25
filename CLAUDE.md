@@ -804,6 +804,32 @@ compaction (manual or automatic) can never lose progress.
   AskUserQuestion tool; run builds inline), the hard rules (6 invariants, testing standard,
   working ritual), practical mechanics, and the traps hit this session. Linked from
   docs/README.md as the first "start here" entry.
+- NEAR-DUPLICATE GATE SHIPPED (session 14 round 10, 2026-07-20, 452/452): closes the
+  long-noted "trigram dedupe gap" for real, after a re-worded duplicate reached the ACTIVE
+  brain and had to be retired by hand. MEASURED FIRST, then designed: the escaped pair
+  scored trigram 0.295 (threshold 0.6 — so the existing dedupe was working as designed,
+  it just measures WORDING); content-word overlap scored the same pair 0.164 while the
+  highest overlap between two genuinely-distinct lessons in the brain was 0.127. That
+  margin is real but NARROW, so the feature is deliberately a recall-tuned SHORTLIST for
+  human judgment, NOT a classifier — stated in the code comments so nobody later mistakes
+  it for one. (Embeddings stay rejected; no new deps.)
+  - similarity.js: `contentWords` (stopword-stripped), `wordOverlap`, `nearDuplicates`
+    (either signal fires: word >= 0.12 OR trigram >= 0.45; returns ranked hits annotated
+    with both scores + which signal fired, so the message can explain itself).
+  - THE REAL HOLE was never distill — it was that nothing checked a candidate against the
+    ACTIVE brain at activation. review.js had `activeSlugExists()` (identical slug only).
+    Added `activeCorpus()` + a gate in `approveRefs()` -> outcome `near-duplicate`, HELD
+    not dropped (stays a candidate to judge), overridable with `raph approve --dup-ok`.
+  - curator.js (THE AUTOPILOT PATH, and how the real duplicate actually got in — it had
+    NO duplicate check at all, only an exact-filename check) now runs the same gate BEFORE
+    the reviewer call, so a known duplicate never machine-activates AND never costs a
+    reviewer round-trip. Held candidates survive on disk for a human.
+  - Both gates grow their corpus as they activate, so two duplicates in ONE batch/run are
+    caught (the case I had to catch by hand this session).
+  - Tests: both regressions PROVEN red-without/green-with by disabling each gate. Also
+    fixed a latent test-fixture bug this surfaced — curator fixtures generated the SAME
+    sentence with an incrementing number, so the gate correctly flagged them; they are now
+    6 genuinely-distinct topics (a true positive, not a false alarm).
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions

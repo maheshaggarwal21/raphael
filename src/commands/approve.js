@@ -5,13 +5,14 @@ import { approveRefs } from '../lib/review.js';
 
 export default async function approve(args) {
   const confirmed = args.includes('--confirmed');
+  const dupOk = args.includes('--dup-ok');
   const refs = args.filter((a) => !a.startsWith('--'));
   if (refs.length === 0) {
-    console.error('raph: usage: raph approve <n|slug|id...> [--confirmed]');
+    console.error('raph: usage: raph approve <n|slug|id...> [--confirmed] [--dup-ok]');
     return 1;
   }
 
-  const { results, failed } = approveRefs(refs, { confirmed });
+  const { results, failed } = approveRefs(refs, { confirmed, dupOk });
   for (const r of results) {
     if (r.outcome === 'approved') {
       console.log(r.message);
@@ -21,6 +22,10 @@ export default async function approve(args) {
       console.error(`raph: ${r.message}:`);
       console.error(`        raph show ${r.ref}`);
       console.error(`        raph approve ${r.ref} --confirmed`);
+    } else if (r.outcome === 'near-duplicate') {
+      console.error(`raph: ${r.message}`);
+      console.error(`        raph show ${r.ref}`);
+      for (const d of r.duplicates) console.error(`        raph show ${d.slug}`);
     } else {
       console.error(`raph: ${r.message}`);
     }

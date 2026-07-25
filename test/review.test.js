@@ -6,7 +6,7 @@ import path from 'node:path';
 import approve from '../src/commands/approve.js';
 import reject from '../src/commands/reject.js';
 import retire from '../src/commands/retire.js';
-import { retireRefs } from '../src/lib/review.js';
+import { retireRefs, approveRefs } from '../src/lib/review.js';
 import { listCandidates, resolveRef, needsConfirmation } from '../src/lib/queue.js';
 import { writeCandidate } from '../src/lib/candidates.js';
 import { validateLesson } from '../src/lib/validate.js';
@@ -271,5 +271,101 @@ test('approved lessons keep their body and survive a parse roundtrip', async () 
     const file = activeLessons()[0];
     const { body } = parseLessonFile(readFileSync(file, 'utf8'));
     assert.ok(body.includes('Hand-written context worth keeping.'));
+  });
+});
+
+// --- near-duplicate gate at approve time --------------------------------------
+// The hole this closes: activeSlugExists() catches an identical SLUG, but a
+// re-worded duplicate under a DIFFERENT slug used to sail straight through.
+
+test('approve HOLDS a re-worded duplicate of an already-active lesson', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData({
+      slug: 'engines-node-floor-is-a-minimum',
+      title: 'Treat an engines.node floor as a minimum, not a pin',
+      lesson: 'A package.json engines.node range like >=18 is a minimum floor, not a pin: it still allows current Node, so an end-of-life floor is a nudge to raise the minimum, not a hard failure. Only a pinned range is genuinely stuck on an EOL major.'
+    }));
+    assert.equal(await approve(['engines-node-floor-is-a-minimum']), 0);
+
+    // same rule, completely different wording + slug
+    writeCandidate(candidateData({
+      slug: 'open-floor-treated-as-hard-eol-pin',
+      title: 'Open floor version constraint treated as hard EOL pin',
+      lesson: 'A version constraint like engines.node >=18 declares a minimum floor, not a pinned release. Flagging >=18 as a failure because 18 is EOL overlooks that the constraint allows supported versions above 18, so an EOL floor is not itself a failure.'
+    }));
+    const { results, approved } = approveRefs(['open-floor-treated-as-hard-eol-pin']);
+    assert.equal(approved, 0, 'the duplicate must not be activated');
+    assert.equal(results[0].outcome, 'near-duplicate');
+    assert.match(results[0].message, /looks like it already exists/);
+    assert.equal(results[0].duplicates[0].slug, 'engines-node-floor-is-a-minimum');
+    // it stays in the queue for a decision rather than being silently dropped
+    assert.equal(listCandidates().some((c) => c.data.slug === 'open-floor-treated-as-hard-eol-pin'), true);
+  });
+});
+
+test('--dup-ok overrides the gate when the two really are different rules', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData({
+      slug: 'engines-node-floor-is-a-minimum',
+      title: 'Treat an engines.node floor as a minimum, not a pin',
+      lesson: 'A package.json engines.node range like >=18 is a minimum floor, not a pin: it still allows current Node, so an end-of-life floor is a nudge to raise the minimum, not a hard failure.'
+    }));
+    await approve(['engines-node-floor-is-a-minimum']);
+    writeCandidate(candidateData({
+      slug: 'open-floor-treated-as-hard-eol-pin',
+      title: 'Open floor version constraint treated as hard EOL pin',
+      lesson: 'A version constraint like engines.node >=18 declares a minimum floor, not a pinned release. Flagging >=18 as a failure because 18 is EOL overlooks that the constraint allows supported versions above 18.'
+    }));
+    const { approved, results } = approveRefs(['open-floor-treated-as-hard-eol-pin'], { dupOk: true });
+    assert.equal(approved, 1, 'explicit --dup-ok must let it through');
+    assert.equal(results[0].outcome, 'approved');
+  });
+});
+
+test('the gate also catches two duplicates inside ONE batch', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData({
+      slug: 'read-before-write-a',
+      title: 'Stateful file tools require read before write',
+      lesson: 'Stateful file manipulation tools enforce read-before-write ordering; a write attempted without a prior read fails because the tool has no internal state for the file yet.'
+    }));
+    writeCandidate(candidateData({
+      slug: 'read-before-write-b',
+      title: 'File write requires a prior read operation',
+      lesson: 'File manipulation tools enforce a precondition that a file must be read before it can be written; when a write fails for that reason, inserting a read before the write satisfies the required tool state.'
+    }));
+    const { results, approved } = approveRefs(['read-before-write-a', 'read-before-write-b']);
+    assert.equal(approved, 1, 'the first is approved, its twin is held');
+    assert.equal(results[0].outcome, 'approved');
+    assert.equal(results[1].outcome, 'near-duplicate');
+    assert.equal(results[1].duplicates[0].slug, 'read-before-write-a');
+  });
+});
+
+test('the gate does not block a genuinely new lesson (no false alarm)', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData({
+      slug: 'engines-node-floor-is-a-minimum',
+      title: 'Treat an engines.node floor as a minimum, not a pin',
+      lesson: 'A package.json engines.node range like >=18 is a minimum floor, not a pin, so an end-of-life floor is a nudge rather than a hard failure.'
+    }));
+    await approve(['engines-node-floor-is-a-minimum']);
+    writeCandidate(candidateData({
+      slug: 'reserve-space-for-async-images',
+      title: 'Reserve space for async content to avoid layout shift',
+      lesson: 'Images without explicit dimensions shove the page around as they arrive, which mis-aims clicks and shows up as cumulative layout shift; reserving the box up front keeps the layout stable.'
+    }));
+    const { approved, results } = approveRefs(['reserve-space-for-async-images']);
+    assert.equal(approved, 1, 'an unrelated lesson must not be held');
+    assert.equal(results[0].outcome, 'approved');
+  });
+});
+
+test('the gate is skipped cleanly on a brain with no active lessons yet (first-run edge)', async () => {
+  await withSandbox(async () => {
+    writeCandidate(candidateData({ slug: 'first-ever-lesson' }));
+    const { approved, results } = approveRefs(['first-ever-lesson']);
+    assert.equal(approved, 1);
+    assert.equal(results[0].outcome, 'approved');
   });
 });

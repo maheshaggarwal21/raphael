@@ -33,6 +33,8 @@ import { buildIndex } from './compile.js';
 import { getMode } from './config.js';
 import { dialLevel, dialCaps, countAutoTier, autoApproveStaged } from './autoapprove.js';
 import { REVIEW_TOOL } from './adopt.js';
+import { activeCorpus } from './review.js';
+import { nearDuplicates } from './similarity.js';
 import { runChokepointCanaries } from '../eval/canaries.js';
 import { p } from './paths.js';
 
@@ -113,6 +115,12 @@ export async function curateStaged(staged, {
   let machineCount = countAutoTier(); // auto + machine share the cap
   const rollback = []; // { target, originalPath, originalContent, record }
 
+  // Near-duplicate corpus. The machine must never auto-activate a lesson that
+  // restates one the brain already holds — a duplicate silently costs injection
+  // budget on every future session, and unattended activation has no human to
+  // notice. Grows as we activate, so two duplicates in one run are caught too.
+  const corpus = activeCorpus();
+
   for (const item of staged) {
     let parsed;
     let raw;
@@ -132,6 +140,15 @@ export async function curateStaged(staged, {
     }
     if (machineCount >= cap) {
       result.skipped.push({ slug: data.slug, why: `machine-tier cap reached (${cap}) — raise auto_approve.cap or review manually` });
+      continue;
+    }
+
+    // held, not dropped: it stays a candidate so a human can compare and decide
+    const dups = nearDuplicates(`${data.title}\n${data.lesson}`, corpus);
+    if (dups.length) {
+      const why = `near-duplicate of ${dups.map((d) => `"${d.slug}" (${d.signal} ${d.score.toFixed(2)})`).join(', ')} — held for human review`;
+      result.skipped.push({ slug: data.slug, why, duplicates: dups });
+      log(`  [held] ${data.slug} — ${why}`);
       continue;
     }
 
@@ -168,6 +185,8 @@ export async function curateStaged(staged, {
     atomicWrite(target, content);
     rmSync(item.path, { force: true });
     machineCount++;
+    // now active — the rest of this run is checked against it too
+    corpus.push({ slug: activated.slug, title: activated.title, text: `${activated.title}\n${activated.lesson}` });
     rollback.push({
       target,
       originalPath: item.path,
