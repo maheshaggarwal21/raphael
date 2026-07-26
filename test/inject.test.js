@@ -5,7 +5,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
-import { runInjection, loadSessionState, saveSessionState, PREAMBLE, estTokens, atlasDigestBlock, stableOrder, pointerLine } from '../src/lib/inject.js';
+import { runInjection, safeInject, loadSessionState, saveSessionState, PREAMBLE, estTokens, atlasDigestBlock, stableOrder, pointerLine, latencyHealth, LATENCY_BUDGET_MS } from '../src/lib/inject.js';
+import { readEvents } from '../src/lib/events.js';
 import { setInjectionEnabled } from '../src/lib/config.js';
 import { writeActiveLesson } from './helpers.js';
 import { recordDecision } from '../src/lib/decisions.js';
@@ -418,5 +419,55 @@ test('session-start renders byte-identically for an unchanged brain (the cache p
     assert.deepEqual(ids, [...ids].sort(), 'lesson lines must be in stable ascending id order');
     // different sessions, same brain -> identical bytes (a cache hit, not a miss)
     assert.equal(first, second, 'an unchanged brain must render the same bytes every session');
+  });
+});
+
+// ARCHITECTURE §4 promised latency_ms on every injection event AND a self-disable
+// past the 150ms p95 budget. Neither existed — nothing in src measured its own
+// latency — so a reader doing a trust assessment believed in a protection that
+// was not there (audit 2026-07-26).
+test('safeInject records the latency it promised, and only when it produced output', async () => {
+  await withSandbox(async (dir, proj) => {
+    const { data } = writeActiveLesson();
+
+    // a fire that injects nothing writes no telemetry either
+    safeInject('user-prompt', { session_id: 'lat-0', cwd: proj, prompt: 'nothing relevant at all' });
+    const quiet = readEvents().filter((e) => e.event === 'inject-latency');
+    assert.equal(quiet.length, 0, 'a no-op hook stays a no-op on disk');
+
+    const out = safeInject('user-prompt', { session_id: 'lat-1', cwd: proj, prompt: 'the stripe webhook keeps failing' });
+    assert.ok(out.text.includes(data.injection.headline));
+
+    const events = readEvents().filter((e) => e.event === 'inject-latency');
+    assert.equal(events.length, 1, 'one measurement per productive fire');
+    assert.equal(typeof events[0].latency_ms, 'number');
+    assert.ok(events[0].latency_ms >= 0 && events[0].latency_ms < 60000, `implausible latency: ${events[0].latency_ms}`);
+    assert.equal(events[0].hook, 'user-prompt');
+  });
+});
+
+test('latencyHealth stays silent until it has evidence, then reports honestly', async () => {
+  await withSandbox(async () => {
+    // no samples: no verdict (a handful of slow fires is not a broken install)
+    assert.deepEqual(latencyHealth([]), { samples: 0, streak: 0, tripped: false, p95: null });
+
+    const fast = Array.from({ length: 30 }, () => ({ event: 'inject-latency', ts: new Date().toISOString(), latency_ms: 40 }));
+    const healthy = latencyHealth(fast);
+    assert.equal(healthy.tripped, false);
+    assert.equal(healthy.p95, 40);
+
+    // a few slow fires among fast ones must NOT trip it
+    const mixed = [...fast, { event: 'inject-latency', ts: new Date().toISOString(), latency_ms: 900 }];
+    assert.equal(latencyHealth(mixed).tripped, false, 'one slow fire is noise, not a broken install');
+
+    // a long unbroken run of over-budget fires does
+    const slow = Array.from({ length: 25 }, () => ({ event: 'inject-latency', ts: new Date().toISOString(), latency_ms: 800 }));
+    const broken = latencyHealth([...fast, ...slow]);
+    assert.equal(broken.tripped, true);
+    assert.ok(broken.streak >= 20);
+    assert.ok(broken.p95 > LATENCY_BUDGET_MS);
+
+    // and a recovery clears it
+    assert.equal(latencyHealth([...slow, ...fast]).tripped, false, 'recovering resets the streak');
   });
 });

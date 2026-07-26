@@ -25,7 +25,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig, getMode, hasConsent } from './config.js';
-import { readEvents, logEvent } from './events.js';
+import { readEvents, logEvent, rotateEventsIfLarge } from './events.js';
 import { readActiveLessons, retireCandidates } from './freshness.js';
 import { retireRefs } from './review.js';
 import { sweepQuarantine } from './curator.js';
@@ -234,6 +234,15 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
         summary.errors.push(`guard: ${err.message}`);
       }
     }
+
+    // 6d. event-log rotation. The append-only trail is the audit record and
+    // stays append-only, but it had no read story: every stats/why/report/digest
+    // call parsed the WHOLE file, so the cost grew with how much the product had
+    // been used (audit 2026-07-26). Rolling it here keeps the hot file small.
+    try {
+      const rot = rotateEventsIfLarge();
+      if (rot.rotated) log('  [events] rotated the event log (older history kept in .1-.4)');
+    } catch (err) { summary.errors.push(`events: ${err.message}`); }
 
     // 7. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }

@@ -335,7 +335,7 @@ export function weeklyDigestBlock({ now = Date.now() } = {}) {
     // read. The events scan happens only when a digest is actually due.
     const lastShown = readDigestMarker();
     if (now - lastShown < DIGEST_INTERVAL_MS) return '';
-    const events = readEvents();
+    const events = readEvents({ sinceDays: 8 }); // the window is 7 days; 8 covers the boundary
     const since = Math.max(lastShown, now - DIGEST_INTERVAL_MS);
     const inWindow = events.filter((e) => (Date.parse(e.ts ?? 0) || 0) >= since);
 
@@ -555,10 +555,49 @@ export function runInjection(event, payload = {}) {
 }
 
 // Hooks must NEVER break the user's session: any failure means inject nothing.
+// ARCHITECTURE §4 promised BOTH a latency_ms on every injection event and a
+// self-disable if the 150ms p95 budget were "consistently exceeded". Neither
+// existed: nothing in src measured its own latency, so a reader doing a trust
+// assessment believed in a protection that was not there, and the real cold path
+// (~390ms before 21.5) was exactly the condition it was supposed to catch
+// (audit 2026-07-26). Both are real now — measured here, at the process
+// boundary, which is the number a user actually waits for.
+export const LATENCY_BUDGET_MS = 150;
+const LATENCY_TRIP_STREAK = 20; // consecutive over-budget fires before backing off
+
 export function safeInject(event, payload) {
+  const started = process.hrtime.bigint();
   try {
-    return runInjection(event, payload);
+    const result = runInjection(event, payload);
+    try {
+      const ms = Number(process.hrtime.bigint() - started) / 1e6;
+      recordLatency(event, ms, result);
+    } catch { /* telemetry must never affect the answer */ }
+    return result;
   } catch {
     return { text: '', injected: [], tokens: 0 };
   }
+}
+
+// One event per fire that produced output, carrying the measured cost. Kept out
+// of the empty-output path so a no-op hook stays a no-op on disk too.
+function recordLatency(event, ms, result) {
+  if (!result?.text) return;
+  logEvent({ event: 'inject-latency', hook: event, latency_ms: Math.round(ms), tokens: result.tokens ?? 0 });
+}
+
+// The self-disable, stated honestly: recall backs off only after a LONG run of
+// consecutive over-budget fires, and says so in the config rather than going
+// quiet. It is a circuit breaker for a broken install, not a tuning knob.
+export function latencyHealth(events = readEvents({ sinceDays: 7 })) {
+  const samples = events.filter((e) => e.event === 'inject-latency' && Number.isFinite(e.latency_ms));
+  if (samples.length < LATENCY_TRIP_STREAK) return { samples: samples.length, streak: 0, tripped: false, p95: null };
+  const sorted = samples.map((e) => e.latency_ms).sort((a, b) => a - b);
+  const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+  let streak = 0;
+  for (let i = samples.length - 1; i >= 0; i--) {
+    if (samples[i].latency_ms > LATENCY_BUDGET_MS) streak++;
+    else break;
+  }
+  return { samples: samples.length, streak, p95, tripped: streak >= LATENCY_TRIP_STREAK };
 }
