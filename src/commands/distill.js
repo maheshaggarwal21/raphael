@@ -100,8 +100,14 @@ export default async function distill(args) {
   const freshlyStaged = results
     .filter((r) => r.outcome === 'staged')
     .map((r) => ({ path: r.path, project: episodes.find((e) => e.episode_id === r.episode_id)?.project }));
+  // A subscription/rate limit stops the run; the rest stay unledgered and retry.
+  // Checked BEFORE curation: firing reviewer calls at an exhausted subscription
+  // just burns the retry on a call that cannot succeed.
+  const limited = results.find((r) => r.limit);
+  let curatorLimit = null;
+
   let autoActivated = 0;
-  if (freshlyStaged.length > 0) {
+  if (freshlyStaged.length > 0 && !limited) {
     const byProject = new Map();
     for (const s of freshlyStaged) {
       const key = s.project ?? 'unknown';
@@ -114,17 +120,21 @@ export default async function distill(args) {
       const auto = await curateStaged(items, { origin: 'mined', config: cfg, project, callModel: provider.callModel, log: (s) => console.log(s) });
       autoActivated += auto.activated.length;
       for (const sk of auto.skipped) console.log(`  [held] ${sk.slug} — ${sk.why}`);
+      if (auto.limited) { curatorLimit = auto.limit; break; } // stop curating other projects too
     }
   }
   const held = staged - autoActivated;
   if (autoActivated > 0) console.log(`AUTO   ${autoActivated} lesson(s) activated into the auto tier (raph auto)`);
   if (held > 0) console.log(`STAGED ${held} candidate(s) await review — nothing else activates without approval`);
 
-  // A subscription/rate limit stops the run; the rest stay unledgered and retry.
-  const limited = results.find((r) => r.limit);
   if (limited) {
     console.error(`raph: STOPPED — ${limited.detail}`);
     console.error('      undistilled episodes were left untouched; just run "raph distill" again after it resets');
+    return 4;
+  }
+  if (curatorLimit) {
+    console.error(`raph: STOPPED during curation — ${curatorLimit.message}`);
+    console.error('      activated lessons passed the canary gate; the rest stay candidates — run "raph distill" again after it resets');
     return 4;
   }
 

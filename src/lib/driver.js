@@ -20,7 +20,7 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
-import { claudeBinary, isLimitMessage, parseResetInfo } from './provider.js';
+import { claudeBinary, detectLimit, isSuccessEnvelope } from './provider.js';
 import { resolvePolicy } from './policy.js';
 import { AGENTS } from './agents.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
@@ -222,23 +222,24 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
       maxBuffer: 20 * 1024 * 1024
     });
 
-    const combined = `${r.stdout ?? ''}\n${r.stderr ?? ''}`;
-    if (isLimitMessage(combined)) {
-      const { resetText, resetZone } = parseResetInfo(combined);
-      const err = new Error(`E-LIMIT: subscription limit hit mid-stage${resetText ? ` (resets ${resetText}${resetZone ? ` ${resetZone}` : ''})` : ''}`);
-      err.code = 'E-LIMIT';
-      err.resetText = resetText;
-      err.resetZone = resetZone;
-      throw err;
-    }
     if (r.error) return { ok: false, error: `spawn failed: ${r.error.message}`, output: null, tokens: 0 };
 
-    let envMsg = {};
-    try { envMsg = JSON.parse((r.stdout ?? '').trim()); } catch { /* fall through to failure below */ }
+    // Parse FIRST, then judge. A stage deliverable that *recommends* rate
+    // limiting is not a subscription limit — detectLimit only inspects failure
+    // material, never a successful envelope's payload.
+    let envMsg = null;
+    try { envMsg = JSON.parse((r.stdout ?? '').trim()); } catch { /* handled below */ }
+
+    const limit = detectLimit({ stdout: r.stdout ?? '', stderr: r.stderr ?? '', env: envMsg });
+    if (limit) {
+      limit.message = limit.message.replace('Claude Code subscription limit reached', 'subscription limit hit mid-stage');
+      throw limit;
+    }
+
     const u = envMsg?.usage ?? {};
     const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
-    if (envMsg.is_error || (envMsg.subtype && envMsg.subtype !== 'success')) {
-      return { ok: false, error: `claude reported ${envMsg.subtype || envMsg.error || 'error'}`, output: null, tokens };
+    if (!isSuccessEnvelope(envMsg)) {
+      return { ok: false, error: `claude reported ${envMsg?.subtype || envMsg?.error || 'error'}`, output: null, tokens };
     }
     const output = typeof envMsg.result === 'string' && envMsg.result.trim() ? envMsg.result : null;
     if (!output) return { ok: false, error: 'stage produced no text deliverable', output: null, tokens };

@@ -104,7 +104,7 @@ export async function curateStaged(staged, {
     return { mode, curated: false, rolledBack: false, ...plain };
   }
 
-  const result = { mode, level, curated: true, activated: [], skipped: [], rolledBack: false };
+  const result = { mode, level, curated: true, activated: [], skipped: [], rolledBack: false, limited: false };
   if (!staged?.length) return result;
   if (typeof callModel !== 'function') {
     // no reviewer available = no machine curation — everything holds (fail closed)
@@ -153,7 +153,22 @@ export async function curateStaged(staged, {
       continue;
     }
 
-    const verdict = await reviewLesson({ data, body }, { callModel, model });
+    // A subscription limit mid-batch must NOT escape: anything already activated
+    // above still owes the canary gate, its events, and the commit. Stop
+    // reviewing, then fall through to the gate for the partial batch (each of
+    // those items was individually approved by the reviewer, so gating and
+    // committing them is correct) and report `limited` so the caller exits 4.
+    let verdict;
+    try {
+      verdict = await reviewLesson({ data, body }, { callModel, model });
+    } catch (err) {
+      if (err?.code !== 'E-LIMIT') throw err;
+      result.limited = true;
+      result.limit = { resetText: err.resetText ?? null, resetZone: err.resetZone ?? null, message: err.message };
+      result.skipped.push({ slug: data.slug, why: 'subscription limit reached — held for the next run' });
+      log(`  [limit] ${err.message} — stopping review; ${rollback.length} activation(s) still face the canary gate`);
+      break;
+    }
     if (!verdict.safe || verdict.quality < 1) {
       const why = !verdict.safe
         ? `reviewer blocked: ${verdict.summary}`

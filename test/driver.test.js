@@ -12,7 +12,8 @@ import {
   buildStageArgs,
   drive,
   renderPlan,
-  CODE_BEARING_KINDS
+  CODE_BEARING_KINDS,
+  makeStageRunner
 } from '../src/lib/driver.js';
 import { startProject, readState, writeState } from '../src/lib/academy.js';
 
@@ -231,5 +232,113 @@ test('16.3 stage prompts carry the workspace atlas map for code-bearing kinds on
   } finally {
     delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- makeStageRunner: the token-spending surface (audit finding: zero coverage) ----
+// spawn is injectable precisely so every branch is testable without spending.
+
+const POLICY = { model: 'sonnet', effort: 'medium' };
+function fakeSpawn(result) {
+  return () => result;
+}
+
+test('makeStageRunner: a success envelope returns the deliverable and token count', async () => {
+  const run = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({
+      status: 0,
+      stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'wrote spec.md', usage: { input_tokens: 40, output_tokens: 60 } })
+    })
+  });
+  const out = await run({ prompt: 'go', policy: POLICY, sessionId: 's1' });
+  assert.deepEqual(out, { ok: true, output: 'wrote spec.md', tokens: 100 });
+});
+
+// REGRESSION (audit 2026-07-26, finding 3.1c): the limit regex ran over the
+// model's OWN answer, so a security stage recommending rate limiting — which
+// Raphael's own security pack tells agents to do — halted the pipeline.
+test('makeStageRunner: a deliverable that RECOMMENDS rate limiting is not a limit', async () => {
+  const run = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({
+      status: 0,
+      stdout: JSON.stringify({
+        subtype: 'success',
+        is_error: false,
+        result: 'Security review: you must rate-limit the auth endpoints and add a per-session limit.',
+        usage: { input_tokens: 10, output_tokens: 20 }
+      })
+    })
+  });
+  const out = await run({ prompt: 'audit', policy: POLICY, sessionId: 's2' });
+  assert.equal(out.ok, true);
+  assert.match(out.output, /rate-limit the auth endpoints/);
+});
+
+test('makeStageRunner: a REAL limit refusal throws E-LIMIT with reset info', async () => {
+  const run = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({ status: 1, stdout: '', stderr: "You've hit your session limit · resets 5:50pm (Asia/Calcutta)" })
+  });
+  await assert.rejects(
+    run({ prompt: 'go', policy: POLICY, sessionId: 's3' }),
+    (err) => {
+      assert.equal(err.code, 'E-LIMIT');
+      assert.equal(err.resetText, '5:50pm');
+      assert.match(err.message, /mid-stage/);
+      return true;
+    }
+  );
+});
+
+test('makeStageRunner: spawn failure, error envelope, unparseable output, empty deliverable', async () => {
+  const spawnFail = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ error: new Error('ENOENT') }) });
+  assert.deepEqual(await spawnFail({ prompt: 'x', policy: POLICY, sessionId: 'a' }), {
+    ok: false, error: 'spawn failed: ENOENT', output: null, tokens: 0
+  });
+
+  const errEnv = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({ status: 0, stdout: JSON.stringify({ subtype: 'error_max_turns', is_error: true, usage: { input_tokens: 5, output_tokens: 5 } }) })
+  });
+  const e = await errEnv({ prompt: 'x', policy: POLICY, sessionId: 'b' });
+  assert.equal(e.ok, false);
+  assert.match(e.error, /error_max_turns/);
+  assert.equal(e.tokens, 10, 'tokens are still counted on a failed stage');
+
+  const garbage = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ status: 0, stdout: 'not json at all' }) });
+  const g = await garbage({ prompt: 'x', policy: POLICY, sessionId: 'c' });
+  assert.equal(g.ok, false);
+  assert.equal(g.tokens, 0);
+
+  const empty = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({ status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: '   ' }) })
+  });
+  const em = await empty({ prompt: 'x', policy: POLICY, sessionId: 'd' });
+  assert.deepEqual(em, { ok: false, error: 'stage produced no text deliverable', output: null, tokens: 0 });
+});
+
+test('makeStageRunner: API keys are stripped and the session flag matches resume', async () => {
+  let seen = null;
+  const spawn = (bin, args, opts) => {
+    seen = { args, opts };
+    return { status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'ok' }) };
+  };
+  process.env.ANTHROPIC_API_KEY = 'sk-should-be-stripped';
+  try {
+    const run = makeStageRunner({ bin: 'claude', spawn, workspace: os.tmpdir() });
+    await run({ prompt: 'go', policy: POLICY, sessionId: 'sess-9', resume: false });
+    assert.equal(seen.opts.env.ANTHROPIC_API_KEY, undefined, 'subscription billing, never metered');
+    assert.equal(seen.opts.env.ANTHROPIC_AUTH_TOKEN, undefined);
+    assert.equal(seen.args[seen.args.indexOf('--session-id') + 1], 'sess-9');
+    assert.equal(seen.args.includes('--resume'), false);
+
+    await run({ prompt: 'go', policy: POLICY, sessionId: 'sess-9', resume: true });
+    assert.equal(seen.args[seen.args.indexOf('--resume') + 1], 'sess-9');
+    assert.equal(seen.args.includes('--session-id'), false);
+  } finally {
+    delete process.env.ANTHROPIC_API_KEY;
   }
 });

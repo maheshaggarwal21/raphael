@@ -6,6 +6,7 @@ import path from 'node:path';
 import { CANARIES, runChokepointCanaries, declarativeCanaries } from '../src/eval/canaries.js';
 import { SCENARIOS, getScenario } from '../src/eval/scenarios.js';
 import { wilson, assertSameModel, evalScenario, evalScenarios, aggregate, formatReport } from '../src/eval/harness.js';
+import { makeRealRunner } from '../src/eval/runner.js';
 
 function tmp() {
   return mkdtempSync(path.join(os.tmpdir(), 'raph-evaltest-'));
@@ -281,4 +282,102 @@ test('SCENARIOS all expose id, prompt, setup, check, and a defending lesson', ()
     assert.equal(typeof s.prompt, 'string');
     assert.ok(s.lesson && s.lesson.slug);
   }
+});
+
+// ---- makeRealRunner: the eval's token-spending surface (audit: zero coverage) ----
+
+const S08 = getScenario('S08-float-money');
+
+function evalSpawn(result) {
+  return () => result;
+}
+
+test('makeRealRunner: a success envelope returns the scenario verdict plus token count', async () => {
+  const run = makeRealRunner({
+    bin: 'claude',
+    spawn: evalSpawn({
+      status: 0,
+      stdout: JSON.stringify({
+        subtype: 'success',
+        is_error: false,
+        result: 'done',
+        usage: { input_tokens: 30, output_tokens: 20 }
+      })
+    })
+  });
+  const out = await run({ scenario: S08, model: 'sonnet', injectedText: '' });
+  assert.equal(out.tokens, 50);
+  assert.equal(out.model, 'sonnet');
+  assert.equal(typeof out.caught, 'boolean');
+  assert.equal(typeof out.task_complete, 'boolean');
+});
+
+// REGRESSION (audit 2026-07-26, finding 3.1c): S21's CORRECT answer is helmet +
+// rate limiting. Scanning a successful envelope for limit wording aborted the
+// eval on its own best result.
+test('makeRealRunner: an answer that recommends rate limiting does not abort the eval', async () => {
+  const run = makeRealRunner({
+    bin: 'claude',
+    spawn: evalSpawn({
+      status: 0,
+      stdout: JSON.stringify({
+        subtype: 'success',
+        is_error: false,
+        result: 'Added helmet() and express-rate-limit to rate-limit the auth endpoints.',
+        usage: { input_tokens: 1, output_tokens: 1 }
+      })
+    })
+  });
+  const out = await run({ scenario: S08, model: null, injectedText: '' });
+  assert.equal(out.tokens, 2);
+});
+
+test('makeRealRunner: a real limit refusal throws E-LIMIT with reset info', async () => {
+  const run = makeRealRunner({
+    bin: 'claude',
+    spawn: evalSpawn({ status: 1, stdout: '', stderr: "You've hit your weekly limit · resets 9am (UTC)" })
+  });
+  await assert.rejects(
+    run({ scenario: S08, model: null, injectedText: '' }),
+    (err) => {
+      assert.equal(err.code, 'E-LIMIT');
+      assert.equal(err.resetText, '9am');
+      assert.match(err.message, /during eval/);
+      return true;
+    }
+  );
+});
+
+test('makeRealRunner: unparseable output still returns a verdict with zero tokens', async () => {
+  const run = makeRealRunner({ bin: 'claude', spawn: evalSpawn({ status: 0, stdout: 'garbage' }) });
+  const out = await run({ scenario: S08, model: null, injectedText: '' });
+  assert.equal(out.tokens, 0);
+  assert.equal(out.model, null);
+  assert.equal(typeof out.caught, 'boolean');
+});
+
+test('makeRealRunner: model id falls back to the envelope modelUsage keys', async () => {
+  const run = makeRealRunner({
+    bin: 'claude',
+    spawn: evalSpawn({
+      status: 0,
+      stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'x', modelUsage: { 'claude-sonnet-5': { input_tokens: 3 } } })
+    })
+  });
+  const out = await run({ scenario: S08, model: null, injectedText: '' });
+  assert.equal(out.model, 'claude-sonnet-5');
+});
+
+test('makeRealRunner: the injected text is prepended to the prompt on stdin, never argv', async () => {
+  let seen = null;
+  const spawn = (bin, args, opts) => {
+    seen = { args, opts };
+    return { status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'x' }) };
+  };
+  const run = makeRealRunner({ bin: 'claude', spawn });
+  await run({ scenario: S08, model: null, injectedText: 'RAPHAEL-LESSON-MARKER' });
+  assert.match(seen.opts.input, /^RAPHAEL-LESSON-MARKER/);
+  assert.ok(seen.opts.input.includes(S08.prompt));
+  assert.equal(seen.args.some((a) => String(a).includes('RAPHAEL-LESSON-MARKER')), false);
+  assert.equal(seen.opts.env.ANTHROPIC_API_KEY, undefined);
 });

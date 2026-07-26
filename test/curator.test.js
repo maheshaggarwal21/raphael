@@ -253,6 +253,83 @@ test('reviewLesson: transport error reads as unsafe (fail closed), E-LIMIT propa
   );
 });
 
+// REGRESSION (audit 2026-07-26, finding 3.1b): reviewLesson rethrows E-LIMIT and
+// curateStaged had NO try/catch, so a limit mid-batch escaped the function. Items
+// already activated in that batch were live in the brain having skipped the canary
+// gate, the 'machine-curated' events AND the commit — the exact opposite of the
+// module's contract — and the throw exited the CLI 2 (crash) instead of 4 (limit).
+test('full: a limit mid-batch still gates the partial batch, logs it, and reports limited', async () => {
+  const home = sandbox();
+  try {
+    const a = stage();
+    const b = stage();
+    const c = stage();
+    let call = 0;
+    const model = async () => {
+      call++;
+      if (call === 2) { const e = new Error('E-LIMIT: session limit reached'); e.code = 'E-LIMIT'; e.resetText = '5pm'; throw e; }
+      return safeVerdict;
+    };
+
+    // must NOT throw: the limit is a reported outcome, not a crash
+    const res = await curateStaged([a, b, c], { origin: 'mined', config: FULL, project: 'projX', callModel: model });
+
+    assert.equal(res.limited, true, 'the limit is reported to the caller');
+    assert.equal(res.limit.resetText, '5pm');
+    assert.equal(res.activated.length, 1, 'the first candidate activated and stands');
+    assert.equal(res.rolledBack, false, 'the canary gate passed for the partial batch');
+    assert.equal(call, 2, 'no further reviewer calls after the limit');
+
+    // the activated lesson exists AND has its audit event (the hole was an
+    // active lesson with no event and no gate)
+    const active = res.activated[0];
+    assert.ok(existsSync(active.path), 'activated lesson is on disk');
+    const events = readEvents().filter((e) => e.event === 'machine-curated');
+    assert.equal(events.length, 1, 'exactly one audit event for the one activation');
+    assert.equal(events[0].id, active.id);
+
+    // the un-reviewed candidates are still candidates — nothing was dropped
+    const remaining = listCandidates().map((x) => x.data.slug);
+    assert.ok(remaining.includes(b.slug), 'the limited candidate stays in the queue');
+    assert.ok(remaining.includes(c.slug), 'candidates after the limit stay in the queue');
+    assert.equal(remaining.includes(a.slug), false, 'the activated one left the queue');
+  } finally {
+    cleanup(home);
+  }
+});
+
+test('full: a limit on the FIRST candidate activates nothing and still reports limited', async () => {
+  const home = sandbox();
+  try {
+    const a = stage();
+    const model = async () => { const e = new Error('E-LIMIT: weekly limit'); e.code = 'E-LIMIT'; throw e; };
+    const res = await curateStaged([a], { origin: 'mined', config: FULL, callModel: model });
+    assert.equal(res.limited, true);
+    assert.equal(res.activated.length, 0);
+    assert.equal(res.rolledBack, false);
+    assert.equal(readEvents().filter((e) => e.event === 'machine-curated').length, 0);
+    assert.ok(listCandidates().some((x) => x.data.slug === a.slug), 'nothing lost');
+  } finally {
+    cleanup(home);
+  }
+});
+
+test('full: a non-limit reviewer throw is NOT swallowed as a limit', async () => {
+  const home = sandbox();
+  try {
+    const a = stage();
+    // a coded non-limit error must still surface (reviewLesson catches plain
+    // transport errors itself; a programming error must not be mistaken for a limit)
+    const model = async () => { const e = new TypeError('bad arguments'); e.code = 'E-BUG'; throw e; };
+    const res = await curateStaged([a], { origin: 'mined', config: FULL, callModel: model });
+    assert.equal(res.limited, false, 'not a limit');
+    assert.equal(res.activated.length, 0, 'fail-closed: held, not activated');
+    assert.match(res.skipped[0].why, /reviewer/);
+  } finally {
+    cleanup(home);
+  }
+});
+
 // ---------- quarantine sweep ----------
 
 test('sweepQuarantine tombstones only items older than 30 days', async () => {

@@ -6,7 +6,9 @@ import {
   parseResetInfo,
   parseCliResult,
   callModelCLI,
-  getModelCaller
+  getModelCaller,
+  detectLimit,
+  isSuccessEnvelope
 } from '../src/lib/provider.js';
 
 const SCHEMA = { type: 'object', properties: { has_lesson: { type: 'boolean' } }, required: ['has_lesson'] };
@@ -54,6 +56,93 @@ test('parseCliResult reads structured_output even when result is an empty string
     total_cost_usd: 0.0073
   });
   assert.deepEqual(parseCliResult({ stdout: env, status: 0 }), { ok: true, word: 'raphael' });
+});
+
+// REGRESSION (audit 2026-07-26, finding 3.1a): the limit regex used to run over
+// stdout+stderr BEFORE parsing, so a SUCCESSFUL extraction whose payload merely
+// mentioned rate limiting was thrown as E-LIMIT. distill then broke the run and
+// left the episode unledgered, so every later run re-hit the same episode — a
+// poison pill that stalled the queue permanently.
+test('parseCliResult: a successful lesson ABOUT rate limiting is not a limit refusal', () => {
+  const env = JSON.stringify({
+    type: 'result',
+    subtype: 'success',
+    is_error: false,
+    result: '',
+    structured_output: {
+      has_lesson: true,
+      lesson: 'Handlers that ignore a 429 rate limit response retry instantly and amplify the outage.',
+      title: 'Respect the rate-limit response'
+    }
+  });
+  const out = parseCliResult({ stdout: env, status: 0 });
+  assert.equal(out.has_lesson, true);
+  assert.match(out.lesson, /rate limit/);
+});
+
+test('parseCliResult: "usage limit" inside a successful answer is still not a limit', () => {
+  const env = JSON.stringify({
+    subtype: 'success',
+    is_error: false,
+    structured_output: { has_lesson: true, note: 'document the weekly usage limit for the API' }
+  });
+  assert.equal(parseCliResult({ stdout: env, status: 0 }).has_lesson, true);
+});
+
+test('parseCliResult: a REAL limit refusal (unparseable plain text) still throws E-LIMIT', () => {
+  const refusal = "You've hit your session limit · resets 5:50pm (Asia/Calcutta)";
+  assert.throws(
+    () => parseCliResult({ stdout: refusal, stderr: '', status: 1 }),
+    (err) => {
+      assert.equal(err.code, 'E-LIMIT');
+      assert.equal(err.resetText, '5:50pm');
+      assert.equal(err.resetZone, 'Asia/Calcutta');
+      return true;
+    }
+  );
+});
+
+test('parseCliResult: a limit reported inside an ERROR envelope still throws E-LIMIT', () => {
+  const env = JSON.stringify({ subtype: 'error', is_error: true, error: 'you have hit your weekly limit, resets 9am' });
+  assert.throws(() => parseCliResult({ stdout: env, status: 0 }), (err) => err.code === 'E-LIMIT');
+});
+
+test('parseCliResult: a limit only on stderr with empty stdout throws E-LIMIT', () => {
+  assert.throws(
+    () => parseCliResult({ stdout: '', stderr: 'error: usage limit reached', status: 1 }),
+    (err) => err.code === 'E-LIMIT'
+  );
+});
+
+test('parseCliResult: a non-limit error envelope is E-MODEL, not E-LIMIT', () => {
+  const env = JSON.stringify({ subtype: 'error_during_execution', is_error: true });
+  assert.throws(
+    () => parseCliResult({ stdout: env, status: 0 }),
+    (err) => err.code !== 'E-LIMIT' && /E-MODEL: claude reported error_during_execution/.test(err.message)
+  );
+});
+
+test('detectLimit: success envelopes are exempt, failures are inspected, edges are null-safe', () => {
+  // success + limit words in the payload -> not a limit (the whole point)
+  assert.equal(detectLimit({ stdout: JSON.stringify({ subtype: 'success', result: 'add a rate limit' }) }), null);
+  // failure envelope + limit words -> a limit
+  assert.equal(detectLimit({ stdout: JSON.stringify({ is_error: true, error: 'session limit' }) })?.code, 'E-LIMIT');
+  // unparseable + limit words -> a limit
+  assert.equal(detectLimit({ stdout: 'hit your usage limit' })?.code, 'E-LIMIT');
+  // unparseable, no limit words -> null
+  assert.equal(detectLimit({ stdout: 'total gibberish' }), null);
+  // edges: no args at all, and explicit null envelope with empty text
+  assert.equal(detectLimit(), null);
+  assert.equal(detectLimit({ stdout: '', stderr: '', env: null }), null);
+});
+
+test('isSuccessEnvelope classifies real, error, and missing envelopes', () => {
+  assert.equal(isSuccessEnvelope({ subtype: 'success', is_error: false }), true);
+  assert.equal(isSuccessEnvelope({ is_error: false }), true); // no subtype = success
+  assert.equal(isSuccessEnvelope({ subtype: 'success', is_error: true }), false);
+  assert.equal(isSuccessEnvelope({ subtype: 'error_max_turns' }), false);
+  assert.equal(isSuccessEnvelope(null), false);
+  assert.equal(isSuccessEnvelope(undefined), false);
 });
 
 test('parseCliResult returns the object when result is a JSON string', () => {

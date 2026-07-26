@@ -84,15 +84,46 @@ export function parseResetInfo(text) {
   return { resetText: m[1].trim(), resetZone: m[2] ? m[2].trim() : null };
 }
 
-function makeLimitError(text) {
+export function makeLimitError(text, what = 'Claude Code subscription limit reached') {
   const { resetText, resetZone } = parseResetInfo(text);
   const err = new Error(
-    `E-LIMIT: Claude Code subscription limit reached${resetText ? ` (resets ${resetText}${resetZone ? ` ${resetZone}` : ''})` : ''}`
+    `E-LIMIT: ${what}${resetText ? ` (resets ${resetText}${resetZone ? ` ${resetZone}` : ''})` : ''}`
   );
   err.code = 'E-LIMIT';
   err.resetText = resetText;
   err.resetZone = resetZone;
   return err;
+}
+
+function safeParseEnvelope(stdout) {
+  try {
+    return JSON.parse(String(stdout ?? '').trim());
+  } catch {
+    return null;
+  }
+}
+
+// True when the parsed envelope represents a real, successful model answer.
+export function isSuccessEnvelope(env) {
+  return Boolean(env) && !env.is_error && (!env.subtype || env.subtype === 'success');
+}
+
+// THE one place that decides "was this invocation a subscription-limit refusal?".
+// Returns an E-LIMIT error to throw, or null.
+//
+// A limit is a PLATFORM refusal: the CLI never produced an answer. So we only
+// ever look for it in FAILURE material — stderr, a non-success envelope, or
+// stdout that did not parse as JSON at all. We must NEVER scan a successful
+// envelope's payload, because a deliverable that *discusses* rate limiting is
+// not a limit. That confusion was a real defect in three call sites: Raphael's
+// own security pack tells agents to rate-limit auth endpoints, so a security
+// stage's own correct answer halted the pipeline as "limit reached", and a
+// distilled lesson about 429 handling poison-pilled the distill queue forever.
+export function detectLimit({ stdout = '', stderr = '', env = undefined } = {}) {
+  const parsed = env !== undefined ? env : safeParseEnvelope(stdout);
+  if (isSuccessEnvelope(parsed)) return null; // a real answer is never a limit
+  const material = parsed ? `${JSON.stringify(parsed)}\n${stderr}` : `${stdout}\n${stderr}`;
+  return isLimitMessage(material) ? makeLimitError(material) : null;
 }
 
 // Pull the structured object out of the `claude -p --output-format json` envelope.
@@ -132,21 +163,21 @@ function extractObject(env) {
 // coded error. E-LIMIT is special: the caller (and the training driver) can read
 // .resetText/.resetZone to schedule a resume instead of failing hard.
 export function parseCliResult({ stdout = '', stderr = '', status = 0 }) {
-  const combined = `${stdout}\n${stderr}`;
-  if (isLimitMessage(combined)) throw makeLimitError(combined);
+  // Parse FIRST, then judge. A limit refusal is never a parseable success
+  // envelope, so detectLimit only inspects failure material (see its comment).
+  const env = safeParseEnvelope(stdout);
 
-  let env;
-  try {
-    env = JSON.parse(stdout.trim());
-  } catch {
+  if (!env) {
+    const limit = detectLimit({ stdout, stderr, env: null });
+    if (limit) throw limit;
     if (status !== 0) throw new Error(`E-MODEL: claude exited ${status}: ${stderr.slice(0, 300) || stdout.slice(0, 300)}`);
     throw new Error(`E-MODEL: could not parse claude JSON output: ${stdout.slice(0, 200)}`);
   }
 
-  if (env.is_error || (env.subtype && env.subtype !== 'success')) {
-    const detail = env.subtype || env.error || 'unknown error';
-    if (isLimitMessage(JSON.stringify(env))) throw makeLimitError(JSON.stringify(env));
-    throw new Error(`E-MODEL: claude reported ${detail}`);
+  if (!isSuccessEnvelope(env)) {
+    const limit = detectLimit({ stdout, stderr, env });
+    if (limit) throw limit;
+    throw new Error(`E-MODEL: claude reported ${env.subtype || env.error || 'unknown error'}`);
   }
 
   const obj = extractObject(env);

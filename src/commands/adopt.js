@@ -131,14 +131,21 @@ export default async function adopt(args) {
 
   // the dial at 'wide' may activate reviewer-passed, non-security adoptions
   let autoActivated = 0;
+  let curatorLimit = null;
   const eligible = result.staged.filter((s) => !s.quarantined);
   if (eligible.length > 0) {
     const auto = await curateStaged(eligible, { origin: 'adopted', config: cfg, adoption: result.adoption, callModel: provider.callModel, log: (s) => console.log(s) });
     autoActivated = auto.activated.length;
     for (const sk of auto.skipped) console.log(`  [held] ${sk.slug} — ${sk.why}`);
+    curatorLimit = auto.limited ? auto.limit : null;
   }
   if (autoActivated > 0) console.log(`AUTO    ${autoActivated} lesson(s) activated into the auto tier — undo all with "raph adopt revoke ${result.adoption}"`);
   if (result.staged.length - autoActivated > 0) console.log('NEXT    review with "raph queue" — nothing else activates without approval');
   if (result.skills.length > 0) console.log(`DRAFTS  staged/skills/ — a skill instructs agents; review before installing`);
+  if (curatorLimit) {
+    console.error(`raph: STOPPED during curation — ${curatorLimit.message}`);
+    console.error('      what activated passed the canary gate; the rest stay candidates in "raph queue"');
+    return 4;
+  }
   return 0;
 }

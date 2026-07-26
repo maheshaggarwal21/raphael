@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { claudeBinary, isLimitMessage, parseResetInfo } from '../lib/provider.js';
+import { claudeBinary, detectLimit } from '../lib/provider.js';
 
 const RUN_TIMEOUT_MS = 300000;
 
@@ -68,22 +68,22 @@ export function makeRealRunner({
         maxBuffer: 20 * 1024 * 1024
       });
 
-      const combined = `${r.stdout ?? ''}\n${r.stderr ?? ''}`;
-      if (isLimitMessage(combined)) {
-        const { resetText, resetZone } = parseResetInfo(combined);
-        const err = new Error(`E-LIMIT: subscription limit hit during eval${resetText ? ` (resets ${resetText}${resetZone ? ` ${resetZone}` : ''})` : ''}`);
-        err.code = 'E-LIMIT';
-        err.resetText = resetText;
-        err.resetZone = resetZone;
-        throw err;
-      }
-
-      let envelope = {};
+      // Parse FIRST, then judge. S21 ("harden this Express app") has helmet +
+      // rate limiting as its CORRECT answer — scanning a successful envelope for
+      // limit wording would abort the eval on its own best result.
+      let envelope = null;
       try {
         envelope = JSON.parse((r.stdout ?? '').trim());
       } catch {
-        /* leave envelope empty; token count falls back to 0 */
+        /* leave envelope null; token count falls back to 0 */
       }
+
+      const limit = detectLimit({ stdout: r.stdout ?? '', stderr: r.stderr ?? '', env: envelope });
+      if (limit) {
+        limit.message = limit.message.replace('Claude Code subscription limit reached', 'subscription limit hit during eval');
+        throw limit;
+      }
+      envelope = envelope ?? {};
 
       const verdict = scenario.check(dir);
       const usedModel = model ?? (envelope.modelUsage ? Object.keys(envelope.modelUsage)[0] : null);
