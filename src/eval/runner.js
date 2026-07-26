@@ -99,3 +99,32 @@ export function makeRealRunner({
     }
   };
 }
+
+// A TEXT-ONLY probe: ask a question, return the answer. Used by the declarative
+// canary arm, which judges what the agent SAYS rather than what it writes — so
+// it needs no fixture dir and no tools. Same containment discipline as the
+// scenario runner (API keys stripped, prompt on stdin, structured envelope).
+export function makeAskRunner({ bin = claudeBinary(), spawn = spawnSync, timeout = RUN_TIMEOUT_MS, model = undefined, cwd = os.tmpdir() } = {}) {
+  return async function ask({ prompt, injectedText = '' }) {
+    const env = { ...process.env };
+    delete env.ANTHROPIC_API_KEY;
+    delete env.ANTHROPIC_AUTH_TOKEN;
+
+    const r = spawn(bin, [...buildEvalArgs({ model }), '--tools', ''], {
+      input: (injectedText ? `${injectedText}\n\n` : '') + prompt,
+      cwd,
+      env,
+      encoding: 'utf8',
+      timeout,
+      maxBuffer: 20 * 1024 * 1024
+    });
+    if (r.error) throw new Error(`E-EVAL: could not run claude: ${r.error.message}`);
+
+    let envelope = null;
+    try { envelope = JSON.parse((r.stdout ?? '').trim()); } catch { /* handled below */ }
+    const limit = detectLimit({ stdout: r.stdout ?? '', stderr: r.stderr ?? '', env: envelope });
+    if (limit) throw limit;
+    if (!envelope) throw new Error('E-EVAL: claude produced no parseable output');
+    return typeof envelope.result === 'string' ? envelope.result : '';
+  };
+}

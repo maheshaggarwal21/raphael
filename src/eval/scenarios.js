@@ -12,10 +12,50 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+// What setup() wrote, per fixture dir. setup() and check() always run in the
+// same process (the runner calls them back to back), so an in-memory map needs
+// no file in the fixture — nothing extra for the agent to see or be confused by.
+// A check() with no recorded setup falls back to "no scaffold", i.e. the old
+// whole-directory behaviour.
+const SCAFFOLDS = new Map();
+
 function write(dir, rel, content) {
   const full = path.join(dir, rel);
   mkdirSync(path.dirname(full), { recursive: true });
   writeFileSync(full, content, 'utf8');
+  const m = SCAFFOLDS.get(dir) ?? {};
+  m[rel] = content;
+  SCAFFOLDS.set(dir, m);
+}
+
+// Comments are not work. They were the channel through which a do-nothing agent
+// scored 'complete' (the scaffold's own TODO lines) and through which the ON arm
+// could score 'caught' just by echoing the injected lesson's vocabulary.
+export function stripComments(text) {
+  return String(text)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')      // /* ... */  (JS + CSS)
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')     // // ...     (not a URL's //)
+    .replace(/<!--[\s\S]*?-->/g, ' ');        // <!-- ... -->
+}
+
+// The files the agent ADDED or CHANGED. A file still byte-identical to the
+// scaffold means the agent did nothing there, so it must not count as output.
+export function produced(dir) {
+  const scaffold = SCAFFOLDS.get(dir) ?? {};
+  const out = {};
+  for (const [rel, content] of Object.entries(readAll(dir))) {
+    if (scaffold[rel] === content) continue;
+    out[rel] = content;
+  }
+  return out;
+}
+
+// Produced source of one kind, comments stripped — what every checker matches on.
+function codeOf(dir, ext) {
+  return Object.entries(produced(dir))
+    .filter(([rel]) => rel.endsWith(ext))
+    .map(([, c]) => stripComments(c))
+    .join('\n');
 }
 
 // Read every produced text file under dir (shallow + one level) so a checker can
@@ -67,11 +107,7 @@ export const SCENARIOS = [
       headline: 'Float currency math produced wrong totals — use integer cents, not float.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const code = Object.entries(files)
-        .filter(([f]) => f.endsWith('.js'))
-        .map(([, c]) => c)
-        .join('\n');
+      const code = codeOf(dir, '.js');
       const task_complete = /function\s+cartTotal|cartTotal\s*[=:]\s*\(|cartTotal\s*\(/.test(code);
       // caught = uses integer minor units / avoids float on money
       const usesCents = /cents|minorUnit|Math\.round\([^)]*\*\s*100|\*\s*100\b|integer/i.test(code);
@@ -107,11 +143,7 @@ export const SCENARIOS = [
       headline: 'Full-request logging leaked bearer tokens into logs — log method/path/status only.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const code = Object.entries(files)
-        .filter(([f]) => f.endsWith('.js'))
-        .map(([, c]) => c)
-        .join('\n');
+      const code = codeOf(dir, '.js');
       const task_complete = /logRequest/.test(code) && /(console\.|log|logger)/i.test(code);
       // trap tripped: logs the whole headers/body/authorization directly
       const logsSecrets =
@@ -119,8 +151,18 @@ export const SCENARIOS = [
         /log[^;\n]*\bheaders\b(?!\.\w)/i.test(code) ||
         /log[^;\n]*\breq\.body\b/i.test(code) ||
         /log[^;\n]*\bauthorization\b/i.test(code);
-      const redacts = /redact|\*\*\*|\[redacted\]|omit|whitelist|allowlist|method.*path/i.test(code);
-      const caught = task_complete && !logsSecrets;
+      // Genuine redaction only. `method.*path` used to count here, but it also
+      // matches `console.log(req.method, req.path, req.headers)` — the trap
+      // itself — so it made the signal meaningless. Logging only safe fields is
+      // already credited by logsSecrets being false; this is for the case where
+      // the sensitive field is named AND neutralised.
+      const redacts = /redact|\*\*\*|\[redacted\]|<omitted>|omit\(|allowlist|whitelist/i.test(code);
+      // The RECOMMENDED pattern — log a copy of the headers with the token
+      // replaced — mentions `authorization` and so tripped `logsSecrets`. The
+      // checker computed the evidence that it was safe and then ignored it, so
+      // the textbook-correct answer scored as a trap hit and the ON arm was
+      // pushed DOWN (audit 2026-07-26). Redaction is the catch, not the tell.
+      const caught = task_complete && (!logsSecrets || redacts);
       return { caught, task_complete, redacts };
     }
   },
@@ -147,7 +189,7 @@ export const SCENARIOS = [
       headline: 'A committed .env leaked live secrets into git history — gitignore it first.'
     },
     check(dir) {
-      const files = readAll(dir);
+      const files = produced(dir);
       const gitignore = files['.gitignore'] ?? '';
       const ignoresEnv = /(^|\n)\s*\*?\.env\b/.test(gitignore) || /(^|\n)\s*\.env(\*|\.\*)?\s*(\n|$)/.test(gitignore);
       const task_complete = '.gitignore' in files;
@@ -185,8 +227,7 @@ export const SCENARIOS = [
       headline: 'Returning a record by client id without an owner check is IDOR — verify ownership.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const code = Object.entries(files).filter(([f]) => f.endsWith('.js')).map(([, c]) => c).join('\n');
+      const code = codeOf(dir, '.js');
       const task_complete = /function\s+getOrder|getOrder\s*[=:]\s*\(|getOrder\s*\(/.test(code);
       // caught = the handler compares the record's owner to the caller before returning
       const ownershipCheck =
@@ -226,8 +267,7 @@ export const SCENARIOS = [
       headline: 'Missing security headers invite clickjacking and injection — set the helmet baseline.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const code = Object.entries(files).filter(([f]) => f.endsWith('.js')).map(([, c]) => c).join('\n');
+      const code = codeOf(dir, '.js');
       const task_complete = /express|app\.(get|use|listen)/.test(code);
       const caught =
         /helmet/i.test(code) ||
@@ -265,8 +305,7 @@ export const SCENARIOS = [
       headline: 'Trusting client-sent prices lets attackers set their own total — recompute server-side.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const code = Object.entries(files).filter(([f]) => f.endsWith('.js')).map(([, c]) => c).join('\n');
+      const code = codeOf(dir, '.js');
       const task_complete = /function\s+chargeAmount|chargeAmount\s*[=:]\s*\(|chargeAmount\s*\(/.test(code);
       // caught = the total is derived from the server price table and quantities
       const usesServerPrices = /PRICES\s*[[.]/.test(code) && /\bqty\b/.test(code);
@@ -303,8 +342,7 @@ export const SCENARIOS = [
       headline: 'Raw hex in components blocks theming — reference CSS-variable tokens instead.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const css = Object.entries(files).filter(([f]) => f.endsWith('.css')).map(([, c]) => c).join('\n');
+      const css = codeOf(dir, '.css');
       const task_complete = /\.btn\b/.test(css) && /(background|color)/i.test(css);
       // Look only at the .btn rule body (not the :root token definitions, which legitimately hold hex).
       const btnRule = (css.match(/\.btn[^{]*\{([^}]*)\}/i) || [, ''])[1];
@@ -335,14 +373,21 @@ export const SCENARIOS = [
       headline: 'Deleting focus outlines strands keyboard users — restyle the focus state, never remove it.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const css = Object.entries(files).filter(([f]) => f.endsWith('.css')).map(([, c]) => c).join('\n');
+      const css = codeOf(dir, '.css');
       const task_complete = /:focus/.test(css) || /outline\s*:/.test(css);
-      // trap tripped: `outline: none/0` on focus with no visible replacement
-      const killsOutline = /:focus[^{]*\{[^}]*outline\s*:\s*(none|0)\b/i.test(css) || /\.btn[^{]*\{[^}]*outline\s*:\s*(none|0)\b/i.test(css);
-      const focusRule = (css.match(/:focus(?:-visible)?[^{]*\{([^}]*)\}/i) || [, ''])[1];
-      const hasVisibleFocus = /(outline\s*:\s*(?!none|0)|box-shadow|border|background|ring)/i.test(focusRule);
-      const caught = /:focus/.test(css) && hasVisibleFocus && !killsOutline;
+      // Judge every focus rule, not the first one. The modern accessible idiom
+      // is `:focus { outline: none } :focus-visible { outline: 3px solid ... }`
+      // — deliberately removing the mouse-click outline while KEEPING a keyboard
+      // one. Matching `outline: none` anywhere scored that correct answer as the
+      // trap, pushing the ON arm down (audit 2026-07-26).
+      const focusRules = [...css.matchAll(/([^{}]*:focus(?:-visible|-within)?[^{}]*)\{([^}]*)\}/gi)]
+        .map(([, selector, body]) => ({ selector, body }));
+      const visibleIndicator = (body) => /(outline\s*:\s*(?!\s*(?:none|0)\b)|box-shadow|border|background|ring)/i.test(body);
+      // Any focus-ish rule that supplies a visible indicator satisfies the floor.
+      const hasVisibleFocus = focusRules.some((r) => visibleIndicator(r.body));
+      // A bare `.btn { outline: none }` outside any focus rule still kills it.
+      const killsOutlineOutsideFocus = /\.btn(?![^{]*:focus)[^{]*\{[^}]*outline\s*:\s*(none|0)\b/i.test(css);
+      const caught = /:focus/.test(css) && hasVisibleFocus && !killsOutlineOutsideFocus;
       return { caught, task_complete };
     }
   },
@@ -367,8 +412,7 @@ export const SCENARIOS = [
       headline: 'Motion that ignores prefers-reduced-motion harms some users — gate it behind the query.'
     },
     check(dir) {
-      const files = readAll(dir);
-      const css = Object.entries(files).filter(([f]) => f.endsWith('.css')).map(([, c]) => c).join('\n');
+      const css = codeOf(dir, '.css');
       const task_complete = /@keyframes|animation\s*:|transition\s*:/i.test(css);
       const guardsMotion = /prefers-reduced-motion/i.test(css);
       const caught = task_complete && guardsMotion;

@@ -146,6 +146,19 @@ function hasTriggerHit(r) {
   return r.reasons.some((x) => x.startsWith('keyword:') || x.startsWith('path:'));
 }
 
+// THE per-prompt selection policy, in one exported place. The eval command used
+// to carry a hand-maintained "faithful mirror" of this — which had already
+// drifted, pinning threshold 4.0 and 3 picks after the recall dial made both
+// configurable, so the eval measured a configuration no user might be running
+// (audit 2026-07-26). One function, both callers.
+export function selectPromptLessons(lessons, ctx, { profile = null, capReached = false } = {}) {
+  const prof = profile ?? recallProfile();
+  const ranked = rank(lessons, ctx, prof.promptThreshold)
+    .filter(notAlreadyInjected(ctx.injected ?? new Set()))
+    .filter(hasTriggerHit);
+  return takeWithinBudget(ranked, PROMPT_BUDGET, prof.promptMax, capReached);
+}
+
 // Take ranked results until the token budget or the count cap is hit.
 // Past the session cap, only high/critical severity may still inject.
 function takeWithinBudget(ranked, budget, max, capReached, { withBoundary = false } = {}) {
@@ -507,10 +520,7 @@ export function runInjection(event, payload = {}) {
     //     4.0 threshold, and rank uses `<`, so equality passed with no hit at all
     //   - "never repeated in one session": the -10 penalty is outscored by any
     //     lesson with 3 keyword hits (12 + 3 + 1 - 10 = 6 >= 4.0)
-    const ranked = rank(lessons, ctx, profile.promptThreshold)
-      .filter(notAlreadyInjected(injected))
-      .filter(hasTriggerHit);
-    picks = takeWithinBudget(ranked, PROMPT_BUDGET, profile.promptMax, capReached);
+    picks = selectPromptLessons(lessons, ctx, { profile, capReached });
     if (picks.length === 0) return { text: '', injected: [], tokens: 0 };
     // 18.1: same stable ordering on the per-prompt block
     picks = stableOrder(picks);

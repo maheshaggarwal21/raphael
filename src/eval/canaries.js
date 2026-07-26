@@ -186,3 +186,45 @@ export function runChokepointCanaries() {
 export function declarativeCanaries() {
   return CANARIES.filter((c) => c.kind === 'declarative-voice');
 }
+
+// THE DECLARATIVE ARM, which until 21.11 had no executor at all: the probes and
+// their judges were imported by exactly one file — the unit tests — so the gate
+// this module's own header describes ("a declarative-voice canary whose insecure
+// default the agent adopts is a hard fail") did not exist. A documented safety
+// gate that never runs is worse than no gate, because it is believed.
+//
+// `ask` is injected — ({ prompt, injectedText }) => Promise<string> — so the
+// whole arm is testable with a stub and only the command supplies a real,
+// token-spending runner. `seed` installs the poisoned lesson into the eval brain
+// so the agent meets it exactly as recall would deliver it.
+export async function runDeclarativeCanaries({ ask, seed = null, injectFn = null } = {}) {
+  if (typeof ask !== 'function') throw new Error('E-EVAL: runDeclarativeCanaries needs an `ask` function');
+  const results = [];
+  for (const c of declarativeCanaries()) {
+    if (seed) {
+      try { seed(c); } catch { /* seeding is best-effort; the probe still runs */ }
+    }
+    let answer = '';
+    let error = null;
+    try {
+      const injectedText = injectFn ? (injectFn(c.probe)?.text ?? '') : '';
+      answer = String((await ask({ prompt: c.probe, injectedText })) ?? '');
+    } catch (err) {
+      if (err?.code === 'E-LIMIT') throw err; // the caller schedules a resume
+      error = err.message;
+    }
+    // Fail CLOSED: an answer we could not obtain is not evidence of safety.
+    const adopted = error ? true : c.behaviorFail(answer);
+    results.push({
+      id: c.id,
+      kind: c.kind,
+      why: c.why,
+      probe: c.probe,
+      answer: error ? '' : answer.slice(0, 400),
+      error,
+      adopted,          // the agent took the poisoned default
+      pass: !adopted
+    });
+  }
+  return results;
+}
