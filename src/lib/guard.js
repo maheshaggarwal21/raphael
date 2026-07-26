@@ -161,16 +161,27 @@ export function gitTopLevel(dir) {
 }
 
 // Files staged for the next commit (added/copied/modified — deletions excluded).
+// -z (NUL-separated) is not a nicety here, it is the difference between scanning
+// a file and silently skipping it. With core.quotePath at its default, git QUOTES
+// any path containing non-ASCII or special characters ("src/\303\251.js"), and
+// `git show :"src/\303\251.js"` does not resolve — so readStagedBlob returned
+// null and scanStaged skipped the file with no signal. A secret in a file with a
+// non-ASCII name passed the guard silently (audit 2026-07-26). -z output is never
+// quoted, so the whole evasion class disappears.
+function splitZ(stdout) {
+  return String(stdout).split('\0').map((s) => s.trim()).filter(Boolean);
+}
+
 export function listStagedFiles(cwd) {
-  const r = git(cwd, ['diff', '--cached', '--name-only', '--diff-filter=ACM']);
+  const r = git(cwd, ['diff', '--cached', '--name-only', '--diff-filter=ACM', '-z']);
   if (r.status !== 0) return [];
-  return r.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+  return splitZ(r.stdout);
 }
 
 export function listTrackedFiles(cwd) {
-  const r = git(cwd, ['ls-files']);
+  const r = git(cwd, ['ls-files', '-z']);
   if (r.status !== 0) return [];
-  return r.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+  return splitZ(r.stdout);
 }
 
 // The staged CONTENT of a file (":path" = the index blob) — what will actually
@@ -181,19 +192,32 @@ function readStagedBlob(cwd, file) {
   return r.stdout; // Buffer (no encoding set)
 }
 
-// Scan everything staged for commit. Returns [{ file, findings }] for hits only.
+// Scan everything staged for commit. Returns { results, unreadable } — the same
+// shape as scanTracked, so the two siblings no longer disagree.
+//   results:    [{ file, findings }] for hits only
+//   unreadable: staged files the guard could NOT examine
 // Files matched by .raphallow (repo top) are skipped.
+//
+// `unreadable` exists because skipping those files silently made an implicit
+// "clean" claim about content nobody looked at — worse than an error from a
+// security gate. Oversized and binary blobs stay a deliberate, separate
+// fail-open: those are read successfully and judged not worth scanning.
 export function scanStaged(cwd, opts) {
   const allow = loadAllowlist(gitTopLevel(cwd) || cwd);
   const results = [];
+  const unreadable = [];
   for (const file of listStagedFiles(cwd)) {
     if (allow.matches(file)) continue;
     const buf = readStagedBlob(cwd, file);
-    if (!buf || buf.length > MAX_SCAN_BYTES || looksBinary(buf)) continue;
+    if (!buf) {
+      unreadable.push(file);
+      continue;
+    }
+    if (buf.length > MAX_SCAN_BYTES || looksBinary(buf)) continue;
     const findings = scanText(buf.toString('utf8'), opts);
     if (findings.length) results.push({ file, findings });
   }
-  return results;
+  return { results, unreadable };
 }
 
 // --- skill supply-chain scan (Phase 20 / A7) ---------------------------------

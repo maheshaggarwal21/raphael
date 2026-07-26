@@ -115,3 +115,63 @@ test('missing frontmatter fails cleanly', () => {
   assert.equal(r.ok, false);
   assert.equal(r.errors[0].code, 'E-FRONTMATTER');
 });
+
+// The E-BASE64 gate had ZERO tests anywhere in the suite (audit 2026-07-26), so
+// a regression that disabled it — an accidental quantifier change, a removed
+// branch — would have shipped green.
+test('E-BASE64: a long encoded blob quarantines, ordinary prose does not', () => {
+  const blob = 'QWxhZGRpbjpvcGVuIHNlc2FtZQ' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij0123456789';
+  const v = validateLesson(makeLesson({ lesson: `A durable observation, and then an encoded payload: ${blob}` }));
+  assert.equal(v.ok, false, 'a base64 blob is not a lesson');
+  assert.ok(v.errors.some((e) => e.code === 'E-BASE64'), JSON.stringify(v.errors));
+  assert.equal(v.quarantine, true, 'and it is quarantined, not silently dropped');
+
+  // a normal lesson body with long-ish words must NOT trip it
+  const clean = validateLesson(makeLesson({ lesson: 'A long explanatory paragraph about idempotent migrations and deterministic retries under load.' }));
+  assert.equal(clean.errors.some((e) => e.code === 'E-BASE64'), false);
+});
+
+// The text gates scanned only the RAW serialization, so they were correct only
+// because js-yaml happens to emit invisible unicode literally. A hand-authored
+// file using YAML escape sequences slipped past every gate while compile.js
+// indexed the PARSED value (audit 2026-07-26).
+// REGRESSION (audit 2026-07-26): the text gates scanned only the RAW file, which
+// was safe purely because js-yaml emits invisible characters literally on dump. A
+// hand-authored file writing them as YAML ESCAPES slipped past every gate while
+// compile.js indexed the DECODED value into agent context. Proven by probe first:
+// before the fix this exact input returned ok:true with a real zero-width space in
+// data.title.
+test('the gates also scan the PARSED data, so YAML-escaped payloads cannot slip past', () => {
+  // Build the ESCAPE TEXT at runtime: a backslash followed by u200B. Written as a
+  // source literal it would be collapsed into the character itself by whatever
+  // quoting layer touches this file, which is exactly how the first version of
+  // this test came out vacuous.
+  const ESCAPE = String.fromCharCode(92) + 'u200B';
+  const raw = [
+    '---',
+    'schema: raphael/lesson/v1',
+    'id: les_01JGXW5T9Q8ZK3M4N5P6R7S8T9',
+    'slug: escape-probe',
+    'title: "A title with a zero' + ESCAPE + 'width space"',
+    'status: candidate',
+    'category: correctness',
+    'severity: medium',
+    'scope: {stacks: [node], task_kinds: [], projects: [], agents: []}',
+    'triggers: {keywords: [escapetest], paths: []}',
+    'lesson: "Retries without backoff amplify an outage instead of recovering from it, which is a durable observation."',
+    'evidence: {refs: [], observations: 1, distinct_projects: 1, source_mix: {mined: 1}, first_seen: "2026-07-26", last_seen: "2026-07-26"}',
+    'provenance: {created_by: test, source_kind: session-transcript, human_edited: false, tier: user}',
+    'injection: {headline: "Retries without backoff amplify an outage.", tokens: 8}',
+    '---',
+    ''
+  ].join('\n');
+
+  // guard the test against itself: the raw file must carry the ESCAPE, not the char
+  assert.equal(/\u200B/.test(raw), false, 'the fixture must not contain a literal zero-width space');
+  assert.ok(raw.includes(ESCAPE), 'the fixture must carry the escape sequence');
+
+  const v = validateLesson(raw);
+  assert.equal(v.ok, false, 'an escaped invisible character must not pass');
+  assert.ok(v.errors.some((e) => e.code === 'E-UNICODE'), JSON.stringify(v.errors));
+  assert.equal(v.quarantine, true);
+});

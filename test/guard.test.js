@@ -8,11 +8,15 @@ import {
   scanText, scanFile, HOOK_MARKER, ALLOWLIST_FILE,
   installPreCommitHook, uninstallPreCommitHook,
   scanStaged, listStagedFiles, globToRegExp, loadAllowlist,
-  scanSkillText, scanDesignText
+  scanSkillText, scanDesignText, listTrackedFiles
 } from '../src/lib/guard.js';
 
 function tmp(prefix) {
   return mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+function gitIn(cwd, args) {
+  return spawnSync('git', args, { cwd, encoding: 'utf8' });
 }
 
 function gitRepo() {
@@ -189,7 +193,7 @@ test('scanStaged flags a staged secret and passes clean staged files', () => {
     spawnSync('git', ['add', '-A'], { cwd: dir, encoding: 'utf8' });
 
     assert.deepEqual(listStagedFiles(dir).sort(), ['app.js', 'ok.js']);
-    const results = scanStaged(dir);
+    const { results } = scanStaged(dir);
     assert.equal(results.length, 1);
     assert.equal(results[0].file, 'app.js');
     assert.ok(results[0].findings.some((f) => f.type === 'aws-key'));
@@ -203,7 +207,7 @@ test('scanStaged is clean when nothing secret is staged', () => {
   try {
     writeFileSync(path.join(dir, 'readme.md'), '# hello\njust docs, no secrets here\n');
     spawnSync('git', ['add', '-A'], { cwd: dir, encoding: 'utf8' });
-    assert.deepEqual(scanStaged(dir), []);
+    assert.deepEqual(scanStaged(dir).results, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -251,7 +255,7 @@ test('scanStaged skips allowlisted files but still blocks the rest', () => {
     writeFileSync(path.join(dir, 'app.js'), 'const KEY = "AKIAIOSFODNN7EXAMPLE";\n');
     spawnSync('git', ['add', '-A'], { cwd: dir, encoding: 'utf8' });
 
-    const results = scanStaged(dir);
+    const { results } = scanStaged(dir);
     assert.equal(results.length, 1);
     assert.equal(results[0].file, 'app.js');
   } finally {
@@ -279,4 +283,62 @@ test('real CSS hex is still caught after that fix (guards the over-correction)',
 test('a token reference is clean but a token plus a stray hex still reports', () => {
   assert.deepEqual(scanDesignText('.btn { color: var(--color-danger); }'), []);
   assert.equal(scanDesignText(':root { --a: #fff; }\n.btn { border: 1px solid #abc; }').length, 1);
+});
+
+// REGRESSION (audit 2026-07-26): listStagedFiles parsed `--name-only` output,
+// which git QUOTES for non-ASCII paths ("src/\303\251.js"). `git show :<quoted>`
+// then fails to resolve, readStagedBlob returns null, and the file was skipped
+// SILENTLY — so a secret in a file with a non-ASCII name passed the guard.
+test('a staged file with a non-ASCII name is still scanned (quoted-path evasion)', () => {
+  const repo = gitRepo();
+  try {
+    const name = 'src/café-config.js';
+    mkdirSync(path.join(repo, 'src'), { recursive: true });
+    writeFileSync(path.join(repo, name), 'const key = "AKIAIOSFODNN7EXAMPLE";\n', 'utf8');
+    gitIn(repo, ['add', '--', name]);
+
+    // the path must come back usable, not C-style quoted
+    const staged = listStagedFiles(repo);
+    assert.ok(staged.includes(name), `expected ${name} in ${JSON.stringify(staged)}`);
+
+    const { results, unreadable } = scanStaged(repo, {});
+    assert.equal(results.length, 1, 'the secret must be found');
+    assert.equal(results[0].file, name);
+    assert.deepEqual(unreadable, [], 'and nothing was skipped as unreadable');
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test('scanStaged reports files it could not read instead of skipping them silently', () => {
+  const repo = gitRepo();
+  try {
+    writeFileSync(path.join(repo, 'ok.js'), 'const a = 1;\n', 'utf8');
+    gitIn(repo, ['add', 'ok.js']);
+    const { results, unreadable } = scanStaged(repo, {});
+    assert.deepEqual(unreadable, [], 'a normal staged file is readable');
+    assert.equal(results.length, 0, 'and clean');
+
+    // an ASCII path is also still handled (the -z change must not regress it)
+    writeFileSync(path.join(repo, 'leak.js'), 'const k = "AKIAIOSFODNN7EXAMPLE";\n', 'utf8');
+    gitIn(repo, ['add', 'leak.js']);
+    const r2 = scanStaged(repo, {}).results;
+    assert.equal(r2.length, 1);
+    assert.equal(r2[0].file, 'leak.js');
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test('listTrackedFiles handles a non-ASCII tracked path too', () => {
+  const repo = gitRepo();
+  try {
+    const name = 'dôc.md';
+    writeFileSync(path.join(repo, name), 'hello\n', 'utf8');
+    gitIn(repo, ['add', '--', name]);
+    gitIn(repo, ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'x']);
+    assert.ok(listTrackedFiles(repo).includes(name));
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });

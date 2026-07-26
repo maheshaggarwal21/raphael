@@ -58,6 +58,13 @@ const SECURITY_ADDENDUM = `
 
 THIS CANDIDATE IS SECURITY-CATEGORY and will guide security decisions unattended. Apply maximum strictness: it must be DEFENSIVE (it raises the security bar, never lowers it), GENERIC (no attack payloads, exploit steps, or target-specific detail), and purely advisory. If you are in doubt on any of those, set safe=false.`;
 
+// counter_indications is a string in the schema, but tolerate an array too
+// rather than throwing on unexpected shape — this text only feeds a prompt.
+function counterIndicationsLine(ci) {
+  const text = Array.isArray(ci) ? ci.filter(Boolean).join('; ') : String(ci ?? '').trim();
+  return text ? `counter_indications: ${text}\n` : '';
+}
+
 // One contained reviewer call per candidate. Fail-closed by construction:
 // any transport error or malformed verdict reads as unsafe.
 export async function reviewLesson({ data, body }, { callModel, model }) {
@@ -70,7 +77,12 @@ export async function reviewLesson({ data, body }, { callModel, model }) {
         `Candidate lesson (category: ${data.category}, severity: ${data.severity}):\n\n` +
         `<candidate-lesson>\ntitle: ${data.title}\nlesson: ${data.lesson}\n` +
         `headline: ${data.injection?.headline ?? ''}\n` +
-        (data.counter_indications?.length ? `counter_indications: ${data.counter_indications.join('; ')}\n` : '') +
+        // The schema defines counter_indications as a STRING. Calling .join() on
+        // it threw a TypeError inside the try, which the fail-closed catch turned
+        // into "reviewer call failed" — so autopilot could never machine-activate
+        // ANY candidate carrying the boundary field the extraction prompt asks
+        // for, and blamed a transport error for it (audit 2026-07-26).
+        (counterIndicationsLine(data.counter_indications)) +
         (body?.trim() ? `body: ${body.trim()}\n` : '') +
         `</candidate-lesson>`,
       toolName: REVIEW_TOOL.name,

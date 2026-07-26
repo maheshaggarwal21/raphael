@@ -78,9 +78,24 @@ function toolResultText(item) {
   return '';
 }
 
-function clip(s, n) {
-  const t = String(s).replace(/\s+/g, ' ').trim();
+// SCRUB BEFORE EVERY CUT. finalizeExcerpt states the invariant — "truncating
+// first could split a secret across the cut so the regex no longer matches,
+// leaking a partial secret" — but the fragments fed INTO it were already sliced
+// raw, so a key straddling any of those cuts arrived pre-split: 'AKIA' plus 10 of
+// its 16 chars matches neither the named rule (which needs all 16) nor the
+// entropy net (which needs 20 chars), and then went to the model and into the
+// evidence record, against invariant #2 (audit 2026-07-26).
+// Scrubbing here is cheap local regex work and idempotent — placeholders contain
+// no secret bytes, so finalizeExcerpt's second pass is harmless.
+function safeCut(s, n, { collapse = false } = {}) {
+  let t = String(s);
+  if (collapse) t = t.replace(/\s+/g, ' ').trim();
+  t = scrubSecrets(t).text;
   return t.length > n ? t.slice(0, n) + '…' : t;
+}
+
+function clip(s, n) {
+  return safeCut(s, n, { collapse: true });
 }
 
 // Compact one assistant event: text snippets plus tool_use name + first 200
@@ -102,7 +117,7 @@ function summarizeAssistant(json) {
         } catch {
           inp = '[unserializable input]';
         }
-        parts.push(`${it.name ?? 'tool'}(${String(inp).slice(0, TOOL_INPUT_CAP)})`);
+        parts.push(`${it.name ?? 'tool'}(${safeCut(inp, TOOL_INPUT_CAP)})`);
       }
     }
   }
@@ -243,7 +258,7 @@ export function detectEpisodes(events, { sessionPath, sessionId, project } = {})
 
     const toolName = resolveToolName(main, i, errItem.tool_use_id);
     const parts = [];
-    parts.push(`[error${toolName ? ':' + toolName : ''}] ${toolResultText(errItem).slice(0, ERROR_TEXT_CAP)}`);
+    parts.push(`[error${toolName ? ':' + toolName : ''}] ${safeCut(toolResultText(errItem), ERROR_TEXT_CAP)}`);
     for (let j = i + 1; j < successIdx; j++) {
       if (main[j].json.type !== 'assistant') continue;
       const s = summarizeAssistant(main[j].json);

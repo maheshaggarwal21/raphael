@@ -79,28 +79,38 @@ export function validateLesson(content) {
     }
   }
 
-  if (URL_RE.test(content)) {
+  // THE TEXT GATES SCAN BOTH FORMS. Scanning only the raw file was safe by
+  // accident: it depended on js-yaml choosing to emit invisible characters
+  // literally on dump. A hand-authored file that writes them as YAML ESCAPES
+  // ("a zero​width space") passed every gate while compile.js indexed the
+  // DECODED value and rendered it into agent context — verified, not theorised
+  // (audit 2026-07-26). Scanning the parsed projection too closes the whole
+  // escape-sequence class and stops a core security control from depending on a
+  // third party's serialization choices.
+  const scanned = data ? `${content}\n${JSON.stringify(data)}` : content;
+
+  if (URL_RE.test(scanned)) {
     errors.push({ code: 'E-URL', msg: 'URLs are not allowed anywhere in a lesson' });
   }
 
   for (const [re, why] of DENY) {
-    if (re.test(content)) {
+    if (re.test(scanned)) {
       errors.push({ code: 'E-DENY', msg: `blocked pattern: ${why}` });
       quarantine = true;
     }
   }
 
-  if (UNICODE_RE.test(content)) {
+  if (UNICODE_RE.test(scanned)) {
     errors.push({ code: 'E-UNICODE', msg: 'invisible or bidirectional unicode characters found' });
     quarantine = true;
   }
 
-  if (BASE64_RE.test(content)) {
+  if (BASE64_RE.test(scanned)) {
     errors.push({ code: 'E-BASE64', msg: 'long encoded blob found' });
     quarantine = true;
   }
 
-  const { found } = scrubSecrets(content);
+  const { found } = scrubSecrets(scanned);
   if (found.length > 0) {
     errors.push({ code: 'E-SECRET', msg: `secret-looking content found: ${[...new Set(found)].join(', ')}` });
   }

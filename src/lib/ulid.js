@@ -15,6 +15,13 @@ export function ulid(now = Date.now()) {
   return ts + out;
 }
 
+// EVERY id prefix Raphael mints, in ONE place. scrub.js builds its
+// high-entropy exemption from this list, so adding an id family can never again
+// silently omit the exemption: `dec_` was minted from 16.8 onward but never
+// added to the hand-maintained copy in scrub.js, so decision ids were scrubbed
+// as secrets and every cross-reference to one was mangled (audit 2026-07-26).
+export const ID_PREFIXES = ['les', 'ev', 'prj', 'mch', 'adp', 'dec'];
+
 export function lessonId(now) {
   return `les_${ulid(now)}`;
 }

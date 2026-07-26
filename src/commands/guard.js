@@ -125,9 +125,20 @@ export default async function guard(args = []) {
 
     if (flag(rest, '--staged')) {
       const cwd = process.cwd();
-      if (!isGitRepo(cwd)) return 0; // nothing staged / not a repo -> clean
+      if (!isGitRepo(cwd)) {
+        // Fail open (the hook only ever runs inside a repo), but never imply a
+        // clean verdict for content nobody scanned.
+        console.error('raph: not a git repository — nothing staged to scan.');
+        return 0;
+      }
       announceAllowlist(gitTopLevel(cwd) || cwd);
-      results = scanStaged(cwd, { entropy });
+      const staged = scanStaged(cwd, { entropy });
+      results = staged.results;
+      // A security gate that cannot read a staged file must say so rather than
+      // let silence read as "clean".
+      for (const f of staged.unreadable) {
+        console.error(`raph: WARNING — could not read the staged content of ${f}; it was NOT scanned.`);
+      }
     } else if (flag(rest, '--all')) {
       const cwd = process.cwd();
       announceAllowlist(gitTopLevel(cwd) || cwd);

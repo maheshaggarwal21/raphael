@@ -406,3 +406,44 @@ test('curator still activates a genuinely distinct lesson alongside an existing 
     cleanup(home);
   }
 });
+
+// REGRESSION (audit 2026-07-26, finding 3.11): the schema defines
+// counter_indications as a STRING and the curator called .join() on it. The
+// TypeError was swallowed by the fail-closed catch and logged as "reviewer call
+// failed", so autopilot could never machine-activate ANY candidate carrying the
+// boundary field the extraction prompt explicitly solicits — and misattributed it
+// to a transport failure. No fixture carried the field, so nothing caught it.
+test('full: a candidate WITH counter_indications activates, and the reviewer sees them', async () => {
+  const home = sandbox();
+  try {
+    const item = stage({
+      counter_indications: 'Not for single-process scripts where the queue never outlives the run.'
+    });
+    const model = fakeModel();
+    const res = await curateStaged([item], { origin: 'mined', config: FULL, project: 'projX', callModel: model });
+
+    assert.equal(res.activated.length, 1, 'counter_indications must not block activation');
+    assert.equal(res.skipped.length, 0);
+    assert.match(model.calls[0].prompt, /counter_indications: Not for single-process scripts/);
+  } finally {
+    cleanup(home);
+  }
+});
+
+test('reviewLesson: counter_indications as string, array, empty, and absent', async () => {
+  const seen = [];
+  const model = async (args) => { seen.push(args.prompt); return safeVerdict; };
+
+  await reviewLesson({ data: candData({ counter_indications: 'a string boundary' }), body: '' }, { callModel: model, model: null });
+  assert.match(seen.at(-1), /counter_indications: a string boundary/);
+
+  // an array is tolerated rather than throwing (this text only feeds a prompt)
+  await reviewLesson({ data: candData({ counter_indications: ['one', 'two'] }), body: '' }, { callModel: model, model: null });
+  assert.match(seen.at(-1), /counter_indications: one; two/);
+
+  // empty / absent add no line at all
+  await reviewLesson({ data: candData({ counter_indications: '   ' }), body: '' }, { callModel: model, model: null });
+  assert.equal(/counter_indications/.test(seen.at(-1)), false);
+  await reviewLesson({ data: candData(), body: '' }, { callModel: model, model: null });
+  assert.equal(/counter_indications/.test(seen.at(-1)), false);
+});

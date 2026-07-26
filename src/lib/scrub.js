@@ -1,3 +1,5 @@
+import { ID_PREFIXES } from './ulid.js';
+
 // Secret scrubber. Runs BEFORE any model ever sees mined text, and again on
 // pipeline output. Replacements are typed placeholders, never partial masks.
 
@@ -13,14 +15,27 @@ const RULES = [
   ['slack-token', /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g],
   ['jwt', /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
   ['url-credentials', /\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:[^\s:@/]+@/gi],
-  ['bearer', /\bBearer\s+[A-Za-z0-9._~+/-]{16,}=*/g],
+  // A real bearer token virtually always carries a digit or a structural char;
+  // a hyphenated English phrase never does. Without that requirement this rule
+  // flagged ordinary security PROSE ("the Bearer authorization-header must be
+  // validated") and E-SECRET then hard-rejected the lesson — in the security
+  // category, which is the flagship pack (audit 2026-07-26).
+  ['bearer', /\bBearer\s+(?=[A-Za-z0-9._~+/-]*[0-9._~+/=])[A-Za-z0-9._~+/-]{16,}=*/g],
   // Underscore-aware boundaries: `\b` treats `_` as a word char, so a `\b`-walled
   // keyword would MISS the archetypal env-var leak `DB_PASSWORD=...` /
   // `SESSION_SECRET=...` / `AUTH_TOKEN=...` (keyword fenced by underscores). The
   // lookarounds below exclude only alphanumerics, so `_` (and `=`, quotes, space)
   // count as boundaries — while `<` stays excluded on the left so this rule never
   // re-matches our own <SECRET:...> placeholders.
-  ['kv-secret', /(?<![a-z0-9<])(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth)(?![a-z0-9])\s*[:=]\s*['"]?[^\s'"]{8,}['"]?/gi]
+  // ...and the keyword may carry TRAILING joined segments before the separator.
+  // Without that, the archetypal compound names escaped entirely — 'secret' in
+  // DJANGO_SECRET_KEY= is followed by '_KEY', which failed the separator test, so
+  // DJANGO_SECRET_KEY / SECRET_KEY_BASE / AWS_SECRET_ACCESS_KEY were all missed by
+  // the named rule, and the entropy net only catches values with BOTH digits and
+  // letters, so a letters-only passphrase in one of them passed the whole scrubber
+  // (audit 2026-07-26; measured, not assumed). A separator plus an 8+ char value
+  // is still required, so prose like "a secret_key is needed" stays clean.
+  ['kv-secret', /(?<![a-z0-9<])(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth)(?:[_-][a-z0-9]+){0,3}(?![a-z0-9])\s*[:=]\s*(?:'[^'\n]{8,}'|"[^"\n]{8,}"|[^\s'"]{8,})/gi]
 ];
 
 const ENTROPY_MIN_LEN = 20;
@@ -39,8 +54,10 @@ function shannon(s) {
 
 // Raphael's own ids are random base32 and would trip the entropy scan. Their
 // charset (no lowercase, no I/L/O/U) cannot encode an arbitrary secret, so
-// exempting them is safe.
-const RAPHAEL_ID_RE = /^(?:les_|ev_|prj_|mch_|adp_)[0-9A-HJKMNP-TV-Z]{26}$/;
+// exempting them is safe. The prefix list is DERIVED from ulid.js — the single
+// place ids are minted — because a hand-maintained copy here already drifted
+// once (dec_ was missing, so decision ids were mangled as secrets).
+const RAPHAEL_ID_RE = new RegExp(`^(?:${ID_PREFIXES.join('_|')}_)[0-9A-HJKMNP-TV-Z]{26}$`);
 
 // True when a single token looks like a high-entropy secret. Shared by the
 // scrubber (below) and the guard's opt-in --entropy pass, so both agree.

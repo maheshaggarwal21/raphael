@@ -877,10 +877,18 @@ compaction (manual or automatic) can never lose progress.
   - REMAINING (deliberate): 19.6 / A9 per-agent outcome mining still needs its own design
     pass (transcript evidence cannot separate ignored-because-wrong from
     ignored-because-busy). Phase 10 self-use is calendar. Owner switch: publishing 0.4.0.
-- **NEVER put backticks inside a string passed to `node -e` / `bash -c`.** Session 15: a
-  CLAUDE.md update whose prose contained backticked command names was evaluated by bash as
-  COMMAND SUBSTITUTION and actually ran `npm publish`. It failed only because npm required
-  a 2FA one-time password. Write prose with the Write/Edit tools, never through the shell.
+- **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
+  `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
+  double quotes, so prose that merely *mentions* a backticked command name runs it.
+  Session 15: a CLAUDE.md update whose prose contained backticked command names actually ran
+  `npm publish` — it failed only because npm demanded a 2FA code. Session 16 hit the same
+  trap again through `git commit -m` (harmless that time: the substituted word was not a real
+  command, but the commit message was silently corrupted). The rule that actually holds:
+  write prose with the Write/Edit tools, and for commit messages use a QUOTED heredoc, which
+  bash does not expand:
+      git commit -F - << 'ENDOFMSG'
+      ...message with `backticks` intact...
+      ENDOFMSG
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
 
 ## Conventions
