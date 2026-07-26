@@ -22,7 +22,10 @@ import { p } from './paths.js';
 
 // Bump whenever extraction semantics change — a cached extraction from an older
 // extractor is stale even if the file content is identical.
-export const ATLAS_VERSION = 2;
+// Bumped whenever extraction changes: the per-file cache is keyed by content
+// hash + this version, so without a bump an unchanged file would keep its
+// stale extraction (a real bug caught once already).
+export const ATLAS_VERSION = 3;
 
 const IGNORE_DIRS = new Set([
   '.git', 'node_modules', 'dist', 'build', 'coverage', '.next', 'out',
@@ -103,7 +106,9 @@ export function extractFile(relPath, content) {
     const exportRes = [
       /export\s+(?:default\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g,
       /export\s+(?:default\s+)?class\s+([A-Za-z_$][\w$]*)/g,
-      /export\s+const\s+([A-Za-z_$][\w$]*)/g,
+      /export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g,
+      // TypeScript type-level exports are still the file's public surface
+      /export\s+(?:type|interface|enum)\s+([A-Za-z_$][\w$]*)/g,
       /module\.exports\.([A-Za-z_$][\w$]*)\s*=/g,
       /^(?:async\s+)?def\s+([A-Za-z_]\w*)/gm,
       /^class\s+([A-Za-z_]\w*)/gm
@@ -114,12 +119,35 @@ export function extractFile(relPath, content) {
         ex.exports.push({ name: m[1], line: lineOf(content, m.index) });
       }
     }
+    // Grouped forms the per-name patterns above cannot see:
+    //   export { a, b as c }            — a barrel's own surface
+    //   export { a } from './x.js'      — a re-export (ALSO an import edge, below)
+    //   module.exports = { a, b }       — the dominant CJS shape
+    const groupRes = [
+      /export\s*\{([^}]*)\}/g,
+      /module\.exports\s*=\s*\{([^}]*)\}/g
+    ];
+    for (const re of groupRes) {
+      let m;
+      while ((m = re.exec(content)) !== null) {
+        const line = lineOf(content, m.index);
+        for (const part of m[1].split(',')) {
+          // "a as b" exports under b; "default as c" exports under c
+          const name = (part.split(/\bas\b/).pop() ?? '').trim().replace(/^type\s+/, '');
+          if (/^[A-Za-z_$][\w$]*$/.test(name)) ex.exports.push({ name, line });
+        }
+      }
+    }
     // Imports: import-from, require, dynamic import, python import.
     const importRes = [
       /import\s+[^'"]*?from\s+['"]([^'"]+)['"]/g,
       /import\s+['"]([^'"]+)['"]/g,
       /require\(\s*['"]([^'"]+)['"]\s*\)/g,
       /import\(\s*['"]([^'"]+)['"]\s*\)/g,
+      // Re-exports are dependencies too. Without these a barrel/index file had
+      // NO edges at all and sat isolated in the graph.
+      /export\s*\{[^}]*\}\s*from\s*['"]([^'"]+)['"]/g,
+      /export\s*\*(?:\s+as\s+[A-Za-z_$][\w$]*)?\s*from\s*['"]([^'"]+)['"]/g,
       /^from\s+([\w.]+)\s+import\s/gm,
       /^import\s+([\w.]+)\s*$/gm
     ];
@@ -171,14 +199,40 @@ export function extractFile(relPath, content) {
 
 // Resolve a JS-style relative import spec to a known project file, or null.
 function resolveImport(fromFile, spec, fileSet) {
-  if (!spec.startsWith('.')) return null; // bare specifier = external package
+  if (!spec.startsWith('.')) {
+    // Python module paths are DOTTED, not './'-prefixed, so the bare-specifier
+    // rule turned every local Python import into a fake external package node
+    // (pkg:svc.util) and dropped the real file-to-file edge (audit 2026-07-26).
+    return resolvePythonImport(fromFile, spec, fileSet);
+  }
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), spec));
   const candidates = [
     base,
-    `${base}.js`, `${base}.mjs`, `${base}.cjs`, `${base}.ts`, `${base}.tsx`, `${base}.py`,
-    `${base}/index.js`, `${base}/index.ts`
+    `${base}.js`, `${base}.mjs`, `${base}.cjs`, `${base}.jsx`,
+    `${base}.ts`, `${base}.mts`, `${base}.cts`, `${base}.tsx`, `${base}.py`,
+    `${base}/index.js`, `${base}/index.mjs`, `${base}/index.cjs`, `${base}/index.jsx`,
+    `${base}/index.ts`, `${base}/index.mts`, `${base}/index.tsx`, `${base}/__init__.py`
   ];
+  // TypeScript under NodeNext imports './x.js' while the file on disk is x.ts.
+  // Without this rewrite an ESM TypeScript project resolved NOTHING.
+  const rewritten = base.replace(/\.(js|mjs|cjs)$/, '');
+  if (rewritten !== base) {
+    candidates.push(`${rewritten}.ts`, `${rewritten}.mts`, `${rewritten}.cts`, `${rewritten}.tsx`);
+  }
   for (const c of candidates) if (fileSet.has(c)) return c;
+  return null;
+}
+
+// "from svc.util import x" -> svc/util.py. Tried relative to the importing file
+// first (a package-local sibling), then from the project root.
+function resolvePythonImport(fromFile, spec, fileSet) {
+  if (!/^[A-Za-z_][\w.]*$/.test(spec)) return null;
+  const asPath = spec.split('.').join('/');
+  const dir = path.posix.dirname(fromFile);
+  const bases = dir && dir !== '.' ? [path.posix.join(dir, asPath), asPath] : [asPath];
+  for (const b of bases) {
+    for (const c of [`${b}.py`, `${b}/__init__.py`]) if (fileSet.has(c)) return c;
+  }
   return null;
 }
 
@@ -607,9 +661,15 @@ export function benchQuestions(atlas, { max = 10 } = {}) {
 }
 
 // For each question: graph answer = the ranked where() result the agent reads;
-// baseline = reading the candidate files whole (a CONSERVATIVE grep-and-read —
-// it counts only the files the graph already surfaced, so the ratio is honest,
-// never inflated). `tokensForFile(relPath)` is injected so this stays pure.
+// baseline = OPENING those candidate files whole.
+//
+// Name it precisely: this measures "the ranked pointer list vs reading the files
+// you would have opened", NOT "graph vs grep". A real grep returns matching
+// LINES, which is far cheaper than a whole file, so calling this a grep baseline
+// overstated the win — in the direction that flatters us. It is conservative in
+// file COUNT (only files the graph already surfaced) and generous in per-file
+// cost, and both halves of that belong in the label.
+// `tokensForFile(relPath)` is injected so this stays pure.
 export function benchAtlas(atlas, { questions, tokensForFile }) {
   const rows = (questions || []).map((q) => {
     const hits = whereQuery(atlas, q, { limit: 8 });
@@ -655,7 +715,7 @@ export function renderBench(bench) {
   const lines = [
     `Atlas token bench — ${t.count} question(s), ${t.answered} with a graph answer`,
     '',
-    'question                                          graph   grep+read   ratio',
+    'question                                          graph   file-read   ratio',
     '------------------------------------------------  ------  ----------  ------'
   ];
   for (const r of bench.questions) {
@@ -668,14 +728,16 @@ export function renderBench(bench) {
   lines.push('');
   lines.push(
     t.ratio != null
-      ? `TOTAL: ${t.rawTokens} grep+read tokens vs ${t.graphTokens} graph tokens = ${t.ratio}x fewer, ${t.saved} saved`
+      ? `TOTAL: ${t.rawTokens} tokens to READ THE CANDIDATE FILES vs ${t.graphTokens} for the graph answer = ${t.ratio}x fewer, ${t.saved} saved`
       : `TOTAL: ${t.graphTokens} graph tokens (no readable candidate files to compare against)`
   );
   lines.push('');
-  lines.push('Honest caveat: the baseline reads ONLY the files the graph already');
-  lines.push('surfaced, whole — a conservative grep-and-read. On a tiny repo or a');
-  lines.push('one-small-file answer the ratio nears 1; the graph wins most on large');
-  lines.push('files and many candidates. Zero model tokens were spent to measure this.');
+  lines.push('What this measures: the ranked pointer list vs OPENING the candidate');
+  lines.push('files whole. It is NOT "graph vs grep" — a grep returns matching lines,');
+  lines.push('which is much cheaper than a file, so the true grep ratio is smaller.');
+  lines.push('Conservative in file count (only files the graph surfaced), generous in');
+  lines.push('per-file cost. On a tiny repo the ratio nears 1; the graph wins most on');
+  lines.push('large files and many candidates. Zero model tokens were spent to measure this.');
   return lines.join('\n');
 }
 

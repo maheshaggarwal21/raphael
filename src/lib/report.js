@@ -56,7 +56,7 @@ export function computeWeekly({ states = [], events = [], adoptions = [], active
   };
 
   // Atlas leverage: bench runs inside the window, with the best measured ratio
-  // (the deterministic graph's tokens-to-answer saving over a raw grep-and-read).
+  // (the graph's tokens-to-answer saving vs opening the candidate files whole).
   const benchWin = win.filter((e) => e.event === 'atlas-bench');
   const latestBench = benchWin.reduce((m, e) => (!m || (e.ts || '') > (m.ts || '') ? e : m), null);
   const atlas = {

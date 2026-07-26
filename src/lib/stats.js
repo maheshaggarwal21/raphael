@@ -82,7 +82,7 @@ export function computeStats(events, activeLessons = []) {
 
   // Atlas leverage: the latest `raph atlas bench` result per project — the
   // measured tokens-to-answer saving of the deterministic graph over a raw
-  // grep-and-read. Not injection cost; a separate, honest efficiency signal.
+  // opening the candidate files. Not injection cost; a separate efficiency signal.
   const latestBench = new Map();
   for (const e of events) {
     if (e.event !== 'atlas-bench') continue;
@@ -198,10 +198,10 @@ export function renderStats(s, { topN = 8, listN = 12 } = {}) {
 
   if (benches.length) {
     L.push('');
-    L.push('Atlas leverage  (tokens-to-answer, deterministic graph vs raw grep-and-read)');
+    L.push('Atlas leverage  (tokens-to-answer: the graph\'s ranked answer vs opening the candidate files)');
     for (const b of benches) {
       if (b.ratio != null) {
-        L.push(`  ${b.project} : ${b.ratio}x fewer  (${b.rawTokens.toLocaleString()} grep+read -> ${b.graphTokens.toLocaleString()} graph over ${b.questions} question(s)${b.ts ? `, ${b.ts.slice(0, 10)}` : ''})`);
+        L.push(`  ${b.project} : ${b.ratio}x fewer  (${b.rawTokens.toLocaleString()} to read the candidates -> ${b.graphTokens.toLocaleString()} graph, over ${b.questions} question(s)${b.ts ? `, ${b.ts.slice(0, 10)}` : ''})`);
       } else {
         L.push(`  ${b.project} : no readable candidate files to compare${b.ts ? ` (${b.ts.slice(0, 10)})` : ''}`);
       }

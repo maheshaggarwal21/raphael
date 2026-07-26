@@ -250,7 +250,7 @@ test('extractFile edge details: python defs, ambiguous calls across multiple exp
   assert.match(renderAtlas(atlas), /Ambiguous connections[\s\S]*c\.js/);
 });
 
-test('16.4 bench: honest tokens-to-answer, conservative grep-and-read baseline', () => {
+test('16.4 bench: tokens-to-answer vs opening the candidate files, labelled precisely', () => {
   // validate.js raises E-SCHEMA and defines a symbol; a big README also mentions it.
   const extractions = {
     'src/lib/validate.js': extractFile('src/lib/validate.js', "export function validateLesson() { throw new Error('E-SCHEMA: bad'); }\n"),
@@ -269,16 +269,19 @@ test('16.4 bench: honest tokens-to-answer, conservative grep-and-read baseline',
   assert.equal(row.question, 'E-SCHEMA');
   assert.ok(row.hits >= 1);
   assert.ok(row.graphTokens >= 1);
-  // grep+read baseline sums the candidate files whole; graph answer is far smaller
+  // the baseline sums the candidate files WHOLE; the graph answer is far smaller
   assert.ok(row.rawTokens >= row.graphTokens, 'reading candidate files costs at least the ranked answer');
   assert.ok(row.ratio >= 1);
   assert.equal(bench.totals.count, 1);
   assert.equal(bench.totals.answered, 1);
 
   // renders without throwing and states the honest caveat + zero-token measurement
+  // The label must say what is actually being compared. Calling this a "grep"
+  // baseline overstated the win: a grep returns matching LINES, while this reads
+  // whole files (audit 2026-07-26).
   const md = renderBench(bench);
-  assert.match(md, /grep\+read/);
-  assert.match(md, /Honest caveat/);
+  assert.match(md, /file-read/, 'the column says what the baseline is');
+  assert.match(md, /NOT "graph vs grep"/, 'and the caveat refuses the stronger claim');
   assert.match(md, /Zero model tokens|zero model tokens/i);
 });
 
@@ -376,5 +379,96 @@ test('buildAndSaveAtlas records the resolved root so the doc is self-identifying
     else process.env.RAPHAEL_HOME = prev;
     rmSync(home, { recursive: true, force: true });
     rmSync(proj, { recursive: true, force: true });
+  }
+});
+
+// ---- 21.14: the syntax the extractor USED to be blind to --------------------
+// Every existing fixture fed the regexes forms they already handled, so the
+// suite validated the happy subset and could not detect that barrels, CJS object
+// exports, .jsx resolution, TS-NodeNext imports and Python locals all failed
+// (audit 2026-07-26). Each case below was empirically broken before this fix.
+
+function adversarialProject() {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-atlas-adv-'));
+  mkdirSync(path.join(dir, 'src'), { recursive: true });
+  mkdirSync(path.join(dir, 'svc'), { recursive: true });
+
+  // a BARREL: no declarations of its own, only re-exports
+  writeFileSync(path.join(dir, 'src', 'index.js'), [
+    "export { alpha, beta } from './core.js';",
+    "export * from './extra.js';",
+    "export { default as gamma } from './gamma.js';",
+    ''
+  ].join('\n'));
+  writeFileSync(path.join(dir, 'src', 'core.js'), 'export function alpha() {}\nexport function beta() {}\n');
+  writeFileSync(path.join(dir, 'src', 'extra.js'), 'export const extraThing = 1;\n');
+  writeFileSync(path.join(dir, 'src', 'gamma.js'), 'export default function gamma() {}\n');
+
+  // CJS object export
+  writeFileSync(path.join(dir, 'src', 'legacy.js'), 'function doStuff() {}\nfunction helper() {}\nmodule.exports = { doStuff, helper };\n');
+
+  // a .jsx component imported WITHOUT an extension
+  writeFileSync(path.join(dir, 'src', 'App.jsx'), 'export function App() { return null; }\n');
+  writeFileSync(path.join(dir, 'src', 'main.js'), "import { App } from './App';\nApp();\n");
+
+  // TS NodeNext: the import says .js, the file on disk is .ts
+  writeFileSync(path.join(dir, 'src', 'util.ts'), 'export function useful() {}\nexport type Thing = string;\nexport interface Shape { a: string }\n');
+  writeFileSync(path.join(dir, 'src', 'consumer.ts'), "import { useful } from './util.js';\nuseful();\n");
+
+  // Python local import (dotted, not './'-prefixed)
+  writeFileSync(path.join(dir, 'svc', 'util.py'), 'def helper2():\n    return 1\n');
+  writeFileSync(path.join(dir, 'svc', 'app.py'), 'from svc.util import helper2\n\ndef run():\n    return helper2()\n');
+  return dir;
+}
+
+test('barrels, CJS objects, .jsx, TS-NodeNext and Python locals all produce real edges', () => {
+  const dir = adversarialProject();
+  try {
+    const { extractions } = scanProject(dir);
+    const atlas = buildAtlas(extractions, { project: 'adv' });
+    const imports = atlas.edges.filter((e) => e.relation === 'imports');
+    const edgeBetween = (from, to) => imports.some((e) => e.source === `file:${from}` && e.target === `file:${to}`);
+    const exportsOf = (rel) => (extractions[rel]?.exports ?? []).map((x) => x.name);
+
+    // a barrel is a dependency hub, not an isolated node
+    assert.ok(edgeBetween('src/index.js', 'src/core.js'), 'export { a } from — must be an import edge');
+    assert.ok(edgeBetween('src/index.js', 'src/extra.js'), 'export * from — must be an import edge');
+    assert.ok(edgeBetween('src/index.js', 'src/gamma.js'), 'export { default as x } from — must be an import edge');
+    // ...and it re-exports a real surface
+    assert.deepEqual(exportsOf('src/index.js').sort(), ['alpha', 'beta', 'gamma']);
+
+    // CJS object export
+    assert.deepEqual(exportsOf('src/legacy.js').sort(), ['doStuff', 'helper']);
+
+    // .jsx resolved from an extensionless import
+    assert.ok(edgeBetween('src/main.js', 'src/App.jsx'), '.jsx must resolve');
+
+    // TS NodeNext ('./util.js' -> util.ts) + type-level exports
+    assert.ok(edgeBetween('src/consumer.ts', 'src/util.ts'), "NodeNext './x.js' must resolve to x.ts");
+    const utilExports = exportsOf('src/util.ts');
+    assert.ok(utilExports.includes('useful'));
+    assert.ok(utilExports.includes('Thing'), 'export type is part of the public surface');
+    assert.ok(utilExports.includes('Shape'), 'export interface too');
+
+    // Python local import is a FILE edge, not a fabricated external package
+    assert.ok(edgeBetween('svc/app.py', 'svc/util.py'), 'a dotted local import must resolve to the file');
+    const fakePkg = atlas.nodes.find((n) => n.id === 'pkg:svc.util');
+    assert.equal(fakePkg, undefined, 'and must NOT invent an external package node');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('external packages are still external, and unresolvable relatives stay dropped', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-atlas-ext-'));
+  try {
+    mkdirSync(path.join(dir, 'src'), { recursive: true });
+    writeFileSync(path.join(dir, 'src', 'a.js'), "import yaml from 'js-yaml';\nimport './does-not-exist.js';\nexport const x = 1;\n");
+    const { extractions } = scanProject(dir);
+    const atlas = buildAtlas(extractions, { project: 'ext' });
+    assert.ok(atlas.nodes.some((n) => n.id === 'pkg:js-yaml'), 'a bare specifier is still an external package');
+    assert.equal(atlas.nodes.some((n) => n.id.startsWith('pkg:.')), false, 'a relative spec never becomes a package');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
