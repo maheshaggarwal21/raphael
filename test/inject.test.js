@@ -106,6 +106,82 @@ test('user-prompt: fires only on a trigger hit, then dedupes for the session', a
   });
 });
 
+// REGRESSION (audit 2026-07-26, finding 3.2). Both per-prompt guarantees used to
+// rest on score arithmetic and were provably false; the tests above pinned them
+// only at convenient interior fixture values. These pin the BOUNDARIES.
+
+test('user-prompt: a saturated prior + stack match still does NOT fire without a trigger hit', async () => {
+  await withSandbox(async (dir, proj) => {
+    // exactly the hole: W_STACK 3.0 + a fully saturated recent prior 1.0 = 4.0,
+    // and rank() used `score < threshold`, so equality passed with ZERO hits.
+    writeActiveLesson({
+      evidence: {
+        refs: [], observations: 9, distinct_projects: 3,
+        source_mix: { mined: 9 },
+        first_seen: '2026-05-02',
+        last_seen: new Date().toISOString().slice(0, 10) // recency bonus in full
+      }
+    });
+    const miss = runInjection('user-prompt', {
+      session_id: 'sess-boundary', cwd: proj, prompt: 'please help me write documentation'
+    });
+    assert.equal(miss.text, '', 'stack + prior alone must never inject on an unrelated prompt');
+    assert.equal(miss.injected.length, 0);
+  });
+});
+
+test('user-prompt: dedupe holds even for a keyword-rich lesson that outscores the penalty', async () => {
+  await withSandbox(async (dir, proj) => {
+    // 3 keyword hits (12.0) + stack (3.0) + prior (~1.0) - 10.0 = ~6.0, which
+    // clears the 4.0 threshold — so the -10 penalty alone did NOT dedupe it.
+    const { data } = writeActiveLesson({
+      triggers: { keywords: ['webhook', 'stripe', 'signature'], paths: [] }
+    });
+    const prompt = 'the stripe webhook signature check keeps failing';
+
+    const first = runInjection('user-prompt', { session_id: 'sess-dup', cwd: proj, prompt });
+    assert.ok(first.text.includes(data.injection.headline), 'it should fire the first time');
+
+    const second = runInjection('user-prompt', { session_id: 'sess-dup', cwd: proj, prompt });
+    assert.equal(second.text, '', 'a repeated prompt must never repeat the headline');
+
+    const third = runInjection('user-prompt', { session_id: 'sess-dup', cwd: proj, prompt });
+    assert.equal(third.text, '', 'and still not on the third try (a debugging loop)');
+  });
+});
+
+test('user-prompt: a high-severity lesson past the session cap still cannot repeat', async () => {
+  await withSandbox(async (dir, proj) => {
+    // high/critical bypass the token cap by design — that must not become a
+    // licence to re-inject the same headline forever.
+    const { data } = writeActiveLesson({
+      severity: 'high',
+      triggers: { keywords: ['webhook', 'stripe', 'signature'], paths: [] }
+    });
+    const prompt = 'the stripe webhook signature is failing';
+    const first = runInjection('user-prompt', { session_id: 'sess-cap', cwd: proj, prompt });
+    assert.ok(first.text.includes(data.injection.headline));
+
+    const st = loadSessionState('sess-cap');
+    st.tokens = 99999; // way past any cap
+    saveSessionState('sess-cap', st);
+
+    const again = runInjection('user-prompt', { session_id: 'sess-cap', cwd: proj, prompt });
+    assert.equal(again.text, '', 'past the cap, high severity may inject — but never a repeat');
+  });
+});
+
+test('session-start: a lesson already injected this session is not repeated after a compaction', async () => {
+  await withSandbox(async (dir, proj) => {
+    const { data } = writeActiveLesson();
+    const first = runInjection('session-start', { session_id: 'sess-comp', cwd: proj });
+    assert.ok(first.text.includes(data.injection.headline));
+    // SessionStart can fire again after a compaction in the same session
+    const second = runInjection('session-start', { session_id: 'sess-comp', cwd: proj });
+    assert.equal(second.text.includes(data.injection.headline), false, 'no repeat digest line');
+  });
+});
+
 test('user-prompt injects at most 3 headlines however many match', async () => {
   await withSandbox(async (dir, proj) => {
     for (let i = 0; i < 6; i++) {

@@ -130,6 +130,20 @@ function pruneSessions() {
   }
 }
 
+// The two per-prompt guarantees the docs make, enforced STRUCTURALLY rather than
+// by score arithmetic. match.js keeps its -10 already-injected penalty so `raph
+// why` can still explain the ranking honestly — but a penalty is a preference,
+// and these two are promises, so the recall path filters instead of hoping.
+function notAlreadyInjected(injected) {
+  return (r) => !injected.has(r.entry.id);
+}
+
+// "Nothing fires without at least one trigger hit": a stack match or a recency
+// prior is CONTEXT, not evidence that this prompt is about this lesson.
+function hasTriggerHit(r) {
+  return r.reasons.some((x) => x.startsWith('keyword:') || x.startsWith('path:'));
+}
+
 // Take ranked results until the token budget or the count cap is hit.
 // Past the session cap, only high/critical severity may still inject.
 function takeWithinBudget(ranked, budget, max, capReached, { withBoundary = false } = {}) {
@@ -395,9 +409,9 @@ export function runInjection(event, payload = {}) {
     const ctx = { stacks: detectStacks(cwd), text: '', paths: [], project, injected };
     // digest = stack-relevant lessons only (an explicit stack match, or a
     // lesson that declares no stack and therefore applies anywhere)
-    const ranked = rank(lessons, ctx, profile.digestThreshold).filter((r) =>
-      r.reasons.some((x) => x.startsWith('stack:') || x.startsWith('any-stack'))
-    );
+    const ranked = rank(lessons, ctx, profile.digestThreshold)
+      .filter(notAlreadyInjected(injected))
+      .filter((r) => r.reasons.some((x) => x.startsWith('stack:') || x.startsWith('any-stack')));
     picks = takeWithinBudget(ranked, DIGEST_BUDGET, profile.digestMax, capReached, { withBoundary: true });
     const pullHint = `${lessons.length} lesson(s) in the brain — pull more with: raph search "<terms>" / raph show <id>`;
     // 18.1: stable presentation order (cache-friendly), then one shared pointer
@@ -429,9 +443,15 @@ export function runInjection(event, payload = {}) {
       project,
       injected
     };
-    // threshold 4.0: nothing fires without at least one trigger hit — this is
-    // what keeps the typical prompt at ZERO injected tokens
-    const ranked = rank(lessons, ctx, profile.promptThreshold);
+    // Both per-prompt guarantees are STRUCTURAL, not arithmetic. Relying on the
+    // score alone made both of them false (audit 2026-07-26, finding 3.2):
+    //   - "needs a trigger hit": stack 3.0 + a saturated prior 1.0 = exactly the
+    //     4.0 threshold, and rank uses `<`, so equality passed with no hit at all
+    //   - "never repeated in one session": the -10 penalty is outscored by any
+    //     lesson with 3 keyword hits (12 + 3 + 1 - 10 = 6 >= 4.0)
+    const ranked = rank(lessons, ctx, profile.promptThreshold)
+      .filter(notAlreadyInjected(injected))
+      .filter(hasTriggerHit);
     picks = takeWithinBudget(ranked, PROMPT_BUDGET, profile.promptMax, capReached);
     if (picks.length === 0) return { text: '', injected: [], tokens: 0 };
     // 18.1: same stable ordering on the per-prompt block

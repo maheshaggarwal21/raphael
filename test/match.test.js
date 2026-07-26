@@ -98,3 +98,33 @@ test('rank sorts by score, then severity, then slug — deterministic', () => {
   assert.equal(ranked[0].entry.slug, 'a-crit'); // same score → severity wins
   assert.equal(ranked[1].entry.slug, 'b-high');
 });
+
+test('globToRegex: ? is a single-char wildcard, not a quantifier; invalid input never throws', () => {
+  // REGRESSION (audit 2026-07-26): '?' was not escaped, so it acted as a regex
+  // quantifier — 'file?.js' matched 'file.js' — and a leading '?' threw
+  // "Nothing to repeat", which scoreLesson swallowed into a silently dead trigger.
+  const one = globToRegex('src/file?.js');
+  assert.equal(one.test('src/file1.js'), true, '? matches exactly one char');
+  assert.equal(one.test('src/file.js'), false, '? must NOT match zero chars');
+  assert.equal(one.test('src/file12.js'), false, '? must NOT match two chars');
+  assert.equal(one.test('src/file/.js'), false, '? must not cross a separator');
+
+  // a pattern starting with '?' used to throw
+  assert.doesNotThrow(() => globToRegex('?abc'));
+  assert.equal(globToRegex('?abc').test('xabc'), true);
+
+  // regex metacharacters stay literal
+  assert.equal(globToRegex('src/a+b.js').test('src/a+b.js'), true);
+  assert.equal(globToRegex('src/a+b.js').test('src/aab.js'), false);
+  assert.equal(globToRegex('src/(x).js').test('src/(x).js'), true);
+
+  // a pattern with a REAL space no longer over-matches (the old space sentinel)
+  const spaced = globToRegex('my docs/notes.md');
+  assert.equal(spaced.test('my docs/notes.md'), true);
+  assert.equal(spaced.test('mystery/docs/x/notes.md'), false, 'a literal space is not **');
+
+  // edges: empty pattern, and ** still spans separators
+  assert.equal(globToRegex('').test(''), true);
+  assert.equal(globToRegex('**/webhook*/**').test('a/b/webhooks/x.js'), true);
+  assert.equal(globToRegex('src/*.js').test('src/a/b.js'), false, '* stays in one segment');
+});
