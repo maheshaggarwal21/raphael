@@ -20,6 +20,7 @@ import { loadConfig, saveConfig, setMode, setConsentScope } from '../lib/config.
 import { setDial } from '../lib/autoapprove.js';
 import { setContribution } from '../lib/contribute.js';
 import { seedGlobalBrain } from '../lib/globalbrain.js';
+import { PACK_SPECS as SECURITY_PACK_SPECS } from '../lib/security-pack.js';
 
 export default async function arise(args = []) {
   const autopilot = args.includes('--autopilot');
@@ -91,7 +92,7 @@ Next steps:
        claude plugin install raphael-brain@raphael
 
   2. First five minutes:
-       raph pack add security    seed 26 reviewed security lessons (skip if you used --pack)
+       raph pack add security    seed ${SECURITY_PACK_SPECS.length} reviewed security lessons (skip if you used --pack)
        raph queue                see what is waiting for review
        raph approve 1 2 3        activate what you agree with — nothing activates without you
        raph mine                 mine YOUR real session history into candidate lessons

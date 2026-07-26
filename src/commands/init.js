@@ -5,7 +5,7 @@ import { p } from '../lib/paths.js';
 import { atomicWrite } from '../lib/files.js';
 
 const DEFAULT_CONFIG = `schema: raphael/config/v1
-mode: curator            # curator = you review every lesson | auto = machine-gated restricted tier
+mode: curator            # curator = you review every lesson | autopilot = machine-curated, zero-touch
 injection:
   session_cap_tokens: 1200
   session_start_max: 10
