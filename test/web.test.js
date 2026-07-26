@@ -457,3 +457,143 @@ test('console settings: /api/auto full couples mode (same applyDial), /api/contr
     cleanup(home);
   }
 });
+
+// REGRESSION (audit 2026-07-26): the ONLY escaping test exercised the exported
+// escapeHtml(), which production never calls — the page's real (and only) XSS
+// defense is the inline esc() inside the served HTML. The suite "proved" the
+// escaping worked by testing a function that protects nothing.
+test('the escaper the PAGE actually uses neutralizes markup (not the unused export)', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    const html = await (await fetch(`${base}/?token=${token}`)).text();
+
+    // pull the real esc() out of the served page and run it
+    const m = html.match(/function esc\(s\)\s*\{[\s\S]*?\n\}/) || html.match(/function esc\(s\)[\s\S]*?\}\); \}/);
+    assert.ok(m, 'the served page must define esc()');
+    // eslint-disable-next-line no-new-func
+    const esc = new Function(`${m[0]}; return esc;`)();
+
+    const payload = `<img src=x onerror="steal(token)">&"'`;
+    const out = esc(payload);
+    assert.equal(/[<>]/.test(out), false, 'angle brackets must not survive');
+    assert.match(out, /&lt;img/);
+    assert.match(out, /&quot;/);
+    assert.match(out, /&#39;/);
+    assert.match(out, /&amp;/);
+    // edges the render sites depend on
+    assert.equal(esc(null), '');
+    assert.equal(esc(undefined), '');
+    assert.equal(esc(0), '0');
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});
+
+test('the page is served with a CSP nonce, so a missed escape cannot execute', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    const res = await fetch(`${base}/?token=${token}`);
+    const csp = res.headers.get('content-security-policy');
+    const html = await res.text();
+
+    assert.ok(csp, 'a CSP must be sent');
+    assert.equal(/script-src 'unsafe-inline'/.test(csp), false, "script-src 'unsafe-inline' defeats the point");
+    const nonce = (csp.match(/script-src 'nonce-([^']+)'/) || [])[1];
+    assert.ok(nonce, `expected a script nonce in: ${csp}`);
+    assert.ok(html.includes(`<script nonce="${nonce}">`), 'the page script carries the matching nonce');
+
+    // a fresh nonce per response — a fixed one would be forgeable
+    const second = await fetch(`${base}/?token=${token}`);
+    const nonce2 = (second.headers.get('content-security-policy').match(/nonce-([^']+)'/) || [])[1];
+    assert.notEqual(nonce2, nonce, 'the nonce must not be reused across responses');
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});
+
+test('an oversized body gets a 413 with the coded message, not a connection reset', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    const huge = JSON.stringify({ refs: ['x'.repeat(200 * 1024)] });
+    const res = await fetch(`${base}/api/approve`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-raphael-token': token },
+      body: huge
+    });
+    assert.equal(res.status, 413, 'the cap is answered, not dropped');
+    const body = await res.json();
+    assert.match(body.error, /E-WEB-BODY/);
+
+    // and the server is still healthy afterwards
+    const after = await fetch(`${base}/api/status`, { headers: { 'x-raphael-token': token } });
+    assert.equal(after.status, 200);
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});
+
+test('console hardening: one tier count, no token left in the URL, no dead loopback entry', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    // the page removes the token from the address bar after reading it, so it
+    // does not persist in history (which browsers may sync off-machine)
+    const html = await (await fetch(`${base}/?token=${token}`)).text();
+    assert.match(html, /history\.replaceState/, 'the page must strip the token from the URL');
+
+    // the dashboard's machine-tier number comes from countAutoTier — the same
+    // function the CLI and the settings tab use, so they cannot disagree
+    writeActiveLesson({ slug: 'auto-tier-one', provenance: { created_by: 't', source_kind: 'session-transcript', human_edited: false, tier: 'machine' } });
+    buildIndex();
+    const status = await (await fetch(`${base}/api/status`, { headers: { 'x-raphael-token': token } })).json();
+    assert.equal(typeof status.autoApprove.autoTier, 'number');
+    assert.ok(status.autoApprove.autoTier >= 1, 'a machine-tier lesson must be counted (the old hand count only looked for tier "auto")');
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});
+
+test('a second concurrent adopt is refused instead of double-spending', async () => {
+  const home = sandbox();
+  const token = makeToken();
+  const { server, port } = await startConsole({ token });
+  const base = `http://127.0.0.1:${port}`;
+  const post = (path, body) => fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'x-raphael-token': token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  try {
+    // two clicks at once: exactly one may proceed. (Both will FAIL to adopt the
+    // bogus source — the point is that the second is refused by the LOCK, 409,
+    // rather than starting a second run.)
+    const [a, b] = await Promise.all([
+      post('/api/adopt', { src: 'https://example.invalid/nothing-here', dryRun: true }),
+      post('/api/adopt', { src: 'https://example.invalid/nothing-here', dryRun: true })
+    ]);
+    const codes = [a.status, b.status].sort();
+    assert.ok(codes.includes(409), `expected one 409 (busy), got ${JSON.stringify(codes)}`);
+
+    // the lock is released afterwards, so a later attempt is not stuck at 409
+    const later = await post('/api/adopt', { src: 'https://example.invalid/nothing-here', dryRun: true });
+    assert.notEqual(later.status, 409, 'the in-flight lock must be released in a finally');
+  } finally {
+    server.close();
+    cleanup(home);
+  }
+});

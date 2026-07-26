@@ -44,7 +44,7 @@ export function makeToken() {
   return randomBytes(16).toString('hex');
 }
 
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
 function hostOf(header) {
   if (!header) return null;
@@ -87,16 +87,29 @@ export function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
+    let tooLarge = false;
     req.on('data', (c) => {
       size += c.length;
       if (size > MAX_BODY_BYTES) {
-        reject(new Error('E-WEB-BODY: request body too large'));
-        req.destroy();
+        // Over the cap: stop BUFFERING but keep draining, then answer at 'end'.
+        // Destroying the socket here meant the client got a connection reset
+        // instead of the coded message this code carefully constructs — the
+        // documented 'refused with a coded error' contract was unreachable
+        // (audit 2026-07-26). Memory stays bounded because nothing is kept.
+        tooLarge = true;
+        chunks.length = 0;
         return;
       }
+      if (tooLarge) return;
       chunks.push(c);
     });
     req.on('end', () => {
+      if (tooLarge) {
+        const err = new Error('E-WEB-BODY: request body too large');
+        err.status = 413;
+        reject(err);
+        return;
+      }
       try {
         resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {});
       } catch {
@@ -109,9 +122,11 @@ export function readJsonBody(req) {
 
 // ---- data (thin aggregation over the same lib the CLI uses) -----------------
 
+// Category totals for the dashboard. The AUTO/MACHINE tier count is delegated to
+// autoapprove.countAutoTier so the console and the CLI can never disagree about
+// how many lessons a machine activated (audit 2026-07-26).
 function countActiveLessons() {
   let total = 0;
-  let autoTier = 0;
   const byCategory = {};
   const stack = [p.lessons()];
   while (stack.length) {
@@ -125,12 +140,13 @@ function countActiveLessons() {
           const { data } = parseLessonFile(readFileSync(full, 'utf8'));
           total++;
           byCategory[data.category] = (byCategory[data.category] ?? 0) + 1;
-          if (data.provenance?.tier === 'auto') autoTier++;
+          // tier counting lives in autoapprove.countAutoTier (which also counts
+          // the curator's 'machine' tier); this loop only does category totals.
         } catch { /* unreadable lesson — doctor's problem */ }
       }
     }
   }
-  return { total, autoTier, byCategory };
+  return { total, autoTier: countAutoTier(), byCategory };
 }
 
 export function statusSummary() {
@@ -380,7 +396,7 @@ export function escapeHtml(s) {
 // token from its own URL and sends it as a header on every API call. All page
 // JS avoids template literals so this server-side template stays readable.
 
-function shellPage() {
+function shellPage(nonce) {
   return `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -441,9 +457,12 @@ function shellPage() {
   <button id="tab-settings">Settings</button>
 </nav>
 <div id="view" class="card">loading…</div>
-<script>
+<script nonce="${nonce}">
 'use strict';
 var token = new URLSearchParams(location.search).get('token');
+// Keep it out of the address bar and out of browser history (which may sync
+// off-machine). The page holds it in memory for the rest of the session.
+if (token && window.history && history.replaceState) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
   return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
 function api(path, opts) {
@@ -1028,12 +1047,27 @@ const BASE_HEADERS = {
   'referrer-policy': 'no-referrer',
   'cache-control': 'no-store'
 };
-const HTML_HEADERS = {
-  ...BASE_HEADERS,
-  'content-type': 'text/html; charset=utf-8',
-  // inline-only by design: nothing external can load, nothing can connect out
-  'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
-};
+// The page's whole render layer is ~600 lines of hand-escaped string
+// concatenation, and the session token is a JS global — so ONE missed escape
+// would be full token-stealing XSS. `script-src 'unsafe-inline'` meant the CSP
+// could not backstop that at all, while the file's own header called it a
+// "strict CSP" (audit 2026-07-26). A per-response nonce costs four lines and
+// makes injected markup inert even if an escape is ever missed: injected script
+// has no nonce, so it does not run. style-src stays inline (a stylesheet cannot
+// exfiltrate a token, and the page is one document).
+function htmlHeaders(nonce) {
+  return {
+    ...BASE_HEADERS,
+    'content-type': 'text/html; charset=utf-8',
+    'content-security-policy':
+      "default-src 'none'; script-src 'nonce-" + nonce + "'; style-src 'unsafe-inline'; " +
+      "connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
+  };
+}
+
+export function makeNonce() {
+  return randomBytes(16).toString('base64');
+}
 const JSON_HEADERS = { ...BASE_HEADERS, 'content-type': 'application/json; charset=utf-8' };
 
 function sendJson(res, code, obj) {
@@ -1041,13 +1075,17 @@ function sendJson(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// Server-side in-flight guard for the one route that SPENDS (see /api/adopt).
+let adoptInFlight = false;
+
 async function handle(req, res, token) {
   const url = new URL(req.url, `http://${CONSOLE_HOST}`);
 
   const gate = checkRequest(req, token);
   if (!gate.ok) {
     if (gate.code === 401 && url.pathname === '/' && req.method === 'GET') {
-      res.writeHead(401, HTML_HEADERS);
+      const nonce = makeNonce();
+      res.writeHead(401, htmlHeaders(nonce));
       res.end(guardPage());
       return;
     }
@@ -1057,8 +1095,9 @@ async function handle(req, res, token) {
 
   if (req.method === 'GET') {
     if (url.pathname === '/') {
-      res.writeHead(200, HTML_HEADERS);
-      res.end(shellPage());
+      const nonce = makeNonce();
+      res.writeHead(200, htmlHeaders(nonce));
+      res.end(shellPage(nonce));
       return;
     }
     if (url.pathname === '/api/health') return sendJson(res, 200, { ok: true });
@@ -1108,7 +1147,8 @@ async function handle(req, res, token) {
     try {
       body = await readJsonBody(req);
     } catch (err) {
-      return sendJson(res, 400, { error: err.message });
+      sendJson(res, err.status ?? 400, { error: err.message });
+      return;
     }
 
     // Mutations go through the SAME engine as `raph approve` / `raph reject` —
@@ -1135,11 +1175,21 @@ async function handle(req, res, token) {
     // the console never fetches in the background; only this handler, only now).
     if (url.pathname === '/api/adopt') {
       if (typeof body.src !== 'string' || !body.src.trim()) return sendJson(res, 400, { error: 'E-WEB: body.src must be a URL or path' });
+      // The only defense against concurrent adopt runs was a `var busy` in the
+      // PAGE, so a second tab, a reload mid-run, or a raw curl could start
+      // overlapping runs — double model spend and duplicate ledger entries
+      // (audit 2026-07-26). The lock belongs on the server, where the spending is.
+      if (adoptInFlight) {
+        return sendJson(res, 409, { error: 'E-WEB-BUSY: an adopt run is already in progress — wait for it to finish' });
+      }
+      adoptInFlight = true;
       try {
         return sendJson(res, 200, await runAdopt({ src: body.src.trim(), dryRun: body.dryRun === true, skill: body.skill === true }));
       } catch (err) {
         if (err.code === 'E-LIMIT') return sendJson(res, 429, { error: err.message, code: 'E-LIMIT' });
         return sendJson(res, 400, { error: String(err.message ?? err) });
+      } finally {
+        adoptInFlight = false; // released on success, failure and limit alike
       }
     }
 
