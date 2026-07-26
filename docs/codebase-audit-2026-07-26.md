@@ -1,5 +1,12 @@
 # Raphael — independent fresh-eyes codebase audit
 
+> **STATUS (2026-07-26, same day): REMEDIATED.** Every P0 item and the P1/P2
+> items worth doing were fixed in Phase 21 — see `.claude/TASKS.md`. Tests went
+> 499 → 603, each regression proven red-then-green, and the hook path was
+> re-measured at ~137ms (from ~390ms). Four items were deliberately left, with
+> reasons, at the end of the Phase 21 section. The report below is unchanged
+> from the audit so the findings and the fixes can be read against each other.
+
 **Date:** 2026-07-26 · **Target:** v0.4.0 at commit `069c5e1` (clean tree, 499 tests green) · **Scope:** the entire codebase — ~24.5k LOC across 107 source files (58 lib modules, 43 command files, 4 eval modules, cli/bin), 61 test files, the plugin, and the packaging.
 
 ---

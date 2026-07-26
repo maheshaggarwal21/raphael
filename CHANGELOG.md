@@ -1,5 +1,103 @@
 # Changelog
 
+## 0.5.0 — 2026-07-26
+
+The audit release. An independent fresh-eyes audit — nine auditors over disjoint
+subsystems, then an adversarial pass told to *refute* every finding — produced
+115 findings, 59 of them confirmed with quoted code and none refuted. This
+release is the remediation: every P0, plus the P1/P2 items worth doing.
+499 → 603 tests, each regression proven failing-without and passing-with.
+
+### Correctness
+
+- **A subscription limit is never read from the model's own answer.** The limit
+  detector ran over successful output in three places, so a distilled lesson
+  mentioning "rate limit" poison-pilled the distill queue permanently, and a
+  security stage recommending rate-limiting — which Raphael's own security pack
+  instructs — halted the autopilot. One `detectLimit()` now inspects only
+  failure material.
+- **A limit mid-batch no longer escapes the curator.** Lessons already activated
+  in that batch used to stand having skipped the canary gate, their audit events
+  and the commit, and the CLI exited 2 (crash) instead of 4 (limit).
+- **Both per-prompt recall guarantees are now structural.** "Never repeated in
+  one session" was a −10 score penalty any 3-keyword lesson outscored; "nothing
+  fires without a trigger hit" failed at the 4.0 boundary. Both are filters now.
+- **A corrupt academy checkpoint is preserved, not overwritten.** `readState`
+  returned null for both "missing" and "corrupt", so a truncated state file was
+  silently replaced with a blank project — destroying the milestones, log and
+  dead-end list the resume design exists to protect.
+- **No candidate carrying counter-indications could ever machine-activate** — a
+  `.join()` on a string field, swallowed by the fail-closed catch and reported as
+  a transport failure.
+- Atlas extraction learned the syntax it was blind to: ESM barrels and
+  re-exports, CJS object exports, TS type exports, `.jsx`/`.mts`, TS-NodeNext
+  (`./x.js` → `x.ts`) and Python's dotted local imports. On this repo that is
+  153 edges the old extractor could not see.
+
+### Security
+
+- **SSRF guard in the bounded fetcher.** "https only" is not "public": any https
+  host was allowed, including private and link-local literals, and every redirect
+  re-ran the same permissive check — so a public page could steer an adopt fetch
+  into `169.254.169.254` or loopback. Two layers now (IP literals, and a guarded
+  DNS lookup that also closes rebinding), and the localhost carve-out follows the
+  origin rather than being re-granted per hop.
+- **The chokepoint scans the parsed data, not just the raw file.** It was safe
+  only because js-yaml happens to emit invisible characters literally; a
+  hand-authored file using YAML escapes passed every gate while the decoded value
+  was indexed into agent context.
+- The secret scrubber caught four measured misses (compound env names like
+  `DJANGO_SECRET_KEY=`, quoted multi-word values) and stopped flagging ordinary
+  security prose; `SECRET_RULES` is table-driven so a new rule cannot ship
+  without fixtures.
+- The pre-commit guard no longer skips files whose names git quotes — a secret
+  in a non-ASCII filename passed silently — and warns about anything it could
+  not read instead of letting silence read as "clean".
+- Episode excerpts are scrubbed **before** every truncation, closing the split-
+  secret path into the model and the evidence record.
+- The console got a real per-response CSP nonce (it advertised a "strict CSP"
+  while allowing `unsafe-inline`), a 413 that actually reaches the client, and a
+  server-side lock on the one route that spends.
+
+### Honesty
+
+- **The eval measures the agent, not the scaffold.** Seven of nine scenarios
+  scored `task_complete` for an agent that wrote nothing, because the fixture's
+  own TODO comments satisfied the checks — and one scored a *catch*. Checkers now
+  judge the diff with comments stripped. Two checkers that failed the textbook-
+  correct answer were fixed. Wilson intervals are printed instead of computed and
+  discarded, with a Newcombe interval for the difference and a stated sample
+  floor below which no significance verdict is issued.
+- **The declarative canary arm now runs.** Its probes and judges existed, were
+  described as the only real defense against advisory poison, and had no executor
+  outside the unit tests.
+- The atlas bench says what it measures: a ranked pointer list versus opening the
+  candidate files, *not* "graph vs grep". The number is unchanged; the claim is
+  now the one the data supports.
+- README numbers agree with the router and the filesystem, and a test keeps them
+  that way.
+
+### Performance
+
+- **The hook path went from ~390ms to ~137ms**, inside the 150ms budget
+  ARCHITECTURE always claimed: ajv is compiled lazily (it was ~80% of module
+  load, paid on every prompt), `verifyIndex` uses a stat fast-path, and the
+  weekly digest's throttle reads a marker instead of the whole event log.
+- `events.jsonl` finally has a read story — rotation plus windowed reads — so the
+  cost of a hook fire no longer grows with how much the product has been used.
+- `latency_ms` telemetry and the self-disable circuit breaker exist, both of
+  which ARCHITECTURE had promised and neither of which had been built.
+
+### Notes
+
+- Atlases are re-keyed (basename + path hash) because two projects sharing a
+  folder name silently served each other's graph. Existing atlases are orphaned
+  and rebuild at zero token cost on the next `raph atlas` or pulse.
+- Exit code 70 now means "raph itself threw"; 2 stays a deliberate policy verdict.
+- The npm package no longer ships internal planning docs: 345KB, was ~800KB.
+- No new dependencies. No new network surface. All six security invariants
+  unchanged.
+
 ## 0.4.0 — 2026-07-25
 
 Phase 18 complete. This release is about making the promises measurable: recall

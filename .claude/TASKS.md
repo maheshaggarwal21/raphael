@@ -1059,37 +1059,50 @@ js-yaml/ajv-only dependency discipline); canvas-design's "repeat 'meticulously c
 many times" prompt-padding trick (unmeasured prompt-superstition — borrow the aim-high
 idea, not the incantation, unless an eval shows it helps). §6 of the audit.
 
-## Phase 21 — audit remediation (PROPOSED 2026-07-26, session 16; awaits owner go)
-Source: docs/codebase-audit-2026-07-26.md — a fresh-eyes multi-agent audit of the whole
-codebase (9 independent auditors + adversarial verification; 115 findings, 59 confirmed /
-2 partial / 0 refuted on the high+medium set). The P0 list below is the confirmed
-correctness/security set; P1/P2 live in the report §8.
-- [ ] 21.1 E-LIMIT family: envelope-first parsing (provider.js), limit-safe curateStaged
-      (gate-or-rollback partial batch + exit 4 in distill/adopt), structural limit
-      detection in driver.js + eval/runner.js (never regex the model's own answer).
-- [ ] 21.2 Recall invariants made structural: hard session-dedupe filter + require a
-      keyword:/path: reason on the user-prompt path; boundary tests (obs>=5 case).
-- [ ] 21.3 fetch.js SSRF guard: block loopback/link-local/private ranges; the http-loopback
-      carve-out never applies to redirect targets; add the missing refusal tests.
-- [ ] 21.4 Atlas identity: path-hash cache key + root stored/verified in the doc (also in
-      inject.atlasDigestBlock + freshness.atlasFileLabels).
-- [ ] 21.5 Hook hot path: reorder atlas_nudged before the parse + size-cap atlasDigestBlock;
-      lazy ajv compile; stat fast-path in verifyIndex; digest throttle to a marker file.
-- [ ] 21.6 academy readState: corrupt != missing (rename .corrupt-<ts>, warn, E-ACADEMY).
-- [ ] 21.7 Activation-path parity: near-dup gate into autoApproveStaged; console adopt
-      calls curateStaged like the CLI.
-- [ ] 21.8 curator counter_indications string fix (+ fixture that carries the field).
-- [ ] 21.9 Scrub-before-truncate at the four episodes.js sites; kv-secret compound names +
-      quoted values; dec_ id exemption; table-driven SECRET_RULES tests incl. E-BASE64.
-- [ ] 21.10 guard: -z staged file lists (quoted-path evasion) + warn on unreadable blobs.
-- [ ] 21.11 Eval honesty pass: diff-based/behavioral checkers + no-agent meta-test; fix
-      S15/S31 reverse bias; print Wilson CIs; wire or remove declarative canaries.
-- [ ] 21.12 Wire 18.7 skill lint + 18.10 effort router into their commands (both currently
-      have no production caller — recorded shipped, reachable only from tests).
-- [ ] 21.13 Generated-agents byte-equality test (plugin/agents vs renderAgent).
-- [ ] 21.14 P1/P2 sweep per report §8 (CLI-drift probe, events rotation, latency_ms,
-      console nonce+static asset, shared walker + lib/args.js, NUL bytes in match.js,
-      doc-number drift, npm files whitelist).
+## Phase 21 — audit remediation (COMPLETE 2026-07-26, session 16)
+Source: docs/codebase-audit-2026-07-26.md. All P0 shipped, plus the P1/P2 items
+worth doing. 499 -> 603 tests; every regression proven red-then-green.
+- [x] 21.1 E-LIMIT family: one detectLimit() (never read a limit from the model's own
+      answer); limit-safe curateStaged (gate-or-rollback the partial batch, exit 4).
+- [x] 21.2 Recall invariants structural (hard dedupe filter + trigger-hit requirement);
+      match.js de-NUL'd (git sees text again); globToRegex single-pass, ? fixed.
+- [x] 21.3 fetch.js SSRF guard: IP-literal layer + guarded DNS lookup; the loopback
+      carve-out follows the ORIGIN, never a redirect target.
+- [x] 21.4 Atlas identity: path-hash key + verified root; 3 duplicate keyings -> 1;
+      raph lint scopes staleness to the linted project.
+- [x] 21.5 Hot path: lazy ajv, stat fast-path in verifyIndex, digest marker file,
+      atlas size cap + nudge reorder. MEASURED ~390ms -> ~137ms end to end.
+- [x] 21.6 academy readState: corrupt != missing (quarantined + E-ACADEMY).
+- [x] 21.7 All three activation paths aligned; console adopt uses curateStaged.
+- [x] 21.8 curator counter_indications (no candidate carrying it could activate).
+- [x] 21.9 Chokepoint gates scan parsed data too; scrub compound env names, quoted
+      values, bearer prose, dec_ ids; SECRET_RULES table-driven; E-BASE64 covered.
+- [x] 21.10 guard -z file lists (non-ASCII filename evasion) + warn on unreadable.
+- [x] 21.11 Eval honesty: diff-based checkers + no-agent meta-test, S15/S31 bias,
+      printed Wilson + Newcombe intervals with a sample floor, declarative canary arm
+      wired with an injectable executor, eval's duplicated selector deleted.
+- [x] 21.12 18.7 skill lint + 18.10 effort router wired (both had no production caller).
+- [x] 21.13 Generated plugin agents/recipes byte-pinned to agents.js.
+- [x] 21.14 CLI exit codes (crash 70 vs policy 2) + router tests + --max-episodes fails
+      closed; events rotation + windowed reads; latency_ms + latencyHealth; console CSP
+      nonce, real 413, server-side adopt lock, shared tier count, token stripped from URL;
+      atlas extraction (barrels/CJS/.jsx/NodeNext/Python) + honest bench label; pulse lock
+      heartbeat + atomic steal; tool-correlated error-fix; envelope forging; quarantine
+      timestamp; freshness false positives; AGENTS.md ranked selection; doc/number drift;
+      npm files whitelist (package 800KB -> 345KB).
+
+Deliberately NOT done (recorded, not forgotten):
+- Consolidating the ~12 hand-copied .md walkers and 19 hand-rolled arg parsers into
+  shared helpers (lib/args.js over node:util parseArgs). Mechanical, touches many
+  modules, no user-visible defect — a good standalone cleanup, not worth mixing into
+  a correctness release.
+- Extracting mine/distill engines out of the command layer so pulse stops importing
+  commands. The audit is right that it is inverted layering; it is also the riskiest
+  refactor on the list and nothing currently misbehaves because of it.
+- similarity.js threshold recalibration: the current values are documented as a
+  deliberate recall-tuned shortlist. Changing them needs corpus measurement, not a
+  guess.
+- 19.6 / A9 per-agent outcome mining: still needs its own design pass.
 
 ## Parked (post-v1, deliberate)
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
