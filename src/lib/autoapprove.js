@@ -27,6 +27,8 @@ import { atomicWrite } from './files.js';
 import { logEvent } from './events.js';
 import { commitBrain } from './braingit.js';
 import { buildIndex } from './compile.js';
+import { activeCorpus } from './review.js';
+import { nearDuplicates } from './similarity.js';
 import { p } from './paths.js';
 
 export const DIAL_LEVELS = ['off', 'standard', 'wide', 'full'];
@@ -152,6 +154,7 @@ export function autoApproveStaged(staged, { origin, config = {}, project = null,
 
   const { cap, dailyCap } = dialCaps(config);
   let autoCount = countAutoTier();
+  const corpus = activeCorpus(); // one walk; the near-duplicate gate below uses it
   let adoptedToday = origin === 'adopted' ? countAdoptedAutoToday() : 0;
 
   for (const item of staged) {
@@ -187,6 +190,21 @@ export function autoApproveStaged(staged, { origin, config = {}, project = null,
       continue;
     }
 
+    // The near-duplicate gate, on the THIRD machine-activation path. It was
+    // added to approveRefs (human) and curateStaged (autopilot+full) after a
+    // re-worded duplicate reached the active brain, but not here — and this is
+    // the path behind the arise-default 'standard' dial, which activates with no
+    // human AND no model review (audit 2026-07-26). Held, never dropped: it stays
+    // a candidate for a person to compare. Corpus grows as we activate, so two
+    // duplicates in one run are caught too.
+    const dups = nearDuplicates(`${data.title}\n${data.lesson}`, corpus);
+    if (dups.length) {
+      const why = `near-duplicate of ${dups.map((d) => `"${d.slug}" (${d.signal} ${d.score.toFixed(2)})`).join(', ')} — held for human review`;
+      result.skipped.push({ slug: data.slug, why, duplicates: dups });
+      log(`  [held] ${data.slug} — ${why}`);
+      continue;
+    }
+
     const activated = {
       ...data,
       status: 'active',
@@ -214,6 +232,8 @@ export function autoApproveStaged(staged, { origin, config = {}, project = null,
     atomicWrite(target, content);
     rmSync(item.path, { force: true });
     autoCount++;
+    // now active — the rest of this run is checked against it too
+    corpus.push({ slug: activated.slug, title: activated.title, text: `${activated.title}\n${activated.lesson}` });
     if (origin === 'adopted') adoptedToday++;
     logEvent({ event: 'auto-approved', id: activated.id, slug: activated.slug, origin, level, ...(adoption ? { adoption } : {}) });
     result.activated.push({ id: activated.id, slug: activated.slug, path: target });

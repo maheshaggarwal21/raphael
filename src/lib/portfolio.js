@@ -56,7 +56,7 @@ export function buildPortfolio({ states = [], events = [] } = {}) {
 
 // Disk wrapper — the one the CLI verb and the console both call.
 export function readPortfolio() {
-  const states = listProjects().map((name) => readState(name)).filter(Boolean);
+  const states = listProjects().map((name) => readState(name, { onCorrupt: 'null' })).filter(Boolean);
   return buildPortfolio({ states, events: readEvents() });
 }
 

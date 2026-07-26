@@ -11,7 +11,7 @@
 // public remote, it calls recordBoundary() and STOPS. A resuming session that sees a
 // boundary block does not proceed autonomously — it surfaces the ask to the owner.
 
-import { existsSync, readdirSync, readFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { atomicWrite } from './files.js';
 import { p } from './paths.js';
@@ -27,13 +27,41 @@ function statePath(project) {
   return path.join(p.academyProject(project), 'state.json');
 }
 
-export function readState(project) {
+// MISSING and CORRUPT are different answers. readState used to return null for
+// both, and startProject treats null as "nothing here" — so a truncated state
+// file (interrupted write, full disk, bad sector) was silently OVERWRITTEN with
+// a blank project, destroying the milestones, the log, the `tried` dead-ends and
+// the whole driver record: exactly the data the resume design exists to protect
+// (audit 2026-07-26, finding 3.8). A corrupt file is now quarantined and thrown.
+export function readState(project, { onCorrupt = 'throw' } = {}) {
   const fp = statePath(project);
   if (!existsSync(fp)) return null;
+  let raw;
   try {
-    return JSON.parse(readFileSync(fp, 'utf8'));
-  } catch {
-    return null;
+    raw = readFileSync(fp, 'utf8');
+  } catch (err) {
+    if (onCorrupt === 'null') return null;
+    throw new Error(`E-ACADEMY: cannot read the state for "${project}" (${err.message}) — fix or move ${fp}`);
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') throw new Error('state is not an object');
+    return parsed;
+  } catch (err) {
+    if (onCorrupt === 'null') return null;
+    // Preserve the evidence before anything can write over it.
+    let kept = null;
+    try {
+      kept = `${fp}.corrupt-${Date.now()}`;
+      renameSync(fp, kept);
+    } catch {
+      kept = null;
+    }
+    throw new Error(
+      `E-ACADEMY: the state for "${project}" is unreadable (${err.message}). ` +
+      (kept ? `The damaged file was kept at ${kept}. ` : `It is still at ${fp}. `) +
+      'Nothing was overwritten — restore it, or run "raph academy start" to begin again.'
+    );
   }
 }
 

@@ -11,6 +11,7 @@ const { serializeLessonFile, parseLessonFile } = await import('../src/lib/frontm
 const { listCandidates } = await import('../src/lib/queue.js');
 const { lessonId } = await import('../src/lib/ulid.js');
 const { p } = await import('../src/lib/paths.js');
+const { writeActiveLesson } = await import('./helpers.js');
 
 function sandbox() {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-auto-'));
@@ -147,5 +148,72 @@ test('caps: auto-tier cap halts activation visibly; adopted daily cap holds the 
     assert.match(r2.skipped[0].why, /daily adopted-auto cap/);
   } finally {
     cleanup(home);
+  }
+});
+
+// REGRESSION (audit 2026-07-26, finding 3.10): the near-duplicate gate was wired
+// into approveRefs (human) and curateStaged (autopilot+full) after a re-worded
+// duplicate reached the active brain — but NOT into the plain dial, which is the
+// path behind the arise-default 'standard' level and activates with no human and
+// no model review. A paraphrase therefore machine-activated silently, costing
+// injection budget on every future session.
+test('the plain dial HOLDS a re-worded duplicate of an active lesson', () => {
+  const home = sandbox();
+  try {
+    // an active lesson in the brain
+    writeActiveLesson({
+      slug: 'floats-lose-cents',
+      title: 'Money stored as a float loses cents',
+      lesson: 'Representing a monetary amount as a floating point number accumulates rounding error, so totals drift away from the ledger by fractions of a cent.'
+    });
+
+    // a candidate that says the SAME thing in different words
+    const twin = stage({
+      slug: 'currency-float-drift',
+      title: 'Currency amounts kept as floats drift',
+      lesson: 'Keeping a currency amount in a floating point value accumulates rounding error, so a computed total drifts from the ledger by fractions of a cent.'
+    });
+
+    const res = autoApproveStaged([twin], { origin: 'mined', config: { auto_approve: { level: 'standard' } }, project: 'projX' });
+    assert.equal(res.activated.length, 0, 'a paraphrase must not machine-activate');
+    assert.match(res.skipped[0].why, /near-duplicate/);
+    assert.ok(res.skipped[0].duplicates.length >= 1, 'the match is reported so a human can compare');
+    // held, not dropped: the candidate file survives for review
+    assert.ok(existsSync(twin.path), 'the candidate is kept, not deleted');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('the plain dial still activates a genuinely distinct lesson, and catches twins within one run', () => {
+  const home = sandbox();
+  try {
+    const distinct = stage({
+      slug: 'pin-ci-digest',
+      title: 'A floating CI image tag changes the build under you',
+      lesson: 'A floating base-image tag lets the build environment change beneath a green pipeline, so a build that passed yesterday fails today for reasons absent from the diff.'
+    });
+    const res = autoApproveStaged([distinct], { origin: 'mined', config: { auto_approve: { level: 'standard' } }, project: 'projX' });
+    assert.equal(res.activated.length, 1, 'a distinct lesson still activates');
+
+    // two paraphrases of each other inside ONE batch: the second must be held,
+    // because the corpus grows as the run activates.
+    const a = stage({
+      slug: 'unbounded-queue-oom',
+      title: 'An unbounded queue dies under a producer spike',
+      lesson: 'An unbounded work queue absorbs a producer spike until memory runs out and the process dies, losing everything that was queued.'
+    });
+    const b = stage({
+      slug: 'queue-without-bound',
+      title: 'A queue with no bound runs out of memory on a spike',
+      lesson: 'A work queue with no bound absorbs a producer spike until memory is exhausted and the process dies, losing every queued item.'
+    });
+    const res2 = autoApproveStaged([a, b], { origin: 'mined', config: { auto_approve: { level: 'standard' } }, project: 'projX' });
+    assert.equal(res2.activated.length, 1, 'only the first of the twin pair activates');
+    assert.match(res2.skipped[0].why, /near-duplicate/);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(home, { recursive: true, force: true });
   }
 });

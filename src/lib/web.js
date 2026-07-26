@@ -18,7 +18,8 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { loadConfig, saveConfig, isInjectionEnabled, setInjectionEnabled, setProjectConsent, getMode } from './config.js';
-import { dialLevel, dialCaps, applyDial, countAutoTier, autoApproveStaged, DIAL_LEVELS } from './autoapprove.js';
+import { dialLevel, dialCaps, applyDial, countAutoTier, DIAL_LEVELS } from './autoapprove.js';
+import { curateStaged } from './curator.js';
 import { contributionEnabled, setContribution, listBundles, eligibleForBundle } from './contribute.js';
 import { scanTracked, scanFile, hookStatus, installPreCommitHook, uninstallPreCommitHook, loadAllowlist, gitTopLevel, ALLOWLIST_FILE } from './guard.js';
 import { listCandidates, resolveRef, needsConfirmation } from './queue.js';
@@ -329,13 +330,26 @@ export async function runAdopt({ src, dryRun = false, skill = false }) {
     return { outcome: 'blocked', adoption: result.adoption, verdict: JSON.parse(scrubSecrets(JSON.stringify(result.verdict)).text), log };
   }
 
-  // the dial at 'wide' may activate reviewer-passed, non-security adoptions
+  // §14 one engine, both faces: this MUST be the same activation call the CLI
+  // makes (src/commands/adopt.js). It used to call the plain dial directly, so
+  // the same externally-sourced material got strictly WEAKER governance from the
+  // console — no reviewer screen, no canary gate, no near-duplicate hold, tier
+  // 'auto' instead of 'machine' (audit 2026-07-26). curateStaged IS the plain
+  // dial below autopilot+full, so nothing is lost below that.
   let autoActivated = 0;
+  let curatorLimit = null;
   const eligible = result.staged.filter((s) => !s.quarantined);
   if (eligible.length > 0) {
-    const auto = autoApproveStaged(eligible, { origin: 'adopted', config: cfg, adoption: result.adoption, log: (s) => log.push(s) });
+    const auto = await curateStaged(eligible, {
+      origin: 'adopted', config: cfg, adoption: result.adoption,
+      callModel: provider.callModel, log: (s) => log.push(s)
+    });
     autoActivated = auto.activated.length;
     for (const sk of auto.skipped) log.push(`[held] ${sk.slug} — ${sk.why}`);
+    if (auto.limited) {
+      curatorLimit = auto.limit;
+      log.push(`[limit] ${auto.limit.message} — the rest stay candidates`);
+    }
   }
   return {
     outcome: 'adopted',
@@ -345,6 +359,7 @@ export async function runAdopt({ src, dryRun = false, skill = false }) {
     skills: result.skills,
     dropped: result.dropped,
     autoActivated,
+    limited: !!curatorLimit,
     log
   };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -133,5 +133,55 @@ test('listProjects and renderStatus surface the resume picture', () => {
   } finally {
     delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// REGRESSION (audit 2026-07-26, finding 3.8): readState returned null for BOTH
+// "no such project" and "corrupt file", and startProject treats null as nothing
+// there — so a truncated state file was silently overwritten with a blank
+// project, destroying the milestones, log, `tried` list and driver record that
+// the entire resume design exists to protect.
+test('a corrupt state file is preserved and reported, never silently overwritten', () => {
+  const home = sandbox();
+  try {
+    startProject('kit', { title: 'Kit', milestones: parseMilestones('M1:Scaffold,M2:Ship') });
+    checkpoint('kit', { step: 'halfway through M2', tried: 'the regex approach — dead end' });
+    const before = readState('kit');
+    assert.equal(before.tried.length, 1);
+    assert.equal(before.log.length >= 1, true);
+
+    // simulate an interrupted write: truncate the file to half its bytes
+    const fp = path.join(home, 'academy', 'kit', 'state.json');
+    const full = readFileSync(fp, 'utf8');
+    writeFileSync(fp, full.slice(0, Math.floor(full.length / 2)), 'utf8');
+
+    // reading it must THROW rather than report "no project"
+    assert.throws(() => readState('kit'), /E-ACADEMY.*unreadable/);
+
+    // the damaged bytes were preserved for recovery
+    const kept = readdirSync(path.join(home, 'academy', 'kit')).filter((n) => n.includes('.corrupt-'));
+    assert.equal(kept.length, 1, 'the damaged file is kept aside');
+    assert.ok(readFileSync(path.join(home, 'academy', 'kit', kept[0]), 'utf8').length > 0);
+
+    // and read-only aggregations can still skip it instead of failing
+    assert.equal(readState('kit', { onCorrupt: 'null' }), null);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('readState: missing project is still null, and a non-object payload is corrupt', () => {
+  const home = sandbox();
+  try {
+    assert.equal(readState('never-existed'), null, 'missing stays null (not an error)');
+
+    startProject('kit2', { title: 'Kit2' });
+    const fp = path.join(home, 'academy', 'kit2', 'state.json');
+    writeFileSync(fp, '"just a string"', 'utf8'); // valid JSON, wrong shape
+    assert.throws(() => readState('kit2'), /E-ACADEMY/);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(home, { recursive: true, force: true });
   }
 });

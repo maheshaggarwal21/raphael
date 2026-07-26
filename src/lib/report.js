@@ -106,7 +106,7 @@ export function computeWeekly({ states = [], events = [], adoptions = [], active
 
 // Disk wrapper — the one the CLI verb and the console both call.
 export function readWeekly({ now = new Date(), days = DEFAULT_DAYS } = {}) {
-  const states = listProjects().map((name) => readState(name)).filter(Boolean);
+  const states = listProjects().map((name) => readState(name, { onCorrupt: 'null' })).filter(Boolean);
   const { lessons } = loadIndex();
   return computeWeekly({ states, events: readEvents(), adoptions: listAdoptions(), activeLessons: lessons, now, days });
 }
