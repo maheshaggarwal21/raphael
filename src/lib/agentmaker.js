@@ -46,7 +46,9 @@ function titleCase(slug) {
 
 // The roster literal to paste into agents.js AGENTS (a human edit — never done here).
 export function rosterSnippet(entry) {
-  const toolList = entry.tools.map((t) => `'${t}'`).join(', ');
+  // Escape structurally, like every other field. This snippet is pasted into
+  // src/lib/agents.js by a human, so a stray quote would corrupt the roster.
+  const toolList = entry.tools.map((t) => JSON.stringify(t)).join(', ');
   return [
     '  {',
     `    slug: '${entry.slug}',`,

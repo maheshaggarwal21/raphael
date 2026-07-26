@@ -199,3 +199,21 @@ test('lintFreshness: the real dated and pointer idioms still fire', () => {
   flagged('The bug is in src/app.js:317.', 'pointer');
   flagged('TODO: revisit this after the migration.', 'pointer');
 });
+
+// Found by RUNNING the linter on the real 88-lesson brain after tightening the
+// other patterns: "Node.js" ends in .js, so a lesson mentioning it was reported
+// STALE against every project atlas — the linter inventing rot in prose.
+test('referencedPaths ignores technology names that merely end in an indexed extension', () => {
+  assert.deepEqual(referencedPaths({ lesson: 'Node.js fs throws ENOENT for backslash paths.' }), []);
+  assert.deepEqual(referencedPaths({ lesson: 'Next.js and Vue.js both ship a dev server.' }), []);
+  // a REAL path in the same sentence is still picked up
+  assert.deepEqual(
+    referencedPaths({ lesson: 'Node.js resolves this in src/lib/paths.js at startup.' }),
+    ['src/lib/paths.js']
+  );
+  // and explicit trigger paths are untouched
+  assert.deepEqual(
+    referencedPaths({ triggers: { paths: ['src/app.js'] }, lesson: 'unrelated prose' }),
+    ['src/app.js']
+  );
+});

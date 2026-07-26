@@ -56,7 +56,16 @@ export function renderVault(atlas, { maxNotes = 2000, canvasTop = 48 } = {}) {
 
   const notes = [];
   const truncated = files.length > maxNotes;
-  for (const f of files.slice(0, maxNotes)) {
+  // Keep the MOST CONNECTED files when capping, not the alphabetical head. A
+  // truncated vault used to keep assets/... and drop the src/... god files while
+  // the index note claimed the opposite (audit 2026-07-26). Re-sorted by label
+  // afterwards so the output stays deterministic.
+  const kept = truncated
+    ? [...files].sort((a, b) => ((b.degree ?? 0) - (a.degree ?? 0)) || a.label.localeCompare(b.label))
+        .slice(0, maxNotes)
+        .sort((a, b) => a.label.localeCompare(b.label))
+    : files;
+  for (const f of kept) {
     notes.push({ path: `${f.label}.md`, content: fileNote(f, { outOf, incTo, byId }) });
   }
   for (const c of codes) {
@@ -180,7 +189,7 @@ function indexNote(atlas, { files, codes, truncated, maxNotes }) {
   }
   if (truncated) {
     L.push('---');
-    L.push(`_Note: file notes were capped at ${maxNotes}; the largest files by path order are included._`);
+    L.push(`_Note: file notes were capped at ${maxNotes}; the most-connected files are kept (highest degree first)._`);
   }
   return L.join('\n').trimEnd() + '\n';
 }

@@ -532,7 +532,10 @@ export function whereQuery(atlas, text, { limit = 8 } = {}) {
   }
   for (const p2 of tokens.paths) {
     for (const node of atlas.nodes) {
-      if (node.type === 'file' && (node.label === p2 || node.label.endsWith(`/${p2}`) || node.label.endsWith(p2))) {
+      // Path-boundary matching only. A bare endsWith made 'a.js' match
+      // 'schema.js' — and it subsumed both conditions before it, making them
+      // dead code (audit 2026-07-26).
+      if (node.type === 'file' && (node.label === p2 || node.label.endsWith(`/${p2}`))) {
         bump(node.id, 3, 'named in the question');
       }
     }

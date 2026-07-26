@@ -106,3 +106,54 @@ test('--out writes where asked and the file is non-empty', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// REGRESSION (audit 2026-07-26): the budget was filled in ULID order, and ULIDs
+// are chronological — so the file inlined the OLDEST lessons and dropped the
+// rest, while implying "these are the important ones". inject.js states the
+// right split (SELECT by rank, PRESENT by id); this file only had the second half.
+test('AGENTS.md selects by worth, not by age, and still presents in id order', () => {
+  const mk = (n, severity, obs) => ({
+    id: `les_${String(n).padStart(26, '0')}`,
+    slug: `lesson-${n}`,
+    severity,
+    category: 'correctness',
+    headline: `Headline number ${n} about a durable engineering hazard.`,
+    evidence: { observations: obs, distinct_projects: 2, first_seen: '2026-01-01', last_seen: new Date().toISOString().slice(0, 10) },
+    provenance: { tier: 'user' }
+  });
+
+  // OLD + low severity first (they would win on age), NEW + critical last
+  const lessons = [
+    ...Array.from({ length: 30 }, (_, i) => mk(i + 1, 'low', 1)),
+    mk(90, 'critical', 9),
+    mk(91, 'critical', 9)
+  ];
+
+  const md = renderAgentsMd({ lessons, budget: 120 });
+  assert.match(md, /Headline number 90/, 'a critical lesson must make the cut');
+  assert.match(md, /Headline number 91/, 'even though it is the newest');
+
+  // presentation order stays ascending by id (cache-stable, small diffs)
+  const nums = [...md.matchAll(/Headline number (\d+)/g)].map((m) => Number(m[1]));
+  assert.deepEqual(nums, [...nums].sort((a, b) => a - b), 'rendered in ascending id order');
+
+  // and a regenerated file is byte-identical for the same input
+  assert.equal(renderAgentsMd({ lessons, budget: 120 }), md);
+});
+
+test('AGENTS.md: one over-long headline does not truncate every shorter line after it', () => {
+  const long = {
+    id: 'les_00000000000000000000000001', slug: 'long', severity: 'medium', category: 'correctness',
+    headline: 'A'.repeat(600),
+    evidence: { observations: 1, distinct_projects: 1, first_seen: '2026-01-01', last_seen: '2026-01-01' },
+    provenance: { tier: 'user' }
+  };
+  const short = {
+    id: 'les_00000000000000000000000002', slug: 'short', severity: 'critical', category: 'correctness',
+    headline: 'Short but important.',
+    evidence: { observations: 5, distinct_projects: 3, first_seen: '2026-01-01', last_seen: '2026-01-01' },
+    provenance: { tier: 'user' }
+  };
+  const md = renderAgentsMd({ lessons: [long, short], budget: 60 });
+  assert.match(md, /Short but important/, 'a fat line must be skipped, not end the list');
+});

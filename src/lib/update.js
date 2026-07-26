@@ -58,6 +58,14 @@ function writeUpdateState(state) {
 export async function checkForUpdate({ fetch = fetchUrl, current = currentVersion() } = {}) {
   const res = await fetch(REGISTRY_URL);
   const info = JSON.parse(res.text);
+  // Confirm the document describes the package we asked for. fetchUrl follows up
+  // to 3 redirects, so without this the version that DECIDES whether to run a
+  // global install could come from a redirected host. npm's sha512 integrity
+  // check is still the real gate on what gets installed — this closes the
+  // trigger (audit 2026-07-26).
+  if (info?.name && info.name !== PACKAGE_NAME) {
+    return { checked: true, error: `E-UPDATE: registry returned "${info.name}", expected ${PACKAGE_NAME}` };
+  }
   const latest = String(info.version ?? '');
   if (!/^\d+\.\d+\.\d+/.test(latest)) throw new Error('E-UPDATE: registry answer had no valid version');
   return { current, latest, behind: compareVersions(current, latest) < 0 };

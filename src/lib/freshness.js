@@ -68,9 +68,18 @@ const CHECKABLE = new RegExp(`\\.(?:${ATLAS_EXT})$`, 'i');
 // Every distinct atlas-checkable file path a lesson references: explicit
 // triggers.paths plus any indexed-source token in the title/body. Paths the
 // atlas can't verify are dropped here so staleness stays provable, not guessed.
+// Technology names that end in an indexed extension. "Node.js" is not a file,
+// and a lesson mentioning it was being reported STALE against every project
+// atlas — found by running the linter on the real brain after tightening the
+// other freshness patterns (audit follow-up 2026-07-26).
+const NOT_A_PATH = new Set([
+  'node.js', 'next.js', 'nuxt.js', 'vue.js', 'react.js', 'express.js', 'ember.js',
+  'backbone.js', 'angular.js', 'three.js', 'chart.js', 'd3.js', 'alpine.js', 'socket.js'
+]);
+
 export function referencedPaths(lesson) {
   const fromTriggers = (lesson.triggers?.paths ?? []).filter((rp) => CHECKABLE.test(String(rp)));
-  const fromText = lessonText(lesson).match(PATH_TOKEN) ?? [];
+  const fromText = (lessonText(lesson).match(PATH_TOKEN) ?? []).filter((t) => !NOT_A_PATH.has(String(t).toLowerCase()));
   const seen = new Set();
   const out = [];
   for (const raw of [...fromTriggers, ...fromText]) {

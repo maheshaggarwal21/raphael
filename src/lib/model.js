@@ -18,7 +18,11 @@ function sleep(ms) {
 }
 
 // Returns the forced tool's input object. Throws E-MODEL on failure.
-export async function callModel({ model, system, prompt, toolName, toolDescription, toolSchema, maxTokens = 1500 }) {
+// timeoutMs is accepted on BOTH transports. The CLI path forwarded it while
+// this one dropped it on the floor, so a caller that legitimately needs longer
+// (adopt reviews large material at 240s) was cut off at 90s — the same option,
+// two behaviours (audit 2026-07-26).
+export async function callModel({ model, system, prompt, toolName, toolDescription, toolSchema, maxTokens = 1500, timeoutMs = TIMEOUT_MS }) {
   const key = apiKey();
   if (!key) throw new Error('E-APIKEY: ANTHROPIC_API_KEY is not set');
 
