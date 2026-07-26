@@ -18,7 +18,7 @@ import { detectStacks } from './stacks.js';
 import { rank, extractPaths } from './match.js';
 import { atomicWrite } from './files.js';
 import { logEvent } from './events.js';
-import { renderDigest } from './atlas.js';
+import { renderDigest, loadAtlasDoc, atlasPaths } from './atlas.js';
 import { decisionsDigest } from './decisions.js';
 import { mapFileName } from './map.js';
 import { p } from './paths.js';
@@ -31,6 +31,8 @@ const PROMPT_MAX = 3;
 // The project-atlas digest (16.3): its own small budget on top of the lesson
 // digest, only ever spent once, at session start.
 const ATLAS_DIGEST_BUDGET = 250;
+// A digest of a graph bigger than this is not worth a parse on a hook path.
+const ATLAS_HOOK_MAX_BYTES = 5 * 1024 * 1024;
 // The standing-decisions digest (16.8b): the settled calls, surfaced once at
 // session start so they are not re-litigated. Small, own budget + envelope.
 const DECISIONS_BUDGET = 200;
@@ -237,11 +239,23 @@ export function decisionsBlock(budget = DECISIONS_BUDGET) {
 // atlas / the "ask `raph atlas where`" nudge when an atlas actually EXISTS for
 // this project. Never tell the agent to use a surface that isn't built. Returns
 // '' when there is no atlas cache, it is corrupt, or it would blow the budget.
+// Does a usable atlas exist for this project? One statSync — no parse. Used by
+// the PreToolUse nudge, which only needs to know the surface is real.
+export function atlasExistsFor(cwd) {
+  try {
+    const { json } = atlasPaths(cwd);
+    return existsSync(json) && statSync(json).size > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function atlasDigestBlock(cwd, budget = ATLAS_DIGEST_BUDGET) {
   try {
-    const file = path.join(p.atlas(), `${mapFileName(path.basename(cwd))}.json`);
-    if (!existsSync(file)) return '';
-    const doc = JSON.parse(readFileSync(file, 'utf8'));
+    // loadAtlasDoc owns the cache key (basename + path hash) and the root check,
+    // so this hook can never answer from another project's graph — and the size
+    // cap keeps a huge atlas out of a latency-critical path.
+    const doc = loadAtlasDoc(cwd, { maxBytes: ATLAS_HOOK_MAX_BYTES });
     if (!doc || !doc.counts || !Array.isArray(doc.nodes) || doc.nodes.length === 0) return '';
     const digest = renderDigest(doc);
     if (!digest || estTokens(digest) > budget) return '';
@@ -358,10 +372,16 @@ function isSearchShaped(payload) {
 export function runPreToolNudge(payload = {}) {
   const cwd = payload.cwd || process.cwd();
   if (!isSearchShaped(payload)) return { text: '', injected: [], tokens: 0 };
-  // capability-check: no atlas built for this project → no nudge
-  if (atlasDigestBlock(cwd) === '') return { text: '', injected: [], tokens: 0 };
+  // CHEAP CHECKS FIRST. This runs on every Grep/Glob call, and the capability
+  // check used to be a full readFileSync + JSON.parse of the atlas — so after
+  // the once-per-session nudge had already fired, every later search still paid
+  // the whole parse just to print nothing (audit 2026-07-26, finding 3.7; a real
+  // 64.5MB atlas made that a multi-hundred-ms tax per tool call).
   const state = loadSessionState(payload.session_id);
   if (state.atlas_nudged) return { text: '', injected: [], tokens: 0 }; // once per session
+  // capability-check: no atlas built for this project → no nudge. Existence is
+  // all the nudge needs — its text never quotes the digest, so nothing is parsed.
+  if (!atlasExistsFor(cwd)) return { text: '', injected: [], tokens: 0 };
   state.atlas_nudged = true;
   saveSessionState(state);
   const text = [

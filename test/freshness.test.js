@@ -7,6 +7,7 @@ import {
   classifyPath,
   findContradictions,
   lintLessons,
+  scopedToProject,
   renderLint
 } from '../src/lib/freshness.js';
 
@@ -108,4 +109,60 @@ test('renderLint on a clean brain says clean, and notes a skipped atlas check', 
   const clean = renderLint(lintLessons([lesson()], { atlasFiles: null }));
   assert.match(clean, /clean/);
   assert.match(clean, /staleness skipped/);
+});
+
+// REGRESSION (audit 2026-07-26): `raph lint` linted EVERY active lesson against
+// the cwd project's atlas, so a lesson about another project's file was reported
+// 'stale' — pushing the user to retire a valid lesson. The linter's own contract
+// says staleness stays provable, and this graph proves nothing about that project.
+test('lintLessons: staleness is only claimed for lessons in scope for the linted project', () => {
+  const atlasFiles = ['src/lib/validate.js', 'src/lib/inject.js'];
+
+  const foreign = {
+    id: 'les_1', slug: 'moneycore-rounding', category: 'correctness', severity: 'medium',
+    scope: { projects: ['onedesk'] },
+    triggers: { keywords: [], paths: [] },
+    lesson: 'Rounding in moneycore.js drifts when totals are summed as floats.'
+  };
+  const mine = {
+    id: 'les_2', slug: 'validate-chokepoint', category: 'correctness', severity: 'medium',
+    scope: { projects: ['raphael'] },
+    triggers: { keywords: [], paths: [] },
+    lesson: 'Every write path goes through src/lib/validate.js or it is not a write path.'
+  };
+  const unscoped = {
+    id: 'les_3', slug: 'ghost-path', category: 'correctness', severity: 'low',
+    scope: { projects: [] },
+    triggers: { keywords: [], paths: [] },
+    lesson: 'A helper in src/lib/deleted-helper.js used to own this and no longer exists.'
+  };
+
+  const rep = lintLessons([foreign, mine, unscoped], { atlasFiles, project: 'raphael' });
+  const stale = (id) =>
+    (rep.lessons.find((r) => r.id === id)?.findings ?? []).filter((f) => f.kind === 'staleness');
+
+  assert.equal(stale('les_1').length, 0, "another project's file must NOT be called stale");
+  assert.equal(rep.skippedStaleness, 1, 'and the skip is reported honestly');
+  assert.equal(stale('les_2').length, 0, 'an in-scope lesson whose file exists is fine');
+  assert.equal(stale('les_3').length, 1, 'an unscoped lesson claims to apply here, so it IS checked');
+
+  // Failure/edge: with no project supplied, a SCOPED lesson cannot be judged...
+  const noProject = lintLessons([foreign], { atlasFiles, project: null });
+  assert.equal((noProject.lessons[0]?.findings ?? []).filter((f) => f.kind === 'staleness').length, 0);
+  // ...and with no atlas at all nothing is claimed for anyone.
+  const noAtlas = lintLessons([foreign, unscoped], { atlasFiles: null, project: 'raphael' });
+  assert.equal(noAtlas.counts.staleness, 0);
+  assert.equal(noAtlas.atlasChecked, false);
+  assert.equal(noAtlas.skippedStaleness, 0, 'nothing to skip when nothing could be checked');
+});
+
+test('scopedToProject: in-scope, out-of-scope, unscoped, and unknown-project cases', () => {
+  const scoped = { scope: { projects: ['raphael', 'assay'] } };
+  assert.equal(scopedToProject(scoped, 'raphael'), true);
+  assert.equal(scopedToProject(scoped, 'assay'), true);
+  assert.equal(scopedToProject(scoped, 'onedesk'), false);
+  assert.equal(scopedToProject(scoped, null), false, 'unknown project: refuse to guess');
+  assert.equal(scopedToProject({ scope: { projects: [] } }, 'anything'), true);
+  assert.equal(scopedToProject({}, 'anything'), true, 'no scope block at all = applies anywhere');
+  assert.equal(scopedToProject({ scope: {} }, null), true);
 });

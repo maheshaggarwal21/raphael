@@ -14,7 +14,10 @@ export default async function lint(args) {
 
   const lessons = readActiveLessons();
   const atlasFiles = atlasFileLabels(projectDir);
-  const rep = lintLessons(lessons, { atlasFiles, events: readEvents() });
+  // The project name scopes the STALENESS check: a lesson belonging to another
+  // project must not be called stale just because this project's graph lacks its
+  // file. Freshness and contradiction are project-independent and always run.
+  const rep = lintLessons(lessons, { atlasFiles, events: readEvents(), project: path.basename(projectDir) });
 
   if (asJson) {
     console.log(JSON.stringify(rep, null, 2));

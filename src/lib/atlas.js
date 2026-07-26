@@ -346,19 +346,41 @@ function owningFiles(atlas, nid, nbr) {
 // Tokenize a question / error text into things we can match against the graph.
 // ---------- persistence + freshness (extracted from the command for pulse, 17.4) ----------
 
+// The atlas cache key. It used to be the directory BASENAME alone, so every
+// project called 'app' / 'api' / 'frontend' shared one file: `raph atlas where`,
+// the session-start digest and the freshness lint could all answer from a
+// DIFFERENT project's graph, and pulse thrash-rebuilt on every alternation
+// because the stored git HEAD never matched (audit 2026-07-26, finding 3.6).
+// Keyed by basename + a hash of the resolved absolute path: still human-readable,
+// no longer ambiguous. `root` is stored in the doc and verified on load, so a
+// stale or hand-moved cache is treated as missing rather than trusted.
+export function atlasKey(projectDir) {
+  const root = path.resolve(projectDir);
+  const hash = createHash('sha256').update(root.toLowerCase(), 'utf8').digest('hex').slice(0, 8);
+  return `${mapFileName(path.basename(root))}-${hash}`;
+}
+
 export function atlasPaths(projectDir) {
-  const name = mapFileName(path.basename(projectDir));
+  const name = atlasKey(projectDir);
   return {
     json: path.join(p.atlas(), `${name}.json`),
     md: path.join(p.atlas(), `${name}.md`)
   };
 }
 
-export function loadAtlasDoc(projectDir) {
+// `maxBytes` is for LATENCY-CRITICAL callers (the hooks). A digest of a huge
+// graph is not worth a multi-hundred-ms parse on every prompt; a real 64.5MB
+// atlas existed on the author's machine when this was found. Queries pass no cap.
+export function loadAtlasDoc(projectDir, { maxBytes = Infinity } = {}) {
   const { json } = atlasPaths(projectDir);
   if (!existsSync(json)) return null;
   try {
-    return JSON.parse(readFileSync(json, 'utf8'));
+    if (Number.isFinite(maxBytes) && statSync(json).size > maxBytes) return null;
+    const doc = JSON.parse(readFileSync(json, 'utf8'));
+    // Belt and braces: the filename already encodes the root, but a doc that
+    // records a different root is not this project's graph. Never answer from it.
+    if (doc?.root && path.resolve(doc.root).toLowerCase() !== path.resolve(projectDir).toLowerCase()) return null;
+    return doc;
   } catch {
     return null; // corrupt cache = rebuild
   }
@@ -371,7 +393,7 @@ export function buildAndSaveAtlas(projectDir, { previous = null } = {}) {
     project: path.basename(projectDir),
     generated: today
   });
-  const doc = { ...atlas, fileExtractions: extractions, head: gitHead(projectDir) };
+  const doc = { ...atlas, root: path.resolve(projectDir), fileExtractions: extractions, head: gitHead(projectDir) };
   const { json, md } = atlasPaths(projectDir);
   mkdirSync(p.atlas(), { recursive: true });
   atomicWrite(json, JSON.stringify(doc));

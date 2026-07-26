@@ -21,7 +21,7 @@ import path from 'node:path';
 import { parseLessonFile } from './frontmatter.js';
 import { computeConfidence, confidenceBand, ageDays } from './confidence.js';
 import { readEvents } from './events.js';
-import { mapFileName } from './map.js';
+import { loadAtlasDoc } from './atlas.js';
 import { p } from './paths.js';
 
 // --- 1. freshness (dated / pointer) ---------------------------------------
@@ -189,9 +189,25 @@ export function retireCandidates(lessons, { events = [], now = new Date() } = {}
 
 // --- combined report -------------------------------------------------------
 
-export function lintLessons(lessons, { atlasFiles = null, events = null } = {}) {
+// A staleness verdict is only honest for a lesson that BELONGS to the project
+// being linted. Linting every active lesson against the cwd's atlas flagged a
+// lesson about another project's file as "stale" — pushing the user to retire a
+// perfectly valid lesson (audit 2026-07-26, finding: cross-project false STALE).
+// An unscoped lesson (scope.projects empty) is still checked: it claims to apply
+// everywhere, so this project's graph is fair evidence.
+export function scopedToProject(lesson, project) {
+  const scoped = lesson.scope?.projects ?? [];
+  if (!scoped.length) return true;      // claims to apply anywhere
+  if (!project) return false;           // unknown project: refuse to guess
+  return scoped.includes(project);
+}
+
+export function lintLessons(lessons, { atlasFiles = null, events = null, project = null } = {}) {
+  let skippedStaleness = 0;
   const perLesson = lessons.map((l) => {
-    const findings = [...lintFreshness(l), ...lintStaleness(l, atlasFiles)];
+    const inScope = scopedToProject(l, project);
+    if (!inScope && atlasFiles?.length) skippedStaleness++;
+    const findings = [...lintFreshness(l), ...(inScope ? lintStaleness(l, atlasFiles) : [])];
     return { id: l.id, slug: l.slug, category: l.category, severity: l.severity, findings };
   }).filter((r) => r.findings.length);
 
@@ -206,6 +222,8 @@ export function lintLessons(lessons, { atlasFiles = null, events = null } = {}) 
   return {
     lessonCount: lessons.length,
     atlasChecked: !!(atlasFiles && atlasFiles.length),
+    project,
+    skippedStaleness,
     lessons: perLesson,
     contradictions,
     confidence: dist,
@@ -231,6 +249,7 @@ export function renderLint(rep) {
     L.push('  clean — no dated/pointer wording, no atlas-stale paths, no contradictions found.');
     if (confLine) L.push(confLine);
     if (!rep.atlasChecked) L.push('  (staleness skipped: no atlas built for this project — run "raph atlas" to enable it.)');
+    else if (rep.skippedStaleness) L.push(`  (staleness skipped for ${rep.skippedStaleness} lesson(s) scoped to other projects — this graph cannot prove anything about them.)`);
     return L.join('\n');
   }
 
@@ -321,13 +340,11 @@ export function readActiveLessons() {
 }
 
 // The atlas file labels for a project dir, or null when no atlas is built.
+// Uses loadAtlasDoc so the cache key + root verification live in ONE place —
+// this was a third hand-rolled copy of the basename keying, which meant a
+// staleness verdict could be computed from another project's graph.
 export function atlasFileLabels(projectDir) {
-  const file = path.join(p.atlas(), `${mapFileName(path.basename(projectDir))}.json`);
-  if (!existsSync(file)) return null;
-  try {
-    const doc = JSON.parse(readFileSync(file, 'utf8'));
-    return (doc.nodes ?? []).filter((n) => n.type === 'file').map((n) => n.label);
-  } catch {
-    return null;
-  }
+  const doc = loadAtlasDoc(projectDir);
+  if (!doc) return null;
+  return (doc.nodes ?? []).filter((n) => n.type === 'file').map((n) => n.label);
 }

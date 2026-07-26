@@ -17,7 +17,11 @@ import {
   queryTokens,
   benchAtlas,
   benchQuestions,
-  renderBench
+  renderBench,
+  atlasKey,
+  atlasPaths,
+  loadAtlasDoc,
+  buildAndSaveAtlas
 } from '../src/lib/atlas.js';
 
 // A small fixture project with the shapes the atlas must understand:
@@ -289,4 +293,88 @@ test('16.4 bench: unreadable candidate files contribute 0 (ratio stays honest, n
   assert.equal(bench.questions[0].ratio, null);
   assert.equal(bench.totals.ratio, null);
   assert.match(renderBench(bench), /no readable candidate files|graph tokens/);
+});
+
+// ---- cache identity (audit 2026-07-26, finding 3.6) --------------------------
+// The cache used to be keyed by the directory BASENAME alone, so two projects
+// called 'app' (or the ubiquitous 'api'/'frontend'/'server') read and wrote the
+// SAME file and could answer from each other's graph — into agent context.
+
+test('atlasKey/atlasPaths: same basename in different locations never collide', () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-atlaskey-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    const workApp = path.join(home, 'work', 'app');
+    const personalApp = path.join(home, 'personal', 'app');
+    mkdirSync(workApp, { recursive: true });
+    mkdirSync(personalApp, { recursive: true });
+
+    assert.notEqual(atlasKey(workApp), atlasKey(personalApp), 'same basename must not share a key');
+    assert.notEqual(atlasPaths(workApp).json, atlasPaths(personalApp).json);
+    // still human-readable: the basename survives in the filename
+    assert.match(path.basename(atlasPaths(workApp).json), /^app-[0-9a-f]{8}\.json$/);
+    // and it is stable for the same directory (a cache key must not drift)
+    assert.equal(atlasKey(workApp), atlasKey(workApp));
+    assert.equal(atlasKey(workApp), atlasKey(workApp + path.sep), 'trailing separator is the same dir');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME;
+    else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('loadAtlasDoc: a doc recording a different root is refused, and the size cap applies', () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-atlasload-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    const proj = path.join(home, 'proj');
+    mkdirSync(proj, { recursive: true });
+    const { json } = atlasPaths(proj);
+    mkdirSync(path.dirname(json), { recursive: true });
+
+    // a doc for THIS project loads
+    writeFileSync(json, JSON.stringify({ root: proj, counts: { files: 1 }, nodes: [] }), 'utf8');
+    assert.ok(loadAtlasDoc(proj), 'own graph loads');
+
+    // a doc claiming a different root is not this project's graph
+    writeFileSync(json, JSON.stringify({ root: path.join(home, 'somewhere-else'), counts: { files: 1 }, nodes: [] }), 'utf8');
+    assert.equal(loadAtlasDoc(proj), null, 'a foreign root must be refused');
+
+    // legacy docs (no root recorded) still load — the filename already keys them
+    writeFileSync(json, JSON.stringify({ counts: { files: 1 }, nodes: [] }), 'utf8');
+    assert.ok(loadAtlasDoc(proj), 'a pre-21.4 doc without a root still loads');
+
+    // the latency cap: oversized graphs are skipped, not parsed
+    assert.equal(loadAtlasDoc(proj, { maxBytes: 5 }), null, 'over the cap = treated as missing');
+    assert.ok(loadAtlasDoc(proj, { maxBytes: 1024 * 1024 }), 'under the cap = loaded');
+
+    // edges: missing file, corrupt JSON
+    rmSync(json, { force: true });
+    assert.equal(loadAtlasDoc(proj), null);
+    writeFileSync(json, 'not json at all', 'utf8');
+    assert.equal(loadAtlasDoc(proj), null);
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME;
+    else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('buildAndSaveAtlas records the resolved root so the doc is self-identifying', () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-atlasroot-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  const proj = fixtureProject();
+  try {
+    const { atlas } = buildAndSaveAtlas(proj);
+    assert.equal(atlas.root, path.resolve(proj));
+    assert.ok(loadAtlasDoc(proj), 'the doc it just wrote loads back');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME;
+    else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+    rmSync(proj, { recursive: true, force: true });
+  }
 });

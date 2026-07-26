@@ -10,7 +10,7 @@ import { setInjectionEnabled } from '../src/lib/config.js';
 import { writeActiveLesson } from './helpers.js';
 import { recordDecision } from '../src/lib/decisions.js';
 import { lessonId } from '../src/lib/ulid.js';
-import { mapFileName } from '../src/lib/map.js';
+import { atlasPaths } from '../src/lib/atlas.js';
 import { p } from '../src/lib/paths.js';
 
 // Seed an atlas cache for a project dir so the capability-check passes.
@@ -24,7 +24,7 @@ function seedAtlas(projDir, { files = 4 } = {}) {
     ]
   };
   mkdirSync(p.atlas(), { recursive: true });
-  writeFileSync(path.join(p.atlas(), `${mapFileName(path.basename(projDir))}.json`), JSON.stringify(doc), 'utf8');
+  writeFileSync(atlasPaths(projDir).json, JSON.stringify(doc), 'utf8');
   return doc;
 }
 
@@ -300,9 +300,9 @@ test('16.3 atlasDigestBlock: empty for missing/corrupt/empty atlas', async () =>
   await withSandbox(async (dir, proj) => {
     assert.equal(atlasDigestBlock(proj), '');                 // none built
     mkdirSync(p.atlas(), { recursive: true });
-    writeFileSync(path.join(p.atlas(), `${mapFileName(path.basename(proj))}.json`), 'not json', 'utf8');
+    writeFileSync(atlasPaths(proj).json, 'not json', 'utf8');
     assert.equal(atlasDigestBlock(proj), '');                 // corrupt
-    writeFileSync(path.join(p.atlas(), `${mapFileName(path.basename(proj))}.json`), JSON.stringify({ counts: { files: 0 }, nodes: [] }), 'utf8');
+    writeFileSync(atlasPaths(proj).json, JSON.stringify({ counts: { files: 0 }, nodes: [] }), 'utf8');
     assert.equal(atlasDigestBlock(proj), '');                 // no nodes
   });
 });
