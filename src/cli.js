@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const COMMANDS = {
+export const COMMANDS = {
   init: () => import('./commands/init.js'),
   arise: () => import('./commands/arise.js'),
   contribute: () => import('./commands/contribute.js'),
@@ -148,9 +148,21 @@ Commands:
   help        Show this help
   version     Show version
 
+Exit codes:
+  0   success
+  1   error (bad usage, failed check, findings that should block)
+  2   blocked by policy — a deliberate verdict, not a crash
+      (adopt refused by the reviewer; a drive stage that needs attention)
+  3   partial — some work deferred and will retry
+  4   stopped by a subscription limit; re-run after it resets
+  70  internal error (raph itself threw) — please report it
+
 Environment:
   RAPHAEL_HOME   Override the brain location (default: ~/.raphael)
 `;
+
+// The documented contract above, exported so tests and callers agree on it.
+export const EXIT_CODES = { ok: 0, error: 1, blocked: 2, partial: 3, limit: 4, crash: 70 };
 
 export async function run(argv) {
   const [cmd, ...args] = argv;

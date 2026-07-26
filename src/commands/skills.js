@@ -66,6 +66,18 @@ export default async function skills(args) {
     }
     const { path: file, slug } = draftSkillFromLesson(lesson);
     console.log(`raph: staged skill draft "${slug}" -> ${file}`);
+
+    // 18.7's lint, finally wired to something a user can reach. It shipped with
+    // tests and no production caller at all (audit 2026-07-26), so no drafted
+    // skill was ever linted. The description IS the router — a skill the host
+    // cannot match on never fires, however good its body is.
+    const issues = lintSkillDescription(lesson.injection?.headline || lesson.title || slug, { name: slug });
+    if (issues.length) {
+      console.log('');
+      console.log('raph: description review (the host routes on this line):');
+      for (const i of issues) console.log(`  [${i.level}] ${i.code}  ${i.msg}`);
+      console.log('  Edit the description in the draft before installing it.');
+    }
     console.log('raph: DRAFT only — review it, then install by hand. Nothing was activated.');
     return 0;
   }

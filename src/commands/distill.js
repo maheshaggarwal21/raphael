@@ -37,7 +37,19 @@ export default async function distill(args) {
   const modelIdx = args.indexOf('--model');
 
   let episodes = loadPendingEpisodes();
-  if (maxIdx >= 0) episodes = episodes.slice(0, Number(args[maxIdx + 1]) || episodes.length);
+  // FAIL CLOSED on the one flag whose whole job is bounding model spend.
+  // `Number(...) || episodes.length` meant `--max-episodes 0`, a typo, or a
+  // missing value all silently processed EVERY pending episode — the opposite of
+  // what the user asked for (audit 2026-07-26). The academy driver already
+  // validates its analogous flag; this one was just skipped.
+  if (maxIdx >= 0) {
+    const n = Number(args[maxIdx + 1]);
+    if (!Number.isInteger(n) || n < 1) {
+      console.error('raph: --max-episodes must be a positive integer (it caps how many episodes cost model tokens)');
+      return 1;
+    }
+    episodes = episodes.slice(0, n);
+  }
 
   if (episodes.length === 0) {
     console.log('raph: no undistilled episodes — run "raph mine" first');

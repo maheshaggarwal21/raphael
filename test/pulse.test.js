@@ -33,8 +33,14 @@ function autopilotOn(home) {
 const noopDeps = {
   mine: async () => 0,
   distill: async () => 0,
-  // tests must never touch the npm registry — the self-update step is stubbed
-  selfUpdate: async () => ({ checked: false })
+  // Tests must never touch the network. selfUpdate was stubbed but syncGlobal was
+  // NOT, so five tests fired real HTTPS GETs at raw.githubusercontent.com and,
+  // when online, downloaded and ACTIVATED the real 40-lesson global brain into
+  // the sandbox mid-test (audit 2026-07-26). The assertions filtered by event
+  // name, so it stayed green while being slow, nondeterministic and offline-fragile.
+  selfUpdate: async () => ({ checked: false }),
+  syncGlobal: async () => ({ checked: false }),
+  bundle: async () => ({ staged: 0 })
 };
 
 test('pulse is a silent no-op in curator mode', async () => {

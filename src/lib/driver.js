@@ -21,7 +21,10 @@ import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { claudeBinary, detectLimit, isSuccessEnvelope } from './provider.js';
-import { resolvePolicy } from './policy.js';
+import { resolvePolicy, routeEffortWithLessons } from './policy.js';
+import { loadIndex } from './compile.js';
+import { rank } from './match.js';
+import { computeConfidence } from './confidence.js';
 import { AGENTS } from './agents.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
 import { scanProject, buildAtlas, renderDigest } from './atlas.js';
@@ -297,6 +300,18 @@ export async function drive(project, { runner, log = () => {}, maxStages = Infin
     writeState(project, state);
     log(`stage ${state.driver.stage + 1}/${state.driver.pipeline.length} ${kind}: model=${policy.model ?? '(cli default)'} effort=${policy.effort}${policy.escalated ? ' (escalated)' : ''}${resumeSessionId ? ' (resuming session)' : ''}`);
 
+    // 18.10's effort router, finally reachable: it shipped with tests and NO
+    // production caller (audit 2026-07-26), so no stage's effort was ever routed
+    // on lesson confidence. Its own contract is that it RECOMMENDS and never
+    // silently downgrades, so it surfaces as a log line and the policy stands.
+    try {
+      const matches = lessonMatchesFor(kind, input);
+      const route = routeEffortWithLessons(policy.effort, matches, { escalated: Boolean(policy.escalated) });
+      if (route.downgraded) {
+        log(`  note: ${route.why} — consider --effort ${route.effort} for this stage (not applied automatically)`);
+      }
+    } catch { /* advice is never allowed to break a stage */ }
+
     // 16.3: hand code-bearing stages the workspace map (zero tokens to build).
     const atlasDigest = CODE_BEARING_KINDS.has(kind) ? atlasDigestFn(ws) : '';
     const prompt = renderStagePrompt(kind, { project, brief: state.driver.brief, input, priorKind, atlasDigest });
@@ -349,4 +364,26 @@ export function renderPlan(state) {
   lines.push(`  status: ${d.status} · next: ${d.stage < d.pipeline.length ? d.pipeline[d.stage] : '—'}`);
   lines.push('  boundary: no deploy stage exists; pipeline completion records the owner ask');
   return lines.join('\n');
+}
+
+// Which active lessons plausibly cover this stage, with their computed
+// confidence — the input 18.10's effort router needs. Kept here (rather than
+// inside policy.js) so the pure policy table stays free of brain I/O, and
+// wrapped so a brain that is missing or unreadable never affects a build.
+export function lessonMatchesFor(kind, input) {
+  try {
+    const { lessons } = loadIndex();
+    if (!lessons.length) return [];
+    const ctx = { text: `${kind}\n${String(input ?? '').slice(0, 2000)}`, paths: [], stacks: [], injected: new Set() };
+    return rank(lessons, ctx, 4.0)
+      .slice(0, 5)
+      .map((r) => ({
+        slug: r.entry.slug,
+        id: r.entry.id,
+        score: r.score,
+        confidence: computeConfidence(r.entry)
+      }));
+  } catch {
+    return [];
+  }
 }
