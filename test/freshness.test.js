@@ -166,3 +166,36 @@ test('scopedToProject: in-scope, out-of-scope, unscoped, and unknown-project cas
   assert.equal(scopedToProject({}, 'anything'), true, 'no scope block at all = applies anywhere');
   assert.equal(scopedToProject({ scope: {} }, null), true);
 });
+
+// REGRESSION (audit 2026-07-26): the dated/pointer regexes fired on TIMELESS
+// lessons — "Use 2048-bit RSA keys" read as a year, "aim for a 3:1 contrast
+// ratio" as a line pointer. The design pack's contrast lessons are exactly that
+// shape, so the linter was flagging the very lessons it exists to protect. The
+// old tests only covered true positives.
+test('lintFreshness: timeless numbers are not dates or line pointers', () => {
+  const clean = [
+    'Use 2048-bit RSA keys.',
+    'Aim for a 3:1 contrast ratio for large text.',
+    'Body text under 4.5:1 contrast fails WCAG AA.',
+    'Touch targets should be at least 44x44px.',
+    'Listen on port 8080 by default.',
+    'Allow 300ms for the animation.'
+  ];
+  for (const text of clean) {
+    assert.deepEqual(lintFreshness({ lesson: text }), [], `must not flag: ${text}`);
+  }
+});
+
+test('lintFreshness: the real dated and pointer idioms still fire', () => {
+  const flagged = (text, signal) => {
+    const hits = lintFreshness({ lesson: text });
+    assert.ok(hits.some((h) => h.signal === signal), `expected a ${signal} finding for: ${text}`);
+  };
+  flagged('This was fixed in 2024.', 'dated');
+  flagged('As of 2019 the API changed.', 'dated');
+  flagged('Pinned to v1.2.3.', 'dated');
+  flagged('Use the latest version of the SDK.', 'dated');
+  flagged('See line 42 of the handler.', 'pointer');
+  flagged('The bug is in src/app.js:317.', 'pointer');
+  flagged('TODO: revisit this after the migration.', 'pointer');
+});

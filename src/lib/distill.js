@@ -106,9 +106,12 @@ const RUBRIC_SYSTEM = `You are a strict judge of candidate lessons for an AI cod
 counterfactual (0-3): Would a competent AI coding agent WITHOUT this lesson plausibly make this mistake? 0 = never (common knowledge or nonsense), 3 = very likely and the lesson would prevent it.
 actionable (0-3): Does the lesson name a concrete, mechanically checkable corrective pattern? 0 = vague advice, 3 = a reviewer could verify compliance from the text alone.`;
 
-function extractPrompt(episode, feedback) {
+export function extractPrompt(episode, feedback) {
   const fb = feedback ? `\n\nPREVIOUS ATTEMPT REJECTED: ${feedback}\nFix exactly that and re-emit.` : '';
-  return `Episode type: ${episode.type}\nProject: ${episode.project ?? 'unknown'}\n\n<episode-data>\n${episode.excerpt}\n</episode-data>${fb}`;
+  // Neutralize the closing tag inside the payload so adversarial transcript
+  // text cannot end the envelope early and speak as the pipeline.
+  const safe = String(episode.excerpt ?? '').replaceAll('</episode-data>', '<\\/episode-data>');
+  return `Episode type: ${episode.type}\nProject: ${episode.project ?? 'unknown'}\n\n<episode-data>\n${safe}\n</episode-data>${fb}`;
 }
 
 // ---------- deterministic gates ----------

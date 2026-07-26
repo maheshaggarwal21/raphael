@@ -65,22 +65,52 @@ export function acquireLock(now = Date.now()) {
     writeFileSync(file, JSON.stringify({ pid: process.pid, ts: now }), { flag: 'wx' });
     return true;
   } catch {
-    // lock exists — steal it only if stale (a crashed pulse must not wedge us)
+    // A lock exists. Steal it ONLY if stale — a crashed pulse must not wedge us
+    // forever, but a live one must not be interrupted either.
+    let held = null;
     try {
-      const held = JSON.parse(readFileSync(file, 'utf8'));
-      if (now - (held.ts ?? 0) > PULSE_LOCK_STALE_MS) {
-        writeFileSync(file, JSON.stringify({ pid: process.pid, ts: now }));
-        return true;
-      }
+      held = JSON.parse(readFileSync(file, 'utf8'));
     } catch {
-      // unreadable lock = stale
-      try { writeFileSync(file, JSON.stringify({ pid: process.pid, ts: now })); return true; } catch { /* give up */ }
+      held = null; // unreadable lock = treat as stale
     }
+    if (held && now - (held.ts ?? 0) <= PULSE_LOCK_STALE_MS) return false; // still live
+
+    // ATOMIC steal: remove, then re-create with wx. A plain overwrite let two
+    // stealers both succeed, and the first to finish would then release the
+    // other's lock — opening the door to a third.
+    try {
+      rmSync(file, { force: true });
+      writeFileSync(file, JSON.stringify({ pid: process.pid, ts: now }), { flag: 'wx' });
+      return true;
+    } catch {
+      return false; // somebody else won the race; exactly one owner survives
+    }
+  }
+}
+
+// HEARTBEAT. The lock's timestamp is what "stale" means, so a long-running pulse
+// must keep it current or it will be judged dead while it is still working —
+// 8 episodes x up to 3 CLI calls at 120s each easily exceeds the 30-minute
+// window. Called between steps; failure is harmless (the next touch fixes it).
+export function touchLock(now = Date.now()) {
+  const file = lockFile();
+  try {
+    const held = JSON.parse(readFileSync(file, 'utf8'));
+    if (held.pid !== process.pid) return false; // never refresh someone else's lock
+    writeFileSync(file, JSON.stringify({ pid: process.pid, ts: now }));
+    return true;
+  } catch {
     return false;
   }
 }
 
 export function releaseLock() {
+  // Only the owner may release. Without this a stolen-lock scenario could have
+  // one process delete the lock another process is relying on.
+  try {
+    const held = JSON.parse(readFileSync(lockFile(), 'utf8'));
+    if (held.pid !== process.pid) return;
+  } catch { /* unreadable/missing — fall through and clean up */ }
   try { rmSync(lockFile(), { force: true }); } catch { /* best effort */ }
 }
 
@@ -187,6 +217,8 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       summary.errors.push(`retire: ${err.message}`);
     }
 
+    touchLock();
+
     // 5. global-brain down-sync (17.6) — weekly, pinned URL, hash-verified,
     // fail-open. Local lessons always win the dedupe.
     if (cfg.autopilot?.sync_global !== false) {
@@ -243,6 +275,8 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       const rot = rotateEventsIfLarge();
       if (rot.rotated) log('  [events] rotated the event log (older history kept in .1-.4)');
     } catch (err) { summary.errors.push(`events: ${err.message}`); }
+
+    touchLock(); // the long steps are behind us; keep the lock alive
 
     // 7. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }

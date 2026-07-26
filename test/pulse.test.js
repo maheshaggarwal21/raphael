@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const {
-  runPulse, pulseBudget, distillRunsToday, acquireLock, releaseLock, lockFile, probationRetire
+  runPulse, pulseBudget, distillRunsToday, acquireLock, releaseLock, touchLock, lockFile, probationRetire, PULSE_LOCK_STALE_MS
 } = await import('../src/lib/pulse.js');
 const { saveConfig, loadConfig, setConsentScope, setMode } = await import('../src/lib/config.js');
 const { logEvent, readEvents } = await import('../src/lib/events.js');
@@ -300,5 +300,50 @@ test('pulse auto-installs the guard hook in a consented git repo; foreign hooks 
     assert.ok(!existsSync(hookPath));
   } finally {
     cleanup(home);
+  }
+});
+
+// REGRESSION (audit 2026-07-26): the lock's timestamp was written once and never
+// refreshed, so a pulse that legitimately ran past the 30-minute stale window
+// (8 episodes x up to 3 CLI calls at 120s each) would be judged DEAD and stolen
+// — two concurrent distills, double token spend, interleaved ledger appends.
+// The steal was also read-check-write, so two stealers could both "win".
+test('a LIVE pulse keeps its lock; only a genuinely stale one is stolen', () => {
+  const home = sandbox();
+  try {
+    const t0 = Date.now();
+    assert.equal(acquireLock(t0), true, 'first caller takes the lock');
+    assert.equal(acquireLock(t0 + 1000), false, 'a second caller is refused while it is live');
+
+    // a long-running pulse refreshes the timestamp, so it stays live past the window
+    const late = t0 + PULSE_LOCK_STALE_MS + 60000;
+    assert.equal(touchLock(late - 1000), true, 'the owner may refresh');
+    assert.equal(acquireLock(late), false, 'a heartbeat keeps a long run from being declared dead');
+
+    // once it really does go quiet past the window, it can be taken over
+    assert.equal(acquireLock(late + PULSE_LOCK_STALE_MS + 1), true, 'a crashed pulse must not wedge us forever');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('the lock is owner-scoped: no refreshing or releasing someone else’s', () => {
+  const home = sandbox();
+  try {
+    // simulate a lock held by another process
+    mkdirSync(path.dirname(lockFile()), { recursive: true });
+    writeFileSync(lockFile(), JSON.stringify({ pid: process.pid + 99999, ts: Date.now() }), 'utf8');
+
+    assert.equal(touchLock(), false, 'never refresh a lock we do not own');
+    releaseLock();
+    assert.equal(existsSync(lockFile()), true, 'never delete a lock we do not own');
+
+    // an unreadable lock is treated as stale and can be taken
+    writeFileSync(lockFile(), 'not json', 'utf8');
+    assert.equal(acquireLock(), true, 'a corrupt lock must not wedge the autopilot');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(home, { recursive: true, force: true });
   }
 });

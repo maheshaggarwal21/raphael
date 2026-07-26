@@ -2,7 +2,7 @@
 // with whole-batch rollback, tier 'machine', quarantine floor + 30-day sweep.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, utimesSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, utimesSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -342,13 +342,22 @@ test('sweepQuarantine tombstones only items older than 30 days', async () => {
     assert.equal(fresh.quarantined, true);
     assert.equal(old.quarantined, true);
 
+    // Both carry their own quarantined_at stamp. Age the OLD one by rewriting
+    // that stamp — not the file mtime, which is what the sweep used to trust.
+    const stamped = readFileSync(old.path, 'utf8');
+    assert.match(stamped, /quarantined_at:/, 'a quarantined candidate records when it was quarantined');
     const past = new Date(Date.now() - 40 * 86400000);
-    utimesSync(old.path, past, past);
+    writeFileSync(old.path, stamped.replace(/quarantined_at: .*/, `quarantined_at: '${past.toISOString()}'`), 'utf8');
+
+    // REGRESSION (audit 2026-07-26): touching the FRESH file's mtime — which a
+    // backup, a cloud-sync client or a git checkout does routinely — must no
+    // longer age it. Under the old mtime rule this alone expired it.
+    utimesSync(fresh.path, past, past);
 
     const res = sweepQuarantine({});
-    assert.equal(res.expired.length, 1);
+    assert.equal(res.expired.length, 1, 'only the genuinely old one expires');
     assert.equal(existsSync(old.path), false);
-    assert.equal(existsSync(fresh.path), true);
+    assert.equal(existsSync(fresh.path), true, 'an old mtime is not evidence of an old quarantine');
     // tombstoned into rejection memory
     const memory = readFileSync(p.rejectedMemory(), 'utf8');
     assert.match(memory, /quarantine-expired/);

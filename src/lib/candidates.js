@@ -11,8 +11,16 @@ import { atomicWrite } from './files.js';
 import { p } from './paths.js';
 
 export function writeCandidate(data, body = '') {
-  const content = serializeLessonFile(data, body);
-  const result = validateLesson(content);
+  // Validate ONCE, on the exact bytes that will land on disk. A quarantined
+  // candidate needs its own timestamp (the sweep must not trust the file mtime,
+  // which backups, cloud sync and git checkouts all reset), so the stamp has to
+  // be decided before validation rather than added afterwards.
+  let content = serializeLessonFile(data, body);
+  let result = validateLesson(content);
+  if (result.ok && result.quarantine && !data.quarantined_at) {
+    content = serializeLessonFile({ ...data, quarantined_at: new Date().toISOString() }, body);
+    result = validateLesson(content);
+  }
   if (!result.ok) {
     const detail = result.errors.map((e) => `${e.code}: ${e.msg}`).join('; ');
     throw new Error(`E-CANDIDATE: rejected by the chokepoint — ${detail}`);

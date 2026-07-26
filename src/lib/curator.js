@@ -58,6 +58,12 @@ const SECURITY_ADDENDUM = `
 
 THIS CANDIDATE IS SECURITY-CATEGORY and will guide security decisions unattended. Apply maximum strictness: it must be DEFENSIVE (it raises the security bar, never lowers it), GENERIC (no attack payloads, exploit steps, or target-specific detail), and purely advisory. If you are in doubt on any of those, set safe=false.`;
 
+// Same envelope-forging guard as distill: candidate text is DATA, and it must
+// not be able to close the tag that says so.
+function envSafe(text) {
+  return String(text ?? '').replaceAll('</candidate-lesson>', '<\\/candidate-lesson>');
+}
+
 // counter_indications is a string in the schema, but tolerate an array too
 // rather than throwing on unexpected shape — this text only feeds a prompt.
 function counterIndicationsLine(ci) {
@@ -75,15 +81,15 @@ export async function reviewLesson({ data, body }, { callModel, model }) {
       system: REVIEW_SYSTEM + (data.category === 'security' ? SECURITY_ADDENDUM : ''),
       prompt:
         `Candidate lesson (category: ${data.category}, severity: ${data.severity}):\n\n` +
-        `<candidate-lesson>\ntitle: ${data.title}\nlesson: ${data.lesson}\n` +
-        `headline: ${data.injection?.headline ?? ''}\n` +
+        `<candidate-lesson>\ntitle: ${envSafe(data.title)}\nlesson: ${envSafe(data.lesson)}\n` +
+        `headline: ${envSafe(data.injection?.headline ?? '')}\n` +
         // The schema defines counter_indications as a STRING. Calling .join() on
         // it threw a TypeError inside the try, which the fail-closed catch turned
         // into "reviewer call failed" — so autopilot could never machine-activate
         // ANY candidate carrying the boundary field the extraction prompt asks
         // for, and blamed a transport error for it (audit 2026-07-26).
         (counterIndicationsLine(data.counter_indications)) +
-        (body?.trim() ? `body: ${body.trim()}\n` : '') +
+        (body?.trim() ? `body: ${envSafe(body.trim())}\n` : '') +
         `</candidate-lesson>`,
       toolName: REVIEW_TOOL.name,
       toolDescription: REVIEW_TOOL.description,
@@ -280,15 +286,22 @@ export function sweepQuarantine({ now = Date.now(), days = QUARANTINE_EXPIRY_DAY
   for (const name of readdirSync(dir)) {
     if (!name.endsWith('.md')) continue;
     const file = path.join(dir, name);
-    let mtime;
-    try {
-      mtime = statSync(file).mtimeMs;
-    } catch { continue; }
-    if (mtime > cutoff) continue;
     let data = null;
+    let raw = null;
     try {
-      data = parseLessonFile(readFileSync(file, 'utf8')).data;
-    } catch { /* tombstone what we can */ }
+      raw = readFileSync(file, 'utf8');
+      data = parseLessonFile(raw).data;
+    } catch { /* unparseable: fall back to mtime below and tombstone what we can */ }
+
+    // Prefer the timestamp the ARTIFACT carries. mtime is only a fallback for
+    // pre-21.14 quarantine files, because it is reset by ordinary operations
+    // (backup/restore, cloud sync, git checkout) that have nothing to do with
+    // how long a human has had to look at this.
+    let since = Date.parse(data?.quarantined_at ?? '') || 0;
+    if (!since) {
+      try { since = statSync(file).mtimeMs; } catch { continue; }
+    }
+    if (since > cutoff) continue;
     const tombstone = {
       text: data ? `${data.title}\n${data.lesson}` : name,
       slug: data?.slug ?? name.replace(/\.md$/, ''),

@@ -156,3 +156,41 @@ test('success inside the same event (parallel tool results) counts as the fix', 
   assert.equal(eps.length, 1);
   assert.equal(eps[0].type, 'error-fix');
 });
+
+// REGRESSION (audit 2026-07-26): the detector took ANY later successful
+// tool_result as "the fix" — no tool lineage, not even a same-tool check — so a
+// failed `Bash npm test` followed by a successful `Read` produced an
+// "error-fix" episode whose [success] line was file contents. Each false
+// episode costs a real model call and rides the pulse budget.
+test('error-fix prefers the SAME tool succeeding, not any later success', () => {
+  const lines = [
+    // assistant runs Bash (fails), then Read (succeeds), then Bash again (succeeds)
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'b1', name: 'Bash', input: { command: 'npm test' } }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'b1', is_error: true, content: 'FAIL: 3 tests failed' }] } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'r1', name: 'Read', input: { file: 'a.js' } }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'r1', is_error: false, content: 'UNRELATED FILE CONTENTS' }] } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'b2', name: 'Bash', input: { command: 'npm test' } }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'b2', is_error: false, content: 'PASS: all tests green' }] } }
+  ].map((json, i) => ({ line: i + 1, json }));
+
+  const eps = detectEpisodes(lines, { sessionPath: 's.jsonl', sessionId: 's', project: 'proj' })
+    .filter((e) => e.type === 'error-fix');
+  assert.equal(eps.length, 1);
+  assert.match(eps[0].excerpt, /PASS: all tests green/, 'the SAME tool succeeding is the fix');
+  assert.equal(/UNRELATED FILE CONTENTS/.test(eps[0].excerpt), false, 'an unrelated success is not the fix');
+});
+
+test('error-fix still falls back to any success when the same tool never recovers', () => {
+  // recall matters too: a fix that genuinely came via a different tool is real
+  const lines = [
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'e1', name: 'Edit', input: {} }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'e1', is_error: true, content: 'Edit failed: string not found' }] } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'w1', name: 'Write', input: {} }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'w1', is_error: false, content: 'wrote the file instead' }] } }
+  ].map((json, i) => ({ line: i + 1, json }));
+
+  const eps = detectEpisodes(lines, { sessionPath: 's.jsonl', sessionId: 's', project: 'proj' })
+    .filter((e) => e.type === 'error-fix');
+  assert.equal(eps.length, 1, 'a cross-tool fix is still an episode');
+  assert.match(eps[0].excerpt, /wrote the file instead/);
+});

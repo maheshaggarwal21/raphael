@@ -233,30 +233,46 @@ export function detectEpisodes(events, { sessionPath, sessionId, project } = {})
 
     // find the first eventual success: a later tool_result with falsy is_error
     // (later items in the anchor event count — parallel tool results share a line)
+    // "error-fix" should mean THE FAILING OPERATION eventually succeeded, not
+    // "an error happened and then something unrelated worked". Correlate on the
+    // tool: a same-tool success is the real signal, and only if none exists do
+    // we fall back to any success (keeping recall for the case where the fix
+    // genuinely came through a different tool).
+    const errToolName = resolveToolName(main, i, errItem.tool_use_id);
     let successIdx = -1;
     let successItem = null;
-    for (const r of results.slice(errPos + 1)) {
-      if (!r.is_error) {
-        successIdx = i;
+    let fallbackIdx = -1;
+    let fallbackItem = null;
+
+    const consider = (r, idx, atEvent) => {
+      if (r.is_error) return false;
+      const name = resolveToolName(main, atEvent, r.tool_use_id);
+      if (errToolName && name === errToolName) {
+        successIdx = idx;
         successItem = r;
-        break;
+        return true; // the correlated fix — stop looking
       }
-    }
+      if (fallbackIdx === -1) {
+        fallbackIdx = idx;
+        fallbackItem = r;
+      }
+      return false;
+    };
+
+    for (const r of results.slice(errPos + 1)) if (consider(r, i, i)) break;
     for (let j = i + 1; j <= windowEnd && successIdx === -1; j++) {
-      for (const r of toolResultItems(main[j].json)) {
-        if (!r.is_error) {
-          successIdx = j;
-          successItem = r;
-          break;
-        }
-      }
+      for (const r of toolResultItems(main[j].json)) if (consider(r, j, j)) break;
+    }
+    if (successIdx === -1) {
+      successIdx = fallbackIdx;
+      successItem = fallbackItem;
     }
     if (successIdx === -1) {
       i++; // no fix in window: not an episode; the next event may anchor its own
       continue;
     }
 
-    const toolName = resolveToolName(main, i, errItem.tool_use_id);
+    const toolName = errToolName;
     const parts = [];
     parts.push(`[error${toolName ? ':' + toolName : ''}] ${safeCut(toolResultText(errItem), ERROR_TEXT_CAP)}`);
     for (let j = i + 1; j < successIdx; j++) {

@@ -27,12 +27,21 @@ import { p } from './paths.js';
 // --- 1. freshness (dated / pointer) ---------------------------------------
 
 const DATED_PATTERNS = [
-  { signal: 'dated', why: 'names a specific year', re: /\b(19|20)\d{2}\b/ },
+  // A year, not any 4-digit number starting 19/20. "Use 2048-bit RSA keys" was
+  // flagged as dated — a timeless lesson, and exactly the kind the linter exists
+  // to protect (audit 2026-07-26). Bounded to a plausible range and refusing a
+  // unit suffix keeps the real cases (a lesson pinned to "in 2024") while
+  // dropping key sizes, port numbers and pixel values.
+  { signal: 'dated', why: 'names a specific year', re: /\b(?:19[5-9]\d|20[0-4]\d)\b(?!\s*(?:-?\s*(?:bit|px|em|rem|ms|s|kb|mb|gb|hz)\b|x\d))/i },
   { signal: 'dated', why: 'pins a version number', re: /\bv?\d+\.\d+(?:\.\d+)+\b/ },
   { signal: 'dated', why: 'uses time-relative wording', re: /\b(currently|as of|at the moment|right now|nowadays|these days|for now|at present|the latest|newest version|current version)\b/i }
 ];
 const POINTER_PATTERNS = [
-  { signal: 'pointer', why: 'points at a line number', re: /\b(?:line|:)\s?\d{1,5}\b/i },
+  // A line POINTER, which is the idiom the docstring describes: the word "line",
+  // or a colon-number directly after a filename. A bare `:\d` matched every
+  // ratio — "aim for a 3:1 contrast ratio" and the design pack's own "4.5:1"
+  // were reported as line pointers (audit 2026-07-26).
+  { signal: 'pointer', why: 'points at a line number', re: /\bline\s?\d{1,5}\b|\.[a-z]{1,4}:\d{1,5}\b/i },
   { signal: 'pointer', why: 'left an unresolved marker', re: /\b(TODO|FIXME|HACK|XXX)\b/ }
 ];
 
