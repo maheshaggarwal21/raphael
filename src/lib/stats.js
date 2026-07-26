@@ -155,7 +155,12 @@ export function renderStats(s, { topN = 8, listN = 12 } = {}) {
     const win = s.window.from ? `${s.window.from.slice(0, 10)} -> ${s.window.to.slice(0, 10)}` : 'n/a';
     L.push(`  injections : ${s.injections.total}  (${s.injections.sessionStart} session-start, ${s.injections.userPrompt} user-prompt)`);
     L.push(`  tokens     : ${s.injections.tokensTotal.toLocaleString()} total  ~${s.injections.tokensAvg}/injection`);
-    L.push(`  sessions   : ${s.injections.sessions}  ~${s.injections.tokensPerSessionAvg} tokens/session  ${s.injections.capHits} hit the 1,200 cap`);
+    // capHits counts INJECTION EVENTS that ran with the cap already reached, not
+    // sessions — printing it on the sessions line read as "39 sessions hit the
+    // cap" when the real figure was 4. Say which unit it is (found while reading
+    // this report against the raw event log, 2026-07-26).
+    L.push(`  sessions   : ${s.injections.sessions}  ~${s.injections.tokensPerSessionAvg} tokens/session`);
+    L.push(`  cap        : ${s.injections.capHits} injection(s) fired with the 1,200-token session cap already reached`);
     L.push(`  window     : ${win}`);
   } else {
     L.push('  no injections yet — the recall hooks have not fired in a live session.');
