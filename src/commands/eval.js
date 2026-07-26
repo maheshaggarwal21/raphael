@@ -28,6 +28,10 @@ import { runChokepointCanaries, runDeclarativeCanaries } from '../eval/canaries.
 import { evalScenarios, formatReport } from '../eval/harness.js';
 import { makeRealRunner, makeAskRunner } from '../eval/runner.js';
 
+// Raphael's own headless work must never depend on which model the user last
+// picked interactively. 'sonnet' is the policy table's real-work tier.
+export const EVAL_DEFAULT_MODEL = 'sonnet';
+
 // Turn a scenario.lesson spec into a full, valid, ACTIVE lesson and write it into
 // the (temp) eval brain. Returns the validated data.
 function seedLesson(spec) {
@@ -109,7 +113,16 @@ export default async function evalCmd(args) {
   const tIdx = args.indexOf('--trials');
   const mIdx = args.indexOf('--model');
   const scenarioId = sIdx >= 0 ? args[sIdx + 1] : null;
-  const model = mIdx >= 0 ? args[mIdx + 1] : undefined;
+  // PIN THE MODEL. Passing nothing let the child inherit whatever the CLI
+  // happened to default to — i.e. whatever the user last chose interactively in
+  // an unrelated session. Two problems, one of which bit us on 2026-07-26:
+  //   1. correctness: an ON/OFF comparison is only meaningful at a FIXED model.
+  //      assertSameModel exists to refuse cross-model comparisons, and an
+  //      unpinned default is exactly how one sneaks in.
+  //   2. availability: the inherited default was a model the subscription does
+  //      not cover headlessly, so every arm returned HTTP 429 and no agent ran.
+  // sonnet is the policy table's "real work" tier, which is what a scenario is.
+  const model = mIdx >= 0 ? args[mIdx + 1] : EVAL_DEFAULT_MODEL;
   const trials = tIdx >= 0 ? Math.max(1, Number(args[tIdx + 1]) || 1) : quick ? 1 : 3;
 
   // 1) Canaries — always, free, the hard gate.

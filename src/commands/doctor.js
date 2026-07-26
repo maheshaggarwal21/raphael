@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync, accessSync, constants } from 'node:fs';
+import { claudeBinary, hasClaudeCli, isSuccessEnvelope } from '../lib/provider.js';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
@@ -69,6 +70,23 @@ export default async function doctor() {
   } catch { /* not present or unreadable */ }
   add('claude session transcripts readable', transcriptsOk, `expected at ${transcripts} — mining will have nothing to read`, true);
 
+  // Can Raphael's headless work ACTUALLY run? Having the CLI installed is not
+  // the same as being able to call a model with it: on 2026-07-26 every eval arm
+  // came back HTTP 429 "Usage credits are required for this model", because the
+  // child inherited whatever model the user had last chosen interactively and
+  // the subscription does not cover that one headlessly. `raph doctor` said
+  // "healthy" throughout. One cheap probe turns a baffling failure into a
+  // sentence. Opt out with RAPHAEL_SKIP_MODEL_PROBE=1 (it costs a few tokens).
+  if (!probeSkipped()) {
+    const probe = probeHeadlessModel();
+    add(
+      `headless model call works (${probe.model})`,
+      probe.ok,
+      probe.hint,
+      true
+    );
+  }
+
   // --- plugin / injection health (Phase 9) ---
   if (initialized) {
     let injectionOn = true;
@@ -101,4 +119,43 @@ export default async function doctor() {
   }
   console.log(failed === 0 ? 'raph: healthy' : `raph: ${failed} check(s) failing`);
   return failed === 0 ? 0 : 1;
+}
+
+// --- headless model probe ----------------------------------------------------
+// A few tokens, once, to answer the question that matters: can this machine
+// actually make the model calls Raphael depends on? It uses the SAME resolution
+// path the real work uses, and pins an explicit model so it tests availability
+// rather than whatever the interactive session happens to be set to.
+export function probeSkipped() {
+  return process.env.RAPHAEL_SKIP_MODEL_PROBE === '1' || !hasClaudeCli();
+}
+
+export function probeHeadlessModel({ model = 'haiku', spawn = spawnSync } = {}) {
+  try {
+    const bin = claudeBinary();
+    const r = spawn(bin, ['-p', '--output-format', 'json', '--strict-mcp-config', '--no-session-persistence', '--tools', '', '--model', model], {
+      input: 'Reply with exactly: OK',
+      encoding: 'utf8',
+      timeout: 60000,
+      maxBuffer: 4 * 1024 * 1024
+    });
+    if (r.error) return { ok: false, model, hint: `could not run the claude CLI (${r.error.message}) — check the install` };
+
+    let env = null;
+    try { env = JSON.parse(String(r.stdout ?? '').trim()); } catch { /* handled below */ }
+    if (!env) return { ok: false, model, hint: `the CLI returned no parseable output (exit ${r.status}) — try "claude -p" by hand` };
+    if (isSuccessEnvelope(env)) return { ok: true, model, hint: '' };
+
+    const detail = String(env.result || env.error || env.subtype || 'unknown').slice(0, 120);
+    if (env.api_error_status === 429) {
+      return {
+        ok: false,
+        model,
+        hint: `HTTP 429 — ${detail}. Distill/eval/autopilot cannot call a model. If this only happens on the DEFAULT model, pass --model explicitly; Raphael pins one for its own work.`
+      };
+    }
+    return { ok: false, model, hint: `the model call failed — ${detail}` };
+  } catch (err) {
+    return { ok: false, model, hint: `probe failed: ${err.message}` };
+  }
 }
