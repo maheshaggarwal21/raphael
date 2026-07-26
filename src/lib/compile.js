@@ -5,7 +5,7 @@
 // from the lesson files, and every lesson re-passes the validation chokepoint
 // on the way in (a hand-edited lesson that no longer validates drops out).
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { validateLesson } from './validate.js';
 import { contentHash } from './transcripts.js';
@@ -43,7 +43,17 @@ export function buildIndex() {
   const skipped = [];
   const seen = [];
   for (const file of lessonFiles()) {
-    seen.push({ file: relToLessons(file), hash: contentHash(file) });
+    // hash ONCE per file (it used to be computed twice and the file read three
+    // times), and record the stat so verifyIndex can skip re-hashing later
+    const hash = contentHash(file);
+    let size = null;
+    let mtimeMs = null;
+    try {
+      const st = statSync(file);
+      size = st.size;
+      mtimeMs = st.mtimeMs;
+    } catch { /* recorded as null → verifyIndex falls back to hashing */ }
+    seen.push({ file: relToLessons(file), hash, ...(size !== null ? { size, mtimeMs } : {}) });
     let check;
     try {
       check = validateLesson(readFileSync(file, 'utf8'));
@@ -74,7 +84,7 @@ export function buildIndex() {
       injection: d.injection,
       counter_indications: d.counter_indications ?? null,
       file: relToLessons(file),
-      hash: contentHash(file)
+      hash
     });
   }
   const index = {
@@ -93,19 +103,40 @@ export function buildIndex() {
 // same content hashes — for EVERY file seen at build time, including ones that
 // were skipped as invalid (so fixing one by hand is detected too). Anything
 // else — edited, added, deleted, tampered — is stale.
+// A stat fast-path keeps this honest AND cheap. Full content hashing on every
+// load meant a read + SHA-256 of every lesson file on every prompt (linear in
+// brain size, on a Windows hook path where small-file opens are not free —
+// audit 2026-07-26). Now: if size AND mtime both match what the build recorded,
+// the file is unchanged and hashing is skipped; anything that differs — or has no
+// recorded stat, i.e. an index built before this change — falls back to the full
+// hash. So the integrity property is identical, the cost is not.
 export function verifyIndex(index) {
   if (!index || index.schema !== 'raphael/index/v1' || !Array.isArray(index.lessons)) return false;
   if (!Array.isArray(index.built_files)) return false;
   const onDisk = lessonFiles().map(relToLessons);
-  const built = new Map(index.built_files.map((e) => [e.file, e.hash]));
+  const built = new Map(index.built_files.map((e) => [e.file, e]));
   if (onDisk.length !== built.size) return false;
   for (const rel of onDisk) {
-    const expected = built.get(rel);
-    if (expected === undefined) return false;
+    const entry = built.get(rel);
+    if (entry === undefined) return false;
     const full = path.join(p.lessons(), ...rel.split('/'));
-    if (contentHash(full) !== expected) return false;
+    if (statMatches(full, entry)) continue; // unchanged: no read, no hash
+    if (contentHash(full) !== entry.hash) return false;
   }
   return true;
+}
+
+// True only when the recorded stat exists and matches exactly. Any doubt (no
+// recorded stat, unreadable file, any difference) returns false so the caller
+// does the full hash — never the other way round.
+function statMatches(full, entry) {
+  if (!entry || typeof entry.size !== 'number' || typeof entry.mtimeMs !== 'number') return false;
+  try {
+    const st = statSync(full);
+    return st.size === entry.size && st.mtimeMs === entry.mtimeMs;
+  } catch {
+    return false;
+  }
 }
 
 // Load the compiled index, rebuilding when missing, unreadable, or stale.

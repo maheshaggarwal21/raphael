@@ -6,6 +6,7 @@ import path from 'node:path';
 import { buildIndex, verifyIndex, loadIndex } from '../src/lib/compile.js';
 import { makeLesson, writeActiveLesson } from './helpers.js';
 import { atomicWrite } from '../src/lib/files.js';
+import { lessonId } from '../src/lib/ulid.js';
 import { p } from '../src/lib/paths.js';
 
 async function withSandbox(fn) {
@@ -120,5 +121,44 @@ test('a corrupt compiled.json silently rebuilds', async () => {
     const { lessons, rebuilt } = loadIndex();
     assert.equal(rebuilt, true);
     assert.equal(lessons.length, 1);
+  });
+});
+
+// ---- verifyIndex stat fast-path (audit 2026-07-26, finding 3.9) --------------
+// Full content hashing of every lesson file ran on EVERY index load, i.e. every
+// prompt. The fast-path must be a pure optimization: identical verdicts.
+
+test('verifyIndex: the stat fast-path still catches every kind of drift', async () => {
+  await withSandbox(async () => {
+    writeActiveLesson();
+    writeActiveLesson({ slug: 'second-lesson', id: lessonId() });
+    buildIndex();
+    const load = () => JSON.parse(readFileSync(p.compiledIndex(), 'utf8'));
+
+    const index = load();
+    assert.equal(verifyIndex(index), true, 'a fresh index verifies');
+    // the build recorded a stat for each file, which is what makes it cheap
+    assert.ok(index.built_files.every((e) => typeof e.size === 'number' && typeof e.mtimeMs === 'number'));
+
+    // an EDIT changes size and mtime -> caught
+    const target = path.join(p.lessons(), index.built_files[0].file);
+    const original = readFileSync(target, 'utf8');
+    writeFileSync(target, original + '\nextra line\n', 'utf8');
+    assert.equal(verifyIndex(load()), false, 'an edited file must invalidate');
+    writeFileSync(target, original, 'utf8');
+
+    // a SAME-SIZE edit with the recorded mtime forced back: size+mtime match, so
+    // the fast path accepts it. That is the documented trade — so prove the
+    // fallback still works when the stat is ABSENT (a pre-21.5 index).
+    const stripped = load();
+    stripped.built_files = stripped.built_files.map((e) => ({ file: e.file, hash: e.hash }));
+    assert.equal(verifyIndex(stripped), true, 'a pre-21.5 index (hash only) still verifies');
+    const swapped = load();
+    swapped.built_files = swapped.built_files.map((e) => ({ file: e.file, hash: 'deadbeef' }));
+    assert.equal(verifyIndex(swapped), false, 'a wrong hash with no stat is caught by hashing');
+
+    // a DELETED file -> caught
+    rmSync(target, { force: true });
+    assert.equal(verifyIndex(load()), false, 'a deleted file must invalidate');
   });
 });

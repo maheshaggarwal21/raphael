@@ -314,12 +314,15 @@ export function weeklyDigestBlock({ now = Date.now() } = {}) {
   try {
     const cfg = loadConfig();
     if (getMode(cfg) !== 'autopilot') return '';
-    const events = readEvents();
-    let lastShown = 0;
-    for (const e of events) {
-      if (e.event === 'digest-shown') lastShown = Math.max(lastShown, Date.parse(e.ts ?? 0) || 0);
-    }
+    // THE THROTTLE IS CHECKED FIRST, from a tiny marker file. This used to read
+    // and JSON-parse the ENTIRE append-only events log just to find the last
+    // 'digest-shown' timestamp — on every autopilot session start, i.e. the
+    // prompt-blocking hook path, growing forever (audit 2026-07-26). Six days
+    // out of seven the answer is "not yet", and that answer now costs one small
+    // read. The events scan happens only when a digest is actually due.
+    const lastShown = readDigestMarker();
     if (now - lastShown < DIGEST_INTERVAL_MS) return '';
+    const events = readEvents();
     const since = Math.max(lastShown, now - DIGEST_INTERVAL_MS);
     const inWindow = events.filter((e) => (Date.parse(e.ts ?? 0) || 0) >= since);
 
@@ -345,9 +348,44 @@ export function weeklyDigestBlock({ now = Date.now() } = {}) {
     ].join('\n');
     if (estTokens(text) > WEEKLY_DIGEST_BUDGET) return '';
     logEvent({ event: 'digest-shown', activated: activated.length, security, retired, recallTokens });
+    writeDigestMarker(now); // O(1) throttle for the next six days
     return text;
   } catch {
     return '';
+  }
+}
+
+// The digest throttle marker. Kept separate from the events log so the hot path
+// never scans it. The events log remains the audit record (a 'digest-shown'
+// event is still written); this is only the "when was the last one" cache, and a
+// missing/corrupt marker just means "due now", which is safe.
+export function readDigestMarker() {
+  try {
+    const parsed = JSON.parse(readFileSync(p.digestMarker(), 'utf8'));
+    const t = Date.parse(parsed?.last_shown ?? '') || 0;
+    return Number.isFinite(t) ? t : 0;
+  } catch {
+    // No marker yet. An install that already showed digests before 21.5 has the
+    // record only in the events log, so fall back to it ONCE — otherwise the
+    // upgrade would show one extra digest.
+    try {
+      let last = 0;
+      for (const e of readEvents()) {
+        if (e.event === 'digest-shown') last = Math.max(last, Date.parse(e.ts ?? 0) || 0);
+      }
+      if (last) writeDigestMarker(last);
+      return last;
+    } catch {
+      return 0;
+    }
+  }
+}
+
+export function writeDigestMarker(when) {
+  try {
+    atomicWrite(p.digestMarker(), JSON.stringify({ last_shown: new Date(when).toISOString() }) + '\n');
+  } catch {
+    // a missing marker only costs an extra events scan next session
   }
 }
 

@@ -1,7 +1,7 @@
 // Phase 17.1 — mode + global consent + the FULL dial level.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -12,6 +12,9 @@ const { DIAL_LEVELS, dialLevel, setDial, autoApproveStaged } = await import('../
 const { writeCandidate } = await import('../src/lib/candidates.js');
 const { listCandidates } = await import('../src/lib/queue.js');
 const { lessonId } = await import('../src/lib/ulid.js');
+const { weeklyDigestBlock, readDigestMarker, writeDigestMarker } = await import('../src/lib/inject.js');
+const { logEvent } = await import('../src/lib/events.js');
+const { p } = await import('../src/lib/paths.js');
 
 function sandbox() {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-ap-'));
@@ -250,5 +253,69 @@ test('setContribution is the one grant writer; arise --autopilot grants by defau
     assert.equal(getMode(cfg), 'autopilot');
   } finally {
     cleanup(home);
+  }
+});
+
+// ---- digest throttle marker (audit 2026-07-26, finding 3.9/T4) ---------------
+// The 7-day throttle used to be answered by reading and parsing the ENTIRE
+// append-only events log, on every autopilot session start — the prompt-blocking
+// hook path, growing forever. Six days in seven the answer is "not yet".
+
+test('weeklyDigestBlock: the throttle is answered from the marker, not the events log', async () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-digestmark-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    mkdirSync(path.join(home, 'state'), { recursive: true });
+    writeFileSync(path.join(home, 'config.yaml'), 'schema: raphael/config/v1\nmode: autopilot\n', 'utf8');
+    // a week of activity to summarize
+    logEvent({ event: 'machine-curated', id: 'les_x', slug: 'a', category: 'reliability' });
+    logEvent({ event: 'injected', hook: 'session-start', tokens: 40 });
+
+    const first = weeklyDigestBlock();
+    assert.match(first, /Raphael this week/, 'a due digest renders');
+    assert.ok(readDigestMarker() > 0, 'showing a digest writes the marker');
+
+    // immediately after, the throttle holds — and now WITHOUT scanning events
+    assert.equal(weeklyDigestBlock(), '', 'throttled inside the 7-day window');
+
+    // proof the marker is authoritative: make the events log unreadable garbage.
+    // If the throttle still consulted it, this would throw or mis-answer.
+    writeFileSync(p.events(), 'not jsonl at all\n{{{\n', 'utf8');
+    assert.equal(weeklyDigestBlock(), '', 'still throttled with an unparseable events log');
+
+    // an old marker means due again (and then the events scan happens)
+    writeDigestMarker(Date.now() - 8 * 86400000);
+    assert.ok(readDigestMarker() > 0);
+    assert.equal(weeklyDigestBlock(), '', 'due, but a garbage events log yields nothing to report');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME;
+    else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('readDigestMarker: missing marker falls back to the events log exactly once', async () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-digestmig-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    mkdirSync(path.join(home, 'state'), { recursive: true });
+    // an install that showed a digest BEFORE 21.5: the record is only in events
+    logEvent({ event: 'digest-shown', activated: 2 });
+    const migrated = readDigestMarker();
+    assert.ok(migrated > 0, 'the pre-21.5 timestamp is recovered (no extra digest)');
+    // and it is now cached in the marker, so the fallback does not repeat
+    assert.ok(existsSync(p.digestMarker()));
+    assert.equal(readDigestMarker(), migrated);
+
+    // edge: a corrupt marker means "due now" rather than crashing
+    writeFileSync(p.digestMarker(), 'garbage', 'utf8');
+    rmSync(p.events(), { force: true });
+    assert.equal(readDigestMarker(), 0);
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME;
+    else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
   }
 });

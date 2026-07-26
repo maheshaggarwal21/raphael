@@ -3,17 +3,36 @@
 // No lesson file is ever written or injected without a clean pass.
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import AjvModule from 'ajv';
 import { parseLessonFile } from './frontmatter.js';
 import { scrubSecrets } from './scrub.js';
 
-const Ajv = AjvModule.default ?? AjvModule;
 const schemaPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'schemas', 'lesson.schema.json');
-const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
-const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
-const validateSchema = ajv.compile(schema);
+
+// LAZY schema compilation. ajv's import + compile is ~120ms, and it used to run
+// at module load — which the hooks pay on EVERY prompt via inject -> compile ->
+// validate, even when the index is fresh and validateLesson is never called. That
+// was ~80% of the hook's module-load cost for zero benefit (audit 2026-07-26,
+// finding 3.9). Compiled once, on first real use; the chokepoint is unchanged.
+let validateSchema = null;
+function schemaValidator() {
+  if (validateSchema) return validateSchema;
+  const require = createRequire(import.meta.url);
+  const AjvModule = require('ajv');
+  const Ajv = AjvModule.default ?? AjvModule;
+  const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
+  const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
+  validateSchema = ajv.compile(schema);
+  return validateSchema;
+}
+
+// The canonical schema object, for callers that need to read it (never to bypass
+// validation — validateLesson stays the only way in).
+export function lessonSchema() {
+  return JSON.parse(readFileSync(schemaPath, 'utf8'));
+}
 
 // Any URL anywhere in a lesson file is a hard reject: URLs are the carrier for
 // "fetch and run" attacks and a tracking/exfiltration vector.
@@ -53,8 +72,9 @@ export function validateLesson(content) {
     return { ok: false, errors: [{ code: 'E-FRONTMATTER', msg: err.message }], warnings, quarantine: false, data: null, body: '' };
   }
 
-  if (!validateSchema(data)) {
-    for (const e of validateSchema.errors ?? []) {
+  const check = schemaValidator();
+  if (!check(data)) {
+    for (const e of check.errors ?? []) {
       errors.push({ code: 'E-SCHEMA', msg: `${e.instancePath || '(root)'} ${e.message}` });
     }
   }

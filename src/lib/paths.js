@@ -24,6 +24,7 @@ export const p = {
   rejectedMemory: () => path.join(raphaelHome(), 'state', 'rejected.jsonl'),
   adoptionsLedger: () => path.join(raphaelHome(), 'state', 'adoptions.jsonl'),
   decisionsLedger: () => path.join(raphaelHome(), 'state', 'decisions.jsonl'),
+  digestMarker: () => path.join(raphaelHome(), 'state', 'digest.json'),
   skillDrafts: () => path.join(raphaelHome(), 'staged', 'skills'),
   episodesDir: () => path.join(raphaelHome(), 'state', 'episodes'),
   sessionsDir: () => path.join(raphaelHome(), 'state', 'sessions'),
