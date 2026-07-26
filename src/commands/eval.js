@@ -183,6 +183,20 @@ export default async function evalCmd(args) {
         console.log('\n' + formatReport({ canaryResults }));
         return 4;
       }
+      // The agent could not run at all. Report NOTHING rather than a table of
+      // zeroes: a 0% lift from runs that never happened is indistinguishable, on
+      // the page, from a 0% lift that was measured — and the second is a
+      // conclusion about the product while the first is a broken environment.
+      if (err.code === 'E-EVAL-RUN') {
+        console.error(`raph: NO MEASUREMENT TAKEN — ${err.message}`);
+        if (err.apiStatus === 429) {
+          console.error('      The account has no usage credits for this model right now, so no');
+          console.error('      agent ran. This says nothing about the brain; re-run when credits are back.');
+        }
+        console.log('\n' + formatReport({ canaryResults }));
+        console.error('\n      (the canary + poison gates above are real — they spend no model tokens)');
+        return 1;
+      }
       throw err;
     }
 

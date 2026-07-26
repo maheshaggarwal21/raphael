@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { claudeBinary, detectLimit } from '../lib/provider.js';
+import { claudeBinary, detectLimit, isSuccessEnvelope } from '../lib/provider.js';
 
 const RUN_TIMEOUT_MS = 300000;
 
@@ -83,7 +83,31 @@ export function makeRealRunner({
         limit.message = limit.message.replace('Claude Code subscription limit reached', 'subscription limit hit during eval');
         throw limit;
       }
-      envelope = envelope ?? {};
+
+      // A RUN THAT NEVER HAPPENED IS NOT A RESULT.
+      //
+      // This silently returned a verdict when the agent had not run at all: a
+      // spawn failure or an error envelope left `envelope = {}`, the fixture
+      // untouched, and check() dutifully reported caught:false / tokens:0. A
+      // whole eval then printed a clean "0% ON vs 0% OFF, not distinguishable
+      // from noise" table while NOTHING had executed — a failure wearing the
+      // costume of a measurement, which is the one thing an eval must never do.
+      // Observed live 2026-07-26: every arm came back 429 "Usage credits are
+      // required for this model" and the report looked like data.
+      if (r.error) {
+        throw new Error(`E-EVAL-RUN: could not start the agent (${r.error.message}) — no measurement was taken`);
+      }
+      if (!envelope) {
+        throw new Error(`E-EVAL-RUN: the agent produced no parseable output (exit ${r.status}) — no measurement was taken`);
+      }
+      if (!isSuccessEnvelope(envelope)) {
+        const detail = envelope.result || envelope.error || envelope.subtype || 'unknown error';
+        const status = envelope.api_error_status ? ` [HTTP ${envelope.api_error_status}]` : '';
+        const err = new Error(`E-EVAL-RUN${status}: the agent did not complete — ${String(detail).slice(0, 200)}`);
+        err.code = 'E-EVAL-RUN';
+        err.apiStatus = envelope.api_error_status ?? null;
+        throw err;
+      }
 
       const verdict = scenario.check(dir);
       const usedModel = model ?? (envelope.modelUsage ? Object.keys(envelope.modelUsage)[0] : null);

@@ -349,12 +349,37 @@ test('makeRealRunner: a real limit refusal throws E-LIMIT with reset info', asyn
   );
 });
 
-test('makeRealRunner: unparseable output still returns a verdict with zero tokens', async () => {
-  const run = makeRealRunner({ bin: 'claude', spawn: evalSpawn({ status: 0, stdout: 'garbage' }) });
-  const out = await run({ scenario: S08, model: null, injectedText: '' });
-  assert.equal(out.tokens, 0);
-  assert.equal(out.model, null);
-  assert.equal(typeof out.caught, 'boolean');
+// A RUN THAT NEVER HAPPENED IS NOT A RESULT. This test used to assert the
+// OPPOSITE — that unparseable output still produced a verdict — which is exactly
+// how a whole eval printed a clean '0% ON vs 0% OFF' table on 2026-07-26 while
+// every arm was actually failing 429 'Usage credits are required for this model'.
+test('makeRealRunner REFUSES to produce a verdict when the agent did not run', async () => {
+  // unparseable output
+  await assert.rejects(
+    makeRealRunner({ bin: 'claude', spawn: evalSpawn({ status: 0, stdout: 'garbage' }) })({ scenario: S08, model: null, injectedText: '' }),
+    /E-EVAL-RUN.*no parseable output/
+  );
+
+  // the real live failure: a well-formed envelope that reports an API error
+  const credits = {
+    status: 1,
+    stdout: JSON.stringify({ type: 'result', subtype: 'success', is_error: true, api_error_status: 429, result: 'Usage credits are required for this model.', usage: {} })
+  };
+  await assert.rejects(
+    makeRealRunner({ bin: 'claude', spawn: evalSpawn(credits) })({ scenario: S08, model: null, injectedText: '' }),
+    (e) => {
+      assert.equal(e.code, 'E-EVAL-RUN');
+      assert.equal(e.apiStatus, 429);
+      assert.match(e.message, /Usage credits are required/);
+      return true;
+    }
+  );
+
+  // and a spawn that never started
+  await assert.rejects(
+    makeRealRunner({ bin: 'claude', spawn: evalSpawn({ error: new Error('ENOENT') }) })({ scenario: S08, model: null, injectedText: '' }),
+    /E-EVAL-RUN.*could not start the agent/
+  );
 });
 
 test('makeRealRunner: model id falls back to the envelope modelUsage keys', async () => {
