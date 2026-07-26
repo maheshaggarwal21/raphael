@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { checkUrl, htmlToText, mainRegion, fetchUrl } from '../src/lib/fetch.js';
+import { checkUrl, htmlToText, mainRegion, fetchUrl, isNonPublicAddress } from '../src/lib/fetch.js';
 
 // --- policy (checkUrl) --------------------------------------------------------
 
@@ -150,4 +150,99 @@ test('fetchUrl: a server that never answers hits the time cap', async () => {
   } finally {
     srv.close();
   }
+});
+
+// --- SSRF guard (audit 2026-07-26, finding 3.5) -------------------------------
+// The old policy was "https only, no downgrade via redirect" — but https is not
+// the same as public. Any https host passed, including private and link-local
+// literals, and every redirect hop re-ran the same permissive check.
+
+test('isNonPublicAddress classifies loopback, private, link-local, and public', () => {
+  // must be refused
+  for (const ip of [
+    '127.0.0.1', '127.1.2.3', '0.0.0.0', '10.0.0.5', '172.16.0.1', '172.31.255.255',
+    '192.168.1.1', '169.254.169.254', '100.64.0.1', '224.0.0.1', '255.255.255.255',
+    '::1', '::', 'fe80::1', 'fc00::1', 'fd12:3456::1', '[::1]', '::ffff:127.0.0.1',
+    'fe80::1%eth0'
+  ]) {
+    assert.equal(isNonPublicAddress(ip), true, `${ip} must be non-public`);
+  }
+  // must be allowed
+  for (const ip of ['1.1.1.1', '8.8.8.8', '172.32.0.1', '172.15.0.1', '192.167.0.1', '2606:4700::1111', 'example.com']) {
+    assert.equal(isNonPublicAddress(ip), false, `${ip} must be public`);
+  }
+  // edges: empty/garbage refuse (fail closed), malformed octets refuse
+  assert.equal(isNonPublicAddress(''), true);
+  assert.equal(isNonPublicAddress(null), true);
+  assert.equal(isNonPublicAddress(undefined), true);
+  assert.equal(isNonPublicAddress('999.1.1.1'), true);
+});
+
+test('checkUrl: https to a private or link-local literal is refused', () => {
+  assert.throws(() => checkUrl('https://169.254.169.254/latest/meta-data/'), /E-FETCH-BLOCKED/);
+  assert.throws(() => checkUrl('https://192.168.0.1/admin'), /E-FETCH-BLOCKED/);
+  assert.throws(() => checkUrl('https://10.1.2.3/'), /E-FETCH-BLOCKED/);
+  assert.throws(() => checkUrl('https://[fd00::1]/'), /E-FETCH-BLOCKED/);
+  // a public https host is still fine
+  assert.equal(checkUrl('https://example.com/x').hostname, 'example.com');
+});
+
+test('checkUrl: the loopback carve-out belongs to the user URL, never a redirect target', () => {
+  // the URL the user typed may be loopback http (local docs, and the test server)
+  assert.equal(checkUrl('http://127.0.0.1:9200/', { allowLoopback: true }).hostname, '127.0.0.1');
+  // a redirect target may not be loopback at all, on either scheme
+  assert.throws(() => checkUrl('http://127.0.0.1:9200/', { allowLoopback: false }), /E-FETCH/);
+  assert.throws(() => checkUrl('https://127.0.0.1:9200/', { allowLoopback: false }), /E-FETCH-BLOCKED/);
+  assert.throws(() => checkUrl('https://localhost/x', { allowLoopback: false }), /E-FETCH-BLOCKED/);
+});
+
+test('fetchUrl: a redirect aimed at a private address is refused, not followed', async () => {
+  let reachedInternal = false;
+  const internal = await serve((req, res) => { reachedInternal = true; res.end('SECRET INTERNAL DATA'); });
+  try {
+    const port = internal.srv.address().port;
+    // A page the user asked for that tries to steer the fetcher inward. The user
+    // URL here IS loopback (the only kind a test can serve), so the guard must
+    // still refuse a redirect to a NON-loopback private range.
+    const { srv, base } = await serve((req, res) => {
+      if (req.url === '/to-metadata') { res.writeHead(302, { location: 'https://169.254.169.254/latest/meta-data/' }); res.end(); return; }
+      if (req.url === '/to-private') { res.writeHead(302, { location: 'https://192.168.13.37/admin' }); res.end(); return; }
+      res.end('ok');
+    });
+    try {
+      await assert.rejects(fetchUrl(`${base}/to-metadata`), /E-FETCH-BLOCKED/, 'cloud metadata must be unreachable');
+      await assert.rejects(fetchUrl(`${base}/to-private`), /E-FETCH-BLOCKED/, 'RFC1918 must be unreachable');
+      assert.equal(reachedInternal, false, 'the internal service was never contacted');
+      assert.ok(port > 0);
+    } finally {
+      srv.close();
+    }
+  } finally {
+    internal.srv.close();
+  }
+});
+
+test('fetchUrl: a localhost URL may still redirect within localhost (ordinary routing)', async () => {
+  const { srv, base } = await serve((req, res) => {
+    if (req.url === '/docs') { res.writeHead(302, { location: '/docs/index.txt' }); res.end(); return; }
+    res.setHeader('content-type', 'text/plain');
+    res.end('local docs');
+  });
+  try {
+    const r = await fetchUrl(`${base}/docs`);
+    assert.equal(r.text, 'local docs');
+  } finally {
+    srv.close();
+  }
+});
+
+test('fetchUrl: a hostname that RESOLVES to loopback is refused (DNS rebinding)', async () => {
+  // localtest.me and friends resolve to 127.0.0.1 by design. No network needed
+  // for the assertion to be meaningful: either DNS resolves it to loopback (the
+  // guard must refuse) or resolution fails (a network error) — both are non-fetches.
+  await assert.rejects(
+    fetchUrl('https://localtest.me/x', { timeoutMs: 4000 }),
+    (e) => /E-FETCH/.test(e.code ?? e.message),
+    'a name pointing at loopback must never be fetched'
+  );
 });

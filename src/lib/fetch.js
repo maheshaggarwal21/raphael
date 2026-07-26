@@ -18,6 +18,7 @@
 
 import http from 'node:http';
 import https from 'node:https';
+import dns from 'node:dns';
 
 export const FETCH_LIMITS = {
   maxBytes: 2 * 1024 * 1024, // 2 MB
@@ -38,8 +39,86 @@ function isLoopback(hostname) {
   return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]';
 }
 
+// ---- SSRF guard ------------------------------------------------------------
+//
+// The §13 policy said "https only, no downgrade via redirect", which the code
+// enforced — but "https" is not the same as "public". Any https host was allowed,
+// including private and link-local literals, and every redirect hop re-ran the
+// same permissive check, so a benign public page could 302 an adopt fetch into
+// http://127.0.0.1:9200/ or https://169.254.169.254/latest/meta-data/ and reflect
+// an internal service's response back to be scanned (audit 2026-07-26, 3.5).
+//
+// Two layers, because they catch different things:
+//   1. checkUrl rejects non-public IP LITERALS (no DNS involved).
+//   2. a guarded `lookup` rejects non-public RESOLUTIONS, and because the
+//      connection uses the address the guard returned, it also closes DNS
+//      rebinding (a name that resolves public once, then to 127.0.0.1).
+
+const V4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+// True for addresses that must never be reached by an adopt fetch.
+export function isNonPublicAddress(address) {
+  let h = String(address ?? '').trim().toLowerCase();
+  if (!h) return true;
+  if (h.startsWith('[') && h.endsWith(']')) h = h.slice(1, -1);
+  h = h.split('%')[0]; // drop any zone id (fe80::1%eth0)
+
+  // IPv4-mapped / -embedded IPv6 (::ffff:127.0.0.1) is judged as IPv4.
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(h);
+  if (mapped) return isNonPublicAddress(mapped[1]);
+
+  const m = V4.exec(h);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (m.slice(1).some((o) => Number(o) > 255)) return true; // malformed = refuse
+    if (a === 0 || a === 127) return true;                    // this host / loopback
+    if (a === 10) return true;                                // RFC1918
+    if (a === 172 && b >= 16 && b <= 31) return true;          // RFC1918
+    if (a === 192 && b === 168) return true;                   // RFC1918
+    if (a === 169 && b === 254) return true;                   // link-local (cloud metadata)
+    if (a === 100 && b >= 64 && b <= 127) return true;         // CGNAT
+    if (a === 192 && b === 0) return true;                      // 192.0.0.0/24 + 192.0.2.0/24
+    if (a === 198 && (b === 18 || b === 19)) return true;       // benchmarking
+    if (a >= 224) return true;                                  // multicast + broadcast
+    return false;
+  }
+
+  if (h.includes(':')) {
+    if (h === '::' || h === '::1') return true;                // unspecified / loopback
+    if (/^f[cd][0-9a-f]{2}:/.test(h)) return true;              // fc00::/7 unique-local
+    if (/^fe[89ab][0-9a-f]:/.test(h)) return true;              // fe80::/10 link-local
+    if (/^ff[0-9a-f]{2}:/.test(h)) return true;                 // multicast
+    return false;
+  }
+
+  return false; // a hostname — layer 2 (the lookup guard) judges where it points
+}
+
+// A `lookup` for http.request that refuses non-public resolutions. The socket
+// then connects to the address this returned, so nothing can swap it afterwards.
+function guardedLookup(allowLoopback) {
+  return function lookup(hostname, options, callback) {
+    dns.lookup(hostname, { ...options, all: true }, (e, addresses) => {
+      if (e) return callback(e);
+      const list = Array.isArray(addresses) ? addresses : [addresses];
+      for (const a of list) {
+        if (allowLoopback && isLoopback(a.address)) continue;
+        if (isNonPublicAddress(a.address)) {
+          return callback(err('E-FETCH-BLOCKED', `${hostname} resolves to the non-public address ${a.address} — refused`));
+        }
+      }
+      if (options?.all) return callback(null, list);
+      return callback(null, list[0].address, list[0].family);
+    });
+  };
+}
+
 // Parse + policy-check a URL. Exported so the policy itself is unit-testable.
-export function checkUrl(raw) {
+// `allowLoopback` is TRUE only for the URL the user typed (so `raph adopt` can
+// read docs served on their own machine, and so the tests can use a loopback
+// server). A REDIRECT never gets it: an external page must not be able to steer
+// the fetcher at localhost.
+export function checkUrl(raw, { allowLoopback = true } = {}) {
   let u;
   try {
     u = new URL(String(raw));
@@ -49,9 +128,20 @@ export function checkUrl(raw) {
   if (u.username || u.password) {
     throw err('E-FETCH-URL', 'URLs with embedded credentials are refused — the fetcher never sends credentials');
   }
-  if (u.protocol === 'https:') return u;
-  if (u.protocol === 'http:' && isLoopback(u.hostname)) return u; // own machine only
-  throw err('E-FETCH-URL', `only https URLs are fetched (got ${u.protocol}//) — http is allowed for localhost only`);
+  const loopback = isLoopback(u.hostname);
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && loopback && allowLoopback)) {
+    throw err(
+      'E-FETCH-URL',
+      `only https URLs are fetched (got ${u.protocol}//) — http is allowed for the localhost URL you pass in, never for a redirect target`
+    );
+  }
+  if (loopback && !allowLoopback) {
+    throw err('E-FETCH-BLOCKED', `refusing to follow a redirect to the loopback address ${u.hostname}`);
+  }
+  if (!loopback && isNonPublicAddress(u.hostname)) {
+    throw err('E-FETCH-BLOCKED', `${u.hostname} is a private, loopback or link-local address — refused`);
+  }
+  return u;
 }
 
 function looksBinary(buf) {
@@ -112,13 +202,16 @@ export function htmlToText(html) {
   return t.trim();
 }
 
-function requestOnce(u, { timeoutMs, maxBytes }) {
+function requestOnce(u, { timeoutMs, maxBytes, allowLoopback = false }) {
   return new Promise((resolve, reject) => {
     const mod = u.protocol === 'https:' ? https : http;
     const req = mod.request(
       u,
       {
         method: 'GET',
+        // layer 2 of the SSRF guard: the socket connects to the address this
+        // returns, so a name cannot resolve public here and private at connect
+        lookup: guardedLookup(allowLoopback),
         headers: {
           // identify honestly; send nothing else — no cookies, no auth
           'user-agent': 'raphael-adopt/1 (+local, read-only)',
@@ -182,19 +275,24 @@ function requestOnce(u, { timeoutMs, maxBytes }) {
 // where `text` is already html-stripped when the payload was HTML.
 export async function fetchUrl(rawUrl, overrides = {}) {
   const limits = { ...FETCH_LIMITS, ...overrides };
-  let u = checkUrl(rawUrl);
+  // The loopback carve-out belongs to the URL the USER supplied, and to nothing
+  // downstream of it.
+  let u = checkUrl(rawUrl, { allowLoopback: true });
+  const userAskedForLoopback = isLoopback(u.hostname);
   const started = Date.now();
 
   for (let hop = 0; hop <= limits.maxRedirects; hop++) {
     const remaining = limits.timeoutMs - (Date.now() - started);
     if (remaining <= 0) throw err('E-FETCH-TIMEOUT', `${rawUrl} did not answer within ${Math.round(limits.timeoutMs / 1000)}s`);
 
-    const r = await requestOnce(u, { timeoutMs: remaining, maxBytes: limits.maxBytes });
+    const r = await requestOnce(u, { timeoutMs: remaining, maxBytes: limits.maxBytes, allowLoopback: userAskedForLoopback });
 
     if (r.redirect) {
-      // relative redirects resolve against the current URL; the target must
-      // pass the exact same policy — a redirect can never downgrade it
-      u = checkUrl(new URL(r.redirect, u).href);
+      // Relative redirects resolve against the current URL, and the target must
+      // pass the same policy. The carve-out follows the ORIGIN, not the hop: a
+      // localhost URL may redirect within localhost (ordinary docs routing), but
+      // a PUBLIC page can never steer the fetcher at loopback or a private range.
+      u = checkUrl(new URL(r.redirect, u).href, { allowLoopback: userAskedForLoopback });
       continue;
     }
 
