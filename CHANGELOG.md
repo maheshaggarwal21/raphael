@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.1 — 2026-07-27
+
+Three fixes that landed after the 0.5.0 tag but were never released, found while
+resuming the audit-remediation work: the version stayed at 0.5.0 in package.json while
+the code moved on, so the npm package and the repo answered `0.5.0` for two different
+codebases with no way to tell them apart.
+
+- **`raph stats`'s cap line counted injections but was labeled sessions** — the number
+  and its own label disagreed.
+- **A `raph eval run` that never spawned an agent no longer reports a result.** A spawn
+  failure, unparseable output, or a non-success envelope now throws `E-EVAL-RUN` and
+  the command prints "NO MEASUREMENT TAKEN" instead of a clean-looking table of zeros.
+- **Eval and doctor stop inheriting whatever model the CLI last defaulted to.**
+  `raph eval run` pins `sonnet` (overridable with `--model`) instead of the interactive
+  session's last pick, which had been returning HTTP 429 on a model the subscription
+  doesn't cover headlessly. `raph doctor` gained a real probe — a pinned headless model
+  call — so "installed" and "can actually run a model" are no longer conflated.
+
 ## 0.5.0 — 2026-07-26
 
 The audit release. An independent fresh-eyes audit — nine auditors over disjoint
