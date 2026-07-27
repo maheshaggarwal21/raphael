@@ -706,3 +706,18 @@ test('tokens_captured is sticky-false once any pass went unmeasured', () => {
   );
   assert.equal(state.driver.stages.develop.status, 'done', 'the stage still succeeded — only the COST is unknown');
 });
+
+// --- F9 (absorb): steer agents to the sanctioned channel, not the host's ------
+// Observed 2026-07-27: an architect stage wrote its decisions to Claude Code's
+// own project-memory files (~/.claude/projects/<p>/memory/*.md) — a store that
+// lives outside the workspace, outside Raphael, has no chokepoint, no scrubbing,
+// and no review, and survived both a workspace wipe and an academy state reset.
+// A later run read it back and built on it. Absorb = give the sanctioned
+// DECISIONS channel explicit priority so there is no reason to reach for the
+// other one.
+test('F9: the boundary explicitly steers decisions away from host memory tools', () => {
+  const p = renderStagePrompt('plan', { project: 'p', brief: 'b', input: 'b', priorKind: null });
+  assert.match(p, /memory\/note-taking tools/);
+  assert.match(p, /outside this directory/i);
+  assert.match(p, /DECISIONS section below is what the next stage reads/);
+});

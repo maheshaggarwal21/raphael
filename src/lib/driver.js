@@ -57,7 +57,11 @@ const KIND_MISSIONS = {
 };
 
 const BOUNDARY_RULES = `Rules (the autonomy boundary — these are enforced, not suggestions):
-- Work ONLY inside the current directory (the project workspace).
+- Work ONLY inside the current directory (the project workspace). This includes
+  memory/note-taking tools: do not write project facts, architectural decisions,
+  or "for next time" notes to any file or tool outside this directory. That
+  channel is invisible to the pipeline, is never reviewed, and cannot carry your
+  reasoning forward — the DECISIONS section below is what the next stage reads.
 - NEVER deploy, sign in, create accounts, spend money, publish packages, or push to any remote.
 - Produce your deliverable as plain text/files and stop; the next stage picks it up.
 

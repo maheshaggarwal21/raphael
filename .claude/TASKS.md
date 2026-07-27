@@ -1145,3 +1145,9 @@ autopilot build a real project (Gatepost) while observing every action. Unlike P
       never imported by the command, only by the pulse), so an upgrade no longer prints a
       stale record back under its own success line. Version bumped to 0.5.4 IMMEDIATELY on
       landing post-release work — the discipline that prevents F8 recurring. 627 -> 628.
+- [x] 22.6 F9 decided: ABSORB. The boundary rules now explicitly steer stage agents away
+      from the host's own project-memory tool (`~/.claude/projects/<p>/memory/*.md` — no
+      chokepoint, no scrubbing, no review, survives a workspace wipe) and toward the
+      sanctioned DECISIONS channel that already exists and is already reviewable. Watching
+      whether this makes the reach-for-host-memory behavior stop, or whether a real lint is
+      still needed (govern). 628 -> 629.
