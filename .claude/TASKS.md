@@ -1108,3 +1108,15 @@ Deliberately NOT done (recorded, not forgotten):
 Team sync/merge, SQLite, embeddings, confidence formulas, phase detection,
 PostToolUse tripwires, eval CI/baselines/ablation, TUI review, trusted co-reviewers.
 (Checkpoint/resume machinery un-parked -> Phase 12.)
+
+## Phase 22 — observation remediation (from driving a real build, 2026-07-27)
+Source: `.claude/observation/2026-07-26-run-01.md`. Fifteen findings from letting the
+autopilot build a real project (Gatepost) while observing every action. Unlike Phase 21
+(a code audit), every finding here was produced by RUNNING the product.
+
+- [x] 22.1 Retrieval: severity is part of the score, not just the tie-break (F5); keyword
+      matching is negation-aware (F6); `raph search` requires a real query hit (F15), with
+      `hasQueryHit` shared between search and the per-prompt gate so they cannot drift.
+      Measured before/after on the real 88-lesson brain: the session-start digest went from
+      five alphabetically-selected `high` lessons to the actual criticals (IDOR, server-side
+      authorization, password hashing, env-var secrets, parameterized queries). 607 -> 612.

@@ -6,7 +6,7 @@
 import path from 'node:path';
 import { loadIndex } from '../lib/compile.js';
 import { detectStacks } from '../lib/stacks.js';
-import { rank, extractPaths } from '../lib/match.js';
+import { rank, extractPaths, hasQueryHit } from '../lib/match.js';
 
 export default async function search(args) {
   const json = args.includes('--json');
@@ -32,7 +32,12 @@ export default async function search(args) {
     agent: audience,
     injected: new Set()
   };
-  const results = rank(lessons, ctx, 0.5);
+  // A search RESULT must have matched the query — not merely scored. Without
+  // this filter, a query the brain knows nothing about still returned the
+  // highest-`prior` lessons (all `any-stack+1.0, prior+0.6`), numbered like
+  // ranked answers. Asking about a real defect and getting three confident,
+  // unrelated lessons is how a user learns to stop trusting the brain.
+  const results = rank(lessons, ctx, 0.5).filter((r) => hasQueryHit(r.reasons));
 
   if (json) {
     console.log(
@@ -54,7 +59,8 @@ export default async function search(args) {
   }
 
   if (results.length === 0) {
-    console.log(`no matches for "${terms}" — the brain has ${lessons.length} active lesson(s)`);
+    console.log(`no lesson matches "${terms}" — the brain has ${lessons.length} active lesson(s), none about this`);
+    console.log('  (a miss is information: it is a gap worth a "raph note")');
     return 0;
   }
 

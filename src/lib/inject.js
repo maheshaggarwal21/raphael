@@ -15,7 +15,7 @@ import { loadConfig, isInjectionEnabled, recallProfile, getMode } from './config
 import { readEvents } from './events.js';
 import { loadIndex } from './compile.js';
 import { detectStacks } from './stacks.js';
-import { rank, extractPaths } from './match.js';
+import { rank, extractPaths, hasQueryHit } from './match.js';
 import { atomicWrite } from './files.js';
 import { logEvent } from './events.js';
 import { renderDigest, loadAtlasDoc, atlasPaths } from './atlas.js';
@@ -142,8 +142,11 @@ function notAlreadyInjected(injected) {
 
 // "Nothing fires without at least one trigger hit": a stack match or a recency
 // prior is CONTEXT, not evidence that this prompt is about this lesson.
+// The rule itself lives in match.js as hasQueryHit — `raph search` needs the
+// identical test (F15), and two copies of a retrieval guarantee is how the last
+// one drifted.
 function hasTriggerHit(r) {
-  return r.reasons.some((x) => x.startsWith('keyword:') || x.startsWith('path:'));
+  return hasQueryHit(r.reasons);
 }
 
 // THE per-prompt selection policy, in one exported place. The eval command used

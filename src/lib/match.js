@@ -12,6 +12,87 @@ const W_PATH = 2.0;
 const W_ALREADY = -10.0;
 const HIT_CAP = 3; // keyword-stuffed lessons can't dominate the ranking
 
+// Severity is part of the SCORE, not just the tie-break (observation 2026-07-27,
+// finding F5). Sorting consulted severity only when two scores were equal, and
+// `prior` gives +0.1 per observation — so a lesson mined ONCE scored 1.60 while
+// every curated CRITICAL security lesson capped at 1.50 (no mined observations,
+// by definition) and lost every session by a tenth of a point. Measured on the
+// real 74-lesson brain: "inline single-call-site abstractions" permanently
+// outranked "check ownership to stop IDOR", "enforce authorization on the
+// server", "hash passwords with a slow KDF" and "use parameterized queries".
+// The severity ladder was decorative. These weights are deliberately smaller
+// than one keyword hit (4.0): severity orders lessons of comparable relevance,
+// it never drags an irrelevant lesson over a relevant one.
+const W_SEVERITY = { critical: 0.75, high: 0.5, medium: 0.25, low: 0 };
+
+// A relevance signal is a reason to show the lesson AT ALL: it applies to any
+// stack, its stack matched, or its keywords/paths hit. `prior` is not one — it
+// only says the lesson is well-attested. Severity amplifies relevance; it must
+// never manufacture it, or a stack-scoped lesson in a project it does not apply
+// to would ride its severity over the digest threshold.
+const RELEVANCE_PREFIXES = ['any-stack', 'stack:', 'keyword:', 'path:'];
+
+function hasRelevanceSignal(reasons) {
+  return reasons.some((r) => RELEVANCE_PREFIXES.some((p) => r.startsWith(p)));
+}
+
+// Did anything in the QUERY (or prompt) actually match? `any-stack` and `stack:`
+// come from the working directory, and `prior` only says a lesson is well
+// attested — none of them mean the user's words hit anything. The per-prompt
+// injection gate (21.2) already required this; `raph search` did not, so a query
+// the brain knows nothing about returned the highest-prior lessons numbered
+// 1, 2, 3 like ranked answers (observation 2026-07-27, F15). One definition,
+// used by both, so the two can never drift apart again.
+export function hasQueryHit(reasons) {
+  return (reasons ?? []).some((r) => r.startsWith('keyword:') || r.startsWith('path:'));
+}
+
+// Words that flip the meaning of a keyword occurrence a few words later.
+// Deliberately short and conservative: a missed negation costs one spurious
+// hit (the old behaviour), while an over-eager one silently hides a real lesson.
+const NEGATORS = new Set([
+  'no', 'not', 'never', 'without', 'avoid', 'avoids', 'avoiding', 'avoided',
+  'exclude', 'excludes', 'excluding', 'excluded', 'zero', 'nor', 'neither',
+  'dont', "don't", 'doesnt', "doesn't", 'isnt', "isn't", 'arent', "aren't"
+]);
+const NEGATION_WINDOW = 32; // characters of context to look back over
+const NEGATION_LOOKBACK_WORDS = 4;
+
+// Is the occurrence at `index` inside a negated phrase? Observation 2026-07-27
+// (F6): the Gatepost brief says "Persistence is local files. No database." and
+// `text.includes('database')` scored a database-hardening lesson at 5.50 — the
+// matcher fired on the very sentence saying the thing does not exist.
+export function isNegatedAt(text, index) {
+  let before = String(text).slice(Math.max(0, index - NEGATION_WINDOW), index);
+  // Negation does not cross a clause boundary. Without this, "never use eval;
+  // eval is unsafe" reads the `never` from the FIRST clause and suppresses the
+  // second, genuine mention — caught by the boundary test below.
+  const lastBreak = Math.max(
+    before.lastIndexOf('.'), before.lastIndexOf(';'), before.lastIndexOf(','),
+    before.lastIndexOf(':'), before.lastIndexOf('!'), before.lastIndexOf('?'),
+    before.lastIndexOf('\n')
+  );
+  if (lastBreak !== -1) before = before.slice(lastBreak + 1);
+  const words = before.toLowerCase().match(/[a-z']+/g) ?? [];
+  return words.slice(-NEGATION_LOOKBACK_WORDS).some((w) => NEGATORS.has(w));
+}
+
+// How many times does `keyword` occur in `text` in a NON-negated position?
+// One negated mention does not suppress a genuine one elsewhere in the text.
+export function keywordHits(text, keyword) {
+  const k = String(keyword ?? '').toLowerCase();
+  if (!k) return 0;
+  const hay = String(text ?? '');
+  let i = 0;
+  let hits = 0;
+  for (;;) {
+    const at = hay.indexOf(k, i);
+    if (at === -1) return hits;
+    if (!isNegatedAt(hay, at)) hits++;
+    i = at + k.length;
+  }
+}
+
 // Simple glob → regex for trigger paths: `*` = one segment, `?` = one char,
 // `**` = anything, and a leading `**/` is optional so `**/webhook*/**` also
 // matches `webhooks/x.js`.
@@ -85,9 +166,10 @@ export function scoreLesson(entry, ctx = {}) {
 
   const text = String(ctx.text ?? '').toLowerCase();
   if (text) {
-    // substring match on purpose: trigger keywords are stems ("idempoten")
+    // substring match on purpose: trigger keywords are stems ("idempoten"),
+    // but a mention inside a negated phrase is not evidence the topic applies.
     const hits = (entry.triggers?.keywords ?? []).filter((k) =>
-      text.includes(String(k).toLowerCase())
+      keywordHits(text, k) > 0
     );
     if (hits.length > 0) {
       const pts = W_KEYWORD * Math.min(hits.length, HIT_CAP);
@@ -112,6 +194,17 @@ export function scoreLesson(entry, ctx = {}) {
       const pts = W_PATH * Math.min(matched.length, HIT_CAP);
       score += pts;
       reasons.push(`path:${matched.slice(0, HIT_CAP).join(',')}+${pts.toFixed(1)}`);
+    }
+  }
+
+  // Severity, but ONLY on top of a real relevance signal (see W_SEVERITY).
+  // Without the gate, a lesson scoped to stacks this project does not use would
+  // ride severity alone over the digest threshold and start appearing everywhere.
+  if (hasRelevanceSignal(reasons)) {
+    const sevPts = W_SEVERITY[entry.severity] ?? 0;
+    if (sevPts > 0) {
+      score += sevPts;
+      reasons.push(`severity:${entry.severity}+${sevPts.toFixed(2)}`);
     }
   }
 
