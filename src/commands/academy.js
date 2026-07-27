@@ -34,7 +34,7 @@ function usage(code = 1) {
       '  raph academy checkpoint <project> [--milestone id] [--step "..."] [--next "..."] [--status s] [--note "..."] [--done id] [--tests N] [--lessons N] [--tried "dead-end to not repeat"]',
       '  raph academy boundary <project> --reason "what the owner must do"',
       '  raph academy limit <project> [--reset "12am IST"]',
-      '  raph academy drive <project> --brief "..."|--brief-file <f> [--pipeline "plan,architect,..."] [--dry-run] [--max-stages N]',
+      '  raph academy drive <project> --brief "..."|--brief-file <f> [--pipeline "plan,architect,..."] [--verify "npm test"] [--dry-run] [--max-stages N]',
       '  raph academy retry <project>                 clear a failed stage and let drive continue',
       '  raph academy list'
     ].join('\n')
@@ -183,11 +183,15 @@ export default async function academy(args) {
     const pipeline = pipelineFlag
       ? pipelineFlag.split(',').map((s) => s.trim()).filter(Boolean)
       : DEFAULT_PIPELINE;
+    // The owner's verification command — the only thing that can tell a true
+    // "the suite is green" from a confident wrong one. Comes from here and
+    // nowhere else; a stage's output must never choose what the driver runs.
+    const verify = flag(args, '--verify');
 
     try {
       // idempotent mid-flight: an existing unfinished driver keeps its brief/pipeline
       if (!state.driver || state.driver.status === 'done') {
-        initDriver(state, { brief, pipeline });
+        initDriver(state, { brief, pipeline, verify });
         writeState(project, state);
       }
     } catch (err) {

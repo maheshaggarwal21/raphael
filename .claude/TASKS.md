@@ -1133,3 +1133,11 @@ autopilot build a real project (Gatepost) while observing every action. Unlike P
       are stored per stage and shown by `raph academy status` so the owner can review what the
       machine chose; develop gets a measured 25-minute clock via an optional policy timeoutMs;
       elapsed_ms and tokens_captured are recorded on every branch. 617 -> 623.
+- [x] 22.4 The second gate + honest cost, both from live evidence: `raph academy drive
+      --verify "<cmd>"` runs the OWNER-supplied command after code-bearing stages, so a
+      stage that CLAIMS success while the suite is red no longer advances (the test stage
+      reported "135 total tests", ticked parseBody in its own deliverable, and passed the
+      contract gate while npm test failed on exactly that function). Command never parsed
+      from stage output; output scrubbed before it reaches state.json. tokens_captured is
+      now sticky-false, so a resumed stage cannot advertise a partial total as complete.
+      623 -> 627.

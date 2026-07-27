@@ -28,6 +28,7 @@ import { computeConfidence } from './confidence.js';
 import { AGENTS } from './agents.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
 import { scanProject, buildAtlas, renderDigest } from './atlas.js';
+import { scrubSecrets } from './scrub.js';
 
 const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 minutes
 
@@ -138,9 +139,54 @@ export function gateDeliverable(output) {
   return { ok: true, decisions, why: null };
 }
 
+// Stages that WRITE code and are therefore expected to leave it working. The
+// verifier runs after these only: `review` and `security` are advisory passes,
+// and failing them for a defect they did not introduce would be wrong.
+export const VERIFIED_KINDS = new Set(['develop', 'test', 'debug', 'implement', 'refactor']);
+
+const VERIFY_TIMEOUT_MS = 300000;
+const VERIFY_OUTPUT_CAP = 2000;
+
+// The owner-supplied verifier: `raph academy drive --verify "npm test"`.
+//
+// Why this exists, from a real run (2026-07-27): the `test` stage reported
+// "135 total tests", walked through `parseBody` in its own deliverable and
+// ticked it, satisfied the DECISIONS contract, and was marked done — while
+// `npm test` failed on exactly that function. The contract gate checks the
+// SHAPE of a deliverable; only running the project can check its CLAIM.
+//
+// Deliberately owner-supplied rather than discovered: every guessed command is
+// a red gate on correct work. And never parsed out of stage output — that would
+// let a model choose what command the driver runs, which is the one genuinely
+// new injection surface this feature could open.
+export function runVerify(command, { cwd, spawn = spawnSync, timeout = VERIFY_TIMEOUT_MS } = {}) {
+  if (!command || !String(command).trim()) return { ran: false, ok: true, detail: null };
+  try {
+    const r = spawn(command, {
+      cwd,
+      shell: true,          // the owner writes a command line, not an argv array
+      encoding: 'utf8',
+      timeout,
+      maxBuffer: 8 * 1024 * 1024,
+      windowsHide: true
+    });
+    if (r.error) {
+      return { ran: true, ok: false, detail: `the verifier could not run: ${r.error.message}` };
+    }
+    if (r.status === 0) return { ran: true, ok: true, detail: null };
+    // A failing test can print an env var, and this lands in state.json and in
+    // the next prompt — scrub before it is stored (invariant #2).
+    const tail = `${r.stdout ?? ''}\n${r.stderr ?? ''}`.trim().slice(-VERIFY_OUTPUT_CAP);
+    // scrubSecrets returns { text, found } — not a bare string.
+    return { ran: true, ok: false, detail: `verifier exited ${r.status}:\n${scrubSecrets(tail).text}` };
+  } catch (err) {
+    return { ran: true, ok: false, detail: `the verifier threw: ${err.message}` };
+  }
+}
+
 // ---- state machine (pure over the state object) -----------------------------
 
-export function initDriver(state, { brief, pipeline = DEFAULT_PIPELINE } = {}) {
+export function initDriver(state, { brief, pipeline = DEFAULT_PIPELINE, verify = null } = {}) {
   if (!state) throw new Error('E-DRIVER: no academy state — start the project first');
   if (state.driver && state.driver.status !== 'done') return state; // idempotent mid-flight
   if (!brief || !String(brief).trim()) throw new Error('E-DRIVER: a project brief is required (--brief or --brief-file)');
@@ -149,6 +195,10 @@ export function initDriver(state, { brief, pipeline = DEFAULT_PIPELINE } = {}) {
     pipeline: [...pipeline],
     stage: 0,
     brief: String(brief).trim(),
+    // The owner's verification command, stored once at init. Set only from the
+    // CLI flag — never from a stage's output, so a model can never choose what
+    // the driver executes.
+    verify: verify ? String(verify).trim() : null,
     status: 'running', // running | limit | failed | done
     stages: {},
     started_at: new Date().toISOString(),
@@ -222,11 +272,14 @@ export function applyStageResult(state, kind, result) {
     output: result.ok ? result.output : rec.output ?? null,
     error: result.ok ? null : result.error ?? 'stage reported failure',
     tokens: (rec.tokens ?? 0) + (result.tokens ?? 0),
-    // Honesty markers. tokens_captured was missing on this branch entirely, so a
-    // stage that exhausted its resumes stored tokens:0 with nothing saying the
-    // number is unmeasured — the "0 that reads as free" the runner avoids one
-    // branch above. stats and portfolio read this record.
-    tokens_captured: result.tokensCaptured !== false,
+    // Honesty markers. tokens_captured is STICKY-FALSE: once any pass of this
+    // stage went unmeasured, the total is incomplete forever, so a later
+    // captured pass must not overwrite the doubt. Caught live on 2026-07-27 —
+    // the `test` stage was killed at 600s (nothing reported), resumed, finished,
+    // and the record then claimed tokens_captured:true over a figure that was
+    // only the second pass. A partial total advertising itself as complete is
+    // the same lie as the 0 this field exists to prevent.
+    tokens_captured: rec.tokens_captured !== false && result.tokensCaptured !== false,
     elapsed_ms: (rec.elapsed_ms ?? 0) + (result.elapsedMs ?? 0),
     // The judgement calls this stage made in place of a human (F4). Stored per
     // stage rather than written into the owner's global decision ledger: these
@@ -445,7 +498,7 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
 // Runs stages until done / limit / failure / boundary. Every transition is written
 // to the academy state FIRST, so an interrupt at any point resumes cleanly.
 // Returns { stopped: 'done'|'limit'|'failed'|'owner'|'no-driver', state }.
-export async function drive(project, { runner, log = () => {}, maxStages = Infinity, workspace = null, atlasDigestFn = workspaceAtlasDigest } = {}) {
+export async function drive(project, { runner, log = () => {}, maxStages = Infinity, workspace = null, atlasDigestFn = workspaceAtlasDigest, verifyFn = runVerify } = {}) {
   let state = readState(project);
   if (!state) throw new Error(`E-DRIVER: no academy project "${project}"`);
   if (!runner) throw new Error('E-DRIVER: a stage runner is required');
@@ -516,6 +569,21 @@ export async function drive(project, { runner, log = () => {}, maxStages = Infin
         return { stopped: 'limit', state: readState(project) };
       }
       throw err;
+    }
+
+    // THE SECOND GATE: run the owner's verifier over the workspace. The contract
+    // gate above checks the SHAPE of the deliverable; this checks whether the
+    // claim is TRUE. Observed 2026-07-27: the `test` stage reported "135 total
+    // tests", satisfied the contract, and was marked done while `npm test` was
+    // failing on the very function its own deliverable had ticked off.
+    if (result.ok && state.driver.verify && VERIFIED_KINDS.has(kind)) {
+      const v = verifyFn(state.driver.verify, { cwd: ws ?? undefined });
+      if (v.ran && !v.ok) {
+        log(`  ${kind}: verifier FAILED — the deliverable claimed success`);
+        result = { ...result, ok: false, verifyFailed: true, error: `stage reported success but the verifier disagreed. ${v.detail}` };
+      } else if (v.ran) {
+        log(`  ${kind}: verifier passed`);
+      }
     }
 
     state = applyStageResult(state, kind, {

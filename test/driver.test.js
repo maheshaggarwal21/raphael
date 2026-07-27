@@ -16,6 +16,8 @@ import {
   drive,
   renderPlan,
   CODE_BEARING_KINDS,
+  VERIFIED_KINDS,
+  runVerify,
   makeStageRunner
 } from '../src/lib/driver.js';
 import { startProject, readState, writeState } from '../src/lib/academy.js';
@@ -609,4 +611,98 @@ test('the runner REJECTS a deliverable that is really a question (F4, end to end
   const ok = await decided({ prompt: 'x', policy: POLICY, sessionId: 'q2' });
   assert.equal(ok.ok, true);
   assert.deepEqual(ok.decisions, ['Stateless deterministic rollout — no stored state']);
+});
+
+// --- the SECOND gate: the owner's verifier (observed 2026-07-27) -------------
+// The `test` stage reported "135 total tests", walked through parseBody in its
+// own deliverable and ticked it, satisfied the DECISIONS contract, and was
+// marked done — while `npm test` failed on exactly that function. The contract
+// gate checks a deliverable's SHAPE; only running the project checks its CLAIM.
+
+test('runVerify: green passes, red fails with scrubbed output, absent is a no-op', () => {
+  // success: exit 0
+  const green = runVerify('npm test', { cwd: '/w', spawn: () => ({ status: 0, stdout: 'ok', stderr: '' }) });
+  assert.deepEqual(green, { ran: true, ok: true, detail: null });
+
+  // failure: non-zero exit is reported with the tail of the output
+  const red = runVerify('npm test', {
+    cwd: '/w',
+    spawn: () => ({ status: 1, stdout: 'not ok 1 - parses valid JSON', stderr: '' })
+  });
+  assert.equal(red.ran, true);
+  assert.equal(red.ok, false);
+  assert.match(red.detail, /exited 1/);
+  assert.match(red.detail, /parses valid JSON/);
+
+  // SECRETS: a failing test can print an env var, and this lands in state.json
+  // and in the next prompt (invariant #2).
+  const leaky = runVerify('npm test', {
+    cwd: '/w',
+    spawn: () => ({ status: 1, stdout: 'FAIL: AWS_SECRET_ACCESS_KEY=' + 'A'.repeat(40), stderr: '' })
+  });
+  assert.equal(leaky.ok, false);
+  assert.equal(leaky.detail.includes('A'.repeat(40)), false, 'the raw secret must not reach state.json');
+
+  // no verifier configured = no-op that never blocks a stage
+  assert.deepEqual(runVerify(null, { cwd: '/w' }), { ran: false, ok: true, detail: null });
+  assert.deepEqual(runVerify('   ', { cwd: '/w' }), { ran: false, ok: true, detail: null });
+
+  // edge: the verifier itself cannot run
+  const broken = runVerify('nope', { cwd: '/w', spawn: () => ({ error: new Error('ENOENT') }) });
+  assert.equal(broken.ok, false);
+  assert.match(broken.detail, /could not run/);
+});
+
+test('a stage that claims success but fails the verifier does NOT advance', async () => {
+  const dir = sandbox();
+  try {
+    startProject('vk', { title: 'VK', workspace: dir });
+    const state = readState('vk');
+    initDriver(state, { brief: 'b', pipeline: ['develop', 'review'], verify: 'npm test' });
+    assert.equal(state.driver.verify, 'npm test', 'the command is stored from the FLAG, not from stage output');
+    writeState('vk', state);
+
+    // the runner reports a clean, contract-satisfying deliverable...
+    const runner = async () => ({ ok: true, output: 'built it\n\n## DECISIONS\n- none', tokens: 10, decisions: [] });
+    // ...but this project's suite is red. Without the verifier this stage advances.
+    const out = await drive('vk', {
+      runner,
+      log: () => {},
+      workspace: dir,
+      verifyFn: () => ({ ran: true, ok: false, detail: 'verifier exited 1:\nnot ok 1' })
+    });
+
+    const s = readState('vk');
+    assert.equal(s.driver.stages.develop.status !== 'done', true, 'a red suite must not be recorded as a completed stage');
+    assert.match(s.driver.stages.develop.error ?? '', /verifier disagreed/);
+    assert.notEqual(out.stopped, 'done');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the verifier only judges code-bearing stages, and only when configured', () => {
+  assert.equal(VERIFIED_KINDS.has('develop'), true);
+  assert.equal(VERIFIED_KINDS.has('test'), true);
+  // advisory passes must not be failed for a defect they did not introduce
+  assert.equal(VERIFIED_KINDS.has('review'), false);
+  assert.equal(VERIFIED_KINDS.has('security'), false);
+  assert.equal(VERIFIED_KINDS.has('plan'), false);
+});
+
+test('tokens_captured is sticky-false once any pass went unmeasured', () => {
+  // Observed live: `test` was killed at 600s (nothing reported), resumed, then
+  // finished — and the record claimed captured:true over a second-pass-only total.
+  const state = driverState();
+  applyStageResult(state, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
+  assert.equal(state.driver.stages.develop.tokens_captured, false);
+
+  applyStageResult(state, 'develop', { ok: true, output: 'x\n\n## DECISIONS\n- none', tokensCaptured: true, elapsedMs: 300000, sessionId: 's', tokens: 24176, decisions: [] });
+  assert.equal(
+    state.driver.stages.develop.tokens_captured,
+    false,
+    'a partial total must not advertise itself as complete'
+  );
+  assert.equal(state.driver.stages.develop.status, 'done', 'the stage still succeeded — only the COST is unknown');
 });
