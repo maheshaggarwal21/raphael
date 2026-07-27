@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.4 — unreleased
+
+The version is bumped the moment work lands past a published release, so the repo
+never quietly differs from the registry under the same number. (That trap cost a
+day: three fixes sat unreleased behind an unbumped 0.5.0, invisible to `raph
+update`, which compares version strings.)
+
+- **A manual `raph update` now records that it happened.** The manual path read
+  the update state but never wrote it, so an upgrade left the previous record
+  standing — and then printed it back under its own success line ("updated to
+  0.5.3 … last check: current (0.5.0)"), which reads as though nothing happened.
+
 ## 0.5.3 — 2026-07-27
 
 Both fixes here were found by watching the autopilot complete a real 7-stage

@@ -49,7 +49,7 @@ export function readUpdateState() {
   }
 }
 
-function writeUpdateState(state) {
+export function writeUpdateState(state) {
   atomicWrite(updateStateFile(), JSON.stringify(state));
 }
 

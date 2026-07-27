@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const {
   compareVersions, checkForUpdate, maybeSelfUpdate, currentVersion,
-  readUpdateState, updateStateFile, REGISTRY_URL, UPDATE_INTERVAL_MS
+  readUpdateState, writeUpdateState, updateStateFile, REGISTRY_URL, UPDATE_INTERVAL_MS
 } = await import('../src/lib/update.js');
 const { readEvents } = await import('../src/lib/events.js');
 
@@ -125,5 +125,27 @@ test('maybeSelfUpdate: offline check fails open and advances the clock', async (
     assert.ok(readUpdateState().last_check >= t0);
   } finally {
     cleanup(home);
+  }
+});
+
+test('F13: a manual upgrade RECORDS that it happened', async () => {
+  // The manual path imported readUpdateState but never writeUpdateState, so an
+  // upgrade left the previous record standing — and then printed it back at the
+  // user under its own success line ("updated to 0.5.1 ... last check: current
+  // (0.5.0)"), which reads as though nothing happened.
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-upd-'));
+  process.env.RAPHAEL_HOME = dir;
+  try {
+    writeUpdateState({ last_check: 1, last_result: 'current (0.5.0)' });
+    assert.equal(readUpdateState().last_result, 'current (0.5.0)');
+
+    // simulate what the command does after a successful upgrade
+    writeUpdateState({ last_check: Date.now(), last_result: 'updated 0.5.2 -> 0.5.3' });
+    const after = readUpdateState();
+    assert.equal(after.last_result, 'updated 0.5.2 -> 0.5.3');
+    assert.ok(after.last_check > 1, 'the clock advances so the next pulse does not re-check immediately');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
   }
 });

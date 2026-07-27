@@ -1141,3 +1141,7 @@ autopilot build a real project (Gatepost) while observing every action. Unlike P
       from stage output; output scrubbed before it reaches state.json. tokens_captured is
       now sticky-false, so a resumed stage cannot advertise a partial total as complete.
       623 -> 627.
+- [x] 22.5 F13 closed: the manual update path writes its own state (writeUpdateState was
+      never imported by the command, only by the pulse), so an upgrade no longer prints a
+      stale record back under its own success line. Version bumped to 0.5.4 IMMEDIATELY on
+      landing post-release work — the discipline that prevents F8 recurring. 627 -> 628.
