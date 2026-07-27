@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.5.2 — 2026-07-27
+
+The observation release. Everything here came from letting the autopilot build a
+real project while watching every action, rather than from reading the code.
+
+### Recall
+
+- **Severity is part of the score, not just a tie-break.** `rank()` compared score
+  first and consulted severity only on an exact tie, while the recency/observation
+  prior awards +0.1 per mined observation. So every curated CRITICAL security
+  lesson capped at 1.50 and lost every session to anything mined once at 1.60 —
+  measured on a real 88-lesson brain, "inline single-call-site abstractions"
+  permanently outranked "check ownership to stop IDOR" and "use parameterized
+  queries". Severity now scores, gated on a real relevance signal so it can never
+  drag an irrelevant lesson over a relevant one.
+- **Negated text no longer matches.** A brief saying "Persistence is local files.
+  No database." scored a database-hardening lesson at 5.50. Keyword hits skip
+  negated occurrences, with negation bounded to its own clause.
+- **A search miss says so.** `raph search` returned the highest-prior lessons,
+  numbered like answers, for queries the brain knew nothing about. It now requires
+  a keyword or path hit — the same rule the per-prompt gate already enforced, now
+  shared from one definition.
+
+### Autopilot
+
+- **An interrupted stage is resumed, not discarded.** A stage that hit its time
+  budget was written as "failed, 0 tokens" — while the workspace held 15 files and
+  49 passing tests and 423,523 billable tokens had been spent. Timeouts now keep
+  the stage resumable (bounded), and never escalate: a slower model does not fix a
+  clock.
+- **The deliverable is gated.** "Non-empty text" was never a completion test — it
+  accepted a planner's clarifying question as a finished spec and handed it to the
+  next stage as input. Every deliverable must now carry a `## DECISIONS` section.
+- **The loop is told there is no human**, that deciding is its job, and that this
+  never authorises a deploy or a sign-in. Decisions it makes are recorded per
+  stage and shown by `raph academy status`.
+- `develop` gets a measured 25-minute budget and an escalation target;
+  `raph academy retry` clears a failed stage; the failure message reports what
+  actually happened instead of a hardcoded "failed twice".
+
 ## 0.5.1 — 2026-07-27
 
 Three fixes that landed after the 0.5.0 tag but were never released, found while
