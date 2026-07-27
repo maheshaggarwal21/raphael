@@ -58,7 +58,85 @@ const KIND_MISSIONS = {
 const BOUNDARY_RULES = `Rules (the autonomy boundary — these are enforced, not suggestions):
 - Work ONLY inside the current directory (the project workspace).
 - NEVER deploy, sign in, create accounts, spend money, publish packages, or push to any remote.
-- Produce your deliverable as plain text/files and stop; the next stage picks it up.`;
+- Produce your deliverable as plain text/files and stop; the next stage picks it up.
+
+There is NO HUMAN in this loop. Nobody will read a question you ask, and no answer
+can arrive — the next stage receives your output verbatim as its input. So:
+- Never end by asking for clarification, confirmation, or a preference.
+- When something is genuinely ambiguous, CHOOSE the option you would defend to a
+  senior engineer, state the choice, and keep going. Deciding is your job here.
+- The autonomy boundary above is NOT an ambiguity to resolve. "Decide for yourself"
+  never authorises a deploy, a sign-in, a purchase, or a push.
+- Your deliverable is the thing itself (the spec, the design, the code), never a
+  description of what you would produce given more information.`;
+
+// The one structural contract every stage deliverable must satisfy. This is the
+// F4 fix, and it is deliberately a CONTRACT rather than a question-detector:
+// a clarifying question cannot satisfy "list the calls you made", so the gate
+// needs no phrase lists, no question-mark heuristics and no tuned thresholds
+// that decay against the next model's phrasing.
+//
+// It also answers the owner's actual ask — the agent decides for itself, AND the
+// decisions are recorded where a human can read them later (`raph academy status`).
+const DECISIONS_CONTRACT = `## Required final section
+
+End your response with a section headed exactly "## DECISIONS" listing every
+judgement call you made that a human might have made differently — each as one
+"- " bullet, in the form "<what you chose> — <why>". If you genuinely made none,
+write "- none". A response without this section is incomplete and will be rejected.`;
+
+const MAX_DECISIONS = 12;
+const MAX_DECISION_LEN = 300;
+
+// Parse the "## DECISIONS" section out of a stage deliverable. Pure, total, and
+// deliberately forgiving about formatting while strict about presence:
+//   - the LAST matching heading wins (a spec may quote the contract earlier);
+//   - bullets are "-", "*" or "1." lines until the next heading or the end;
+//   - "- none" is a valid, explicit answer and yields [].
+// Returns null when the section is absent — which is the failure the gate acts on.
+export function parseDecisions(text) {
+  const s = String(text ?? '');
+  const heading = /^[ \t]{0,3}#{1,6}[ \t]*DECISIONS[ \t]*:?[ \t]*$/gim;
+  let last = -1;
+  for (let m = heading.exec(s); m; m = heading.exec(s)) last = m.index + m[0].length;
+  if (last === -1) return null;
+
+  const rest = s.slice(last);
+  const stop = rest.search(/^[ \t]{0,3}#{1,6}[ \t]*\S/m);
+  const body = stop === -1 ? rest : rest.slice(0, stop);
+
+  const out = [];
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    const bullet = line.match(/^(?:[-*+]|\d+[.)])\s+(.*)$/);
+    if (!bullet) continue;
+    const item = bullet[1].trim();
+    if (!item) continue;
+    if (/^none\b/i.test(item) || /^n\/a\b/i.test(item)) continue; // explicit "no decisions"
+    out.push(item.slice(0, MAX_DECISION_LEN));
+    if (out.length >= MAX_DECISIONS) break;
+  }
+  return out;
+}
+
+// The deliverable gate. Loop Engineering's central rule is "no gate, no real
+// loop" — and Raphael's driver had none: any non-empty text counted as success.
+// That is exactly how F4 happened, where a planner's clarifying question was
+// accepted as a finished spec and handed to the architect as its input.
+//
+// Returns { ok, decisions, why }. Kept separate from the runner so it is a pure
+// function over a string, testable without spawning anything.
+export function gateDeliverable(output) {
+  const decisions = parseDecisions(output);
+  if (decisions === null) {
+    return {
+      ok: false,
+      decisions: [],
+      why: 'no "## DECISIONS" section — the deliverable is incomplete (a question or a request for input is not a deliverable)'
+    };
+  }
+  return { ok: true, decisions, why: null };
+}
 
 // ---- state machine (pure over the state object) -----------------------------
 
@@ -123,6 +201,9 @@ export function applyStageResult(state, kind, result) {
       effort: result.effort ?? null,
       timeouts,
       tokens_captured: false,       // the killed child never reported usage
+      // Duration is the ONLY cost signal that survives an interruption, so it
+      // must accumulate here above all — this is the branch where tokens can't.
+      elapsed_ms: (rec.elapsed_ms ?? 0) + (result.elapsedMs ?? 0),
       error: result.error ?? 'interrupted',
       at: new Date().toISOString()
     };
@@ -141,6 +222,17 @@ export function applyStageResult(state, kind, result) {
     output: result.ok ? result.output : rec.output ?? null,
     error: result.ok ? null : result.error ?? 'stage reported failure',
     tokens: (rec.tokens ?? 0) + (result.tokens ?? 0),
+    // Honesty markers. tokens_captured was missing on this branch entirely, so a
+    // stage that exhausted its resumes stored tokens:0 with nothing saying the
+    // number is unmeasured — the "0 that reads as free" the runner avoids one
+    // branch above. stats and portfolio read this record.
+    tokens_captured: result.tokensCaptured !== false,
+    elapsed_ms: (rec.elapsed_ms ?? 0) + (result.elapsedMs ?? 0),
+    // The judgement calls this stage made in place of a human (F4). Stored per
+    // stage rather than written into the owner's global decision ledger: these
+    // are machine assumptions pending review, not settled project decisions, and
+    // promoting one is a human act after reading it.
+    decisions: result.ok ? (result.decisions ?? []) : rec.decisions ?? [],
     at: new Date().toISOString()
   };
 
@@ -231,7 +323,7 @@ export function renderStagePrompt(kind, { project, brief, input, priorKind, atla
       ''
     );
   }
-  lines.push('## Your deliverable', m.output);
+  lines.push('## Your deliverable', m.output, '', DECISIONS_CONTRACT);
   return lines.join('\n');
 }
 
@@ -278,14 +370,24 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
     delete env.ANTHROPIC_API_KEY; // subscription billing, never metered
     delete env.ANTHROPIC_AUTH_TOKEN;
 
+    // Per-kind budget when the policy table carries one (only `develop` does),
+    // otherwise the shared default. A stage that writes a whole codebase and one
+    // that writes a checklist do not deserve the same clock.
+    const budgetMs = Number.isFinite(policy?.timeoutMs) ? policy.timeoutMs : timeout;
+
+    // Duration is the ONE cost signal that survives a killed child — the usage
+    // envelope does not. Recording it is what turns the next round of timeout
+    // tuning from judgement into data.
+    const startedAt = Date.now();
     const r = spawn(bin, buildStageArgs({ model: policy.model, effort: policy.effort, sessionId, resume }), {
       input: prompt,
       cwd: workspace,
       env,
       encoding: 'utf8',
-      timeout,
+      timeout: budgetMs,
       maxBuffer: 20 * 1024 * 1024
     });
+    const elapsedMs = Date.now() - startedAt;
 
     // A timeout is NOT a failure — it is an interruption with work already on
     // disk and a live session to continue. Distinguish it so applyStageResult
@@ -295,11 +397,12 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
       return {
         ok: false,
         timedOut,
+        elapsedMs,
         // Honest about cost: the child was killed, so its usage envelope never
         // arrived. Report "not captured" rather than a 0 that reads as "free".
         tokensCaptured: false,
         error: timedOut
-          ? `stage exceeded its ${Math.round(timeout / 60000)}-minute budget and was interrupted (work on disk is kept; token cost not captured)`
+          ? `stage exceeded its ${Math.round(budgetMs / 60000)}-minute budget and was interrupted (work on disk is kept; token cost not captured)`
           : `spawn failed: ${r.error.message}`,
         output: null,
         tokens: 0
@@ -321,11 +424,19 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
     const u = envMsg?.usage ?? {};
     const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
     if (!isSuccessEnvelope(envMsg)) {
-      return { ok: false, error: `claude reported ${envMsg?.subtype || envMsg?.error || 'error'}`, output: null, tokens };
+      return { ok: false, elapsedMs, tokensCaptured: true, error: `claude reported ${envMsg?.subtype || envMsg?.error || 'error'}`, output: null, tokens };
     }
     const output = typeof envMsg.result === 'string' && envMsg.result.trim() ? envMsg.result : null;
-    if (!output) return { ok: false, error: 'stage produced no text deliverable', output: null, tokens };
-    return { ok: true, output, tokens };
+    if (!output) return { ok: false, elapsedMs, tokensCaptured: true, error: 'stage produced no text deliverable', output: null, tokens };
+
+    // THE GATE. "Non-empty text" was never a completion test — it accepted a
+    // clarifying question as a finished spec (F4). The deliverable must satisfy
+    // the DECISIONS contract, which a question structurally cannot.
+    const gate = gateDeliverable(output);
+    if (!gate.ok) {
+      return { ok: false, elapsedMs, tokensCaptured: true, gateFailed: true, error: gate.why, output, tokens };
+    }
+    return { ok: true, elapsedMs, tokensCaptured: true, output, tokens, decisions: gate.decisions };
   };
 }
 

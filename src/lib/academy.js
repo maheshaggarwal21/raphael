@@ -194,6 +194,17 @@ export function renderStatus(state) {
     lines.push(`  TRIED (dead ends — do not repeat):`);
     for (const t of state.tried) lines.push(`    - ${t.note}`);
   }
+  // Judgement calls the autopilot made in place of a human. The whole point of
+  // letting a stage decide for itself is that the owner can read what it decided
+  // afterwards — an unread decision is indistinguishable from a silent guess.
+  const decided = [];
+  for (const [kind, rec] of Object.entries(state.driver?.stages ?? {})) {
+    for (const d of rec?.decisions ?? []) decided.push({ kind, note: d });
+  }
+  if (decided.length > 0) {
+    lines.push('  DECIDED (the autopilot chose these itself — review them):');
+    for (const d of decided) lines.push(`    - [${d.kind}] ${d.note}`);
+  }
   if (state.boundary) lines.push(`  BOUNDARY:  ${state.boundary.reason} (since ${state.boundary.at})`);
   if (state.status === 'blocked-limit' && state.limit) lines.push(`  LIMIT:     hit ${state.limit.at}, resets ${state.limit.reset_at || 'unknown'}`);
   lines.push(`  updated:   ${state.updated_at}`);

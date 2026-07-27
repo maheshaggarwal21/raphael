@@ -20,7 +20,10 @@ export default async function policy(args = []) {
       console.log(JSON.stringify(resolved, null, 2));
     } else {
       const model = resolved.model ?? '(cli default)';
-      console.log(`${resolved.kind}: model=${model} effort=${resolved.effort}${resolved.escalated ? ' (escalated)' : ''}`);
+      const clock = Number.isFinite(resolved.timeoutMs)
+        ? ` timeout=${Math.round(resolved.timeoutMs / 60000)}m`
+        : ' timeout=default';
+      console.log(`${resolved.kind}: model=${model} effort=${resolved.effort}${clock}${resolved.escalated ? ' (escalated)' : ''}`);
       console.log(`  ${resolved.why}`);
     }
     return 0;

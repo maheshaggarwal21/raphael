@@ -10,6 +10,8 @@ import {
   applyStageResult,
   renderStagePrompt,
   retryStage,
+  parseDecisions,
+  gateDeliverable,
   buildStageArgs,
   drive,
   renderPlan,
@@ -17,6 +19,7 @@ import {
   makeStageRunner
 } from '../src/lib/driver.js';
 import { startProject, readState, writeState } from '../src/lib/academy.js';
+import { resolvePolicy } from '../src/lib/policy.js';
 
 function sandbox() {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-driver-'));
@@ -252,11 +255,21 @@ test('makeStageRunner: a success envelope returns the deliverable and token coun
     bin: 'claude',
     spawn: fakeSpawn({
       status: 0,
-      stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'wrote spec.md', usage: { input_tokens: 40, output_tokens: 60 } })
+      stdout: JSON.stringify({
+        subtype: 'success',
+        is_error: false,
+        // Deliverables must satisfy the DECISIONS contract now — "non-empty text"
+        // is no longer a completion test (that was F4's mechanism).
+        result: 'wrote spec.md\n\n## DECISIONS\n- none',
+        usage: { input_tokens: 40, output_tokens: 60 }
+      })
     })
   });
   const out = await run({ prompt: 'go', policy: POLICY, sessionId: 's1' });
-  assert.deepEqual(out, { ok: true, output: 'wrote spec.md', tokens: 100 });
+  assert.equal(out.ok, true);
+  assert.equal(out.tokens, 100);
+  assert.deepEqual(out.decisions, []);
+  assert.equal(out.tokensCaptured, true);
 });
 
 // REGRESSION (audit 2026-07-26, finding 3.1c): the limit regex ran over the
@@ -270,7 +283,7 @@ test('makeStageRunner: a deliverable that RECOMMENDS rate limiting is not a limi
       stdout: JSON.stringify({
         subtype: 'success',
         is_error: false,
-        result: 'Security review: you must rate-limit the auth endpoints and add a per-session limit.',
+        result: 'Security review: you must rate-limit the auth endpoints and add a per-session limit.\n\n## DECISIONS\n- Rate limit at the edge — cheaper than per-route',
         usage: { input_tokens: 10, output_tokens: 20 }
       })
     })
@@ -299,7 +312,7 @@ test('makeStageRunner: a REAL limit refusal throws E-LIMIT with reset info', asy
 test('makeStageRunner: spawn failure, error envelope, unparseable output, empty deliverable', async () => {
   const spawnFail = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ error: new Error('ENOENT') }) });
   assert.deepEqual(await spawnFail({ prompt: 'x', policy: POLICY, sessionId: 'a' }), {
-    ok: false, timedOut: false, tokensCaptured: false, error: 'spawn failed: ENOENT', output: null, tokens: 0
+    ok: false, timedOut: false, tokensCaptured: false, elapsedMs: 0, error: 'spawn failed: ENOENT', output: null, tokens: 0
   });
 
   // A TIMEOUT is reported distinctly, because it is an interruption with work
@@ -331,14 +344,14 @@ test('makeStageRunner: spawn failure, error envelope, unparseable output, empty 
     spawn: fakeSpawn({ status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: '   ' }) })
   });
   const em = await empty({ prompt: 'x', policy: POLICY, sessionId: 'd' });
-  assert.deepEqual(em, { ok: false, error: 'stage produced no text deliverable', output: null, tokens: 0 });
+  assert.deepEqual(em, { ok: false, elapsedMs: 0, tokensCaptured: true, error: 'stage produced no text deliverable', output: null, tokens: 0 });
 });
 
 test('makeStageRunner: API keys are stripped and the session flag matches resume', async () => {
   let seen = null;
   const spawn = (bin, args, opts) => {
     seen = { args, opts };
-    return { status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'ok' }) };
+    return { status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'ok\n\n## DECISIONS\n- none' }) };
   };
   process.env.ANTHROPIC_API_KEY = 'sk-should-be-stripped';
   try {
@@ -449,4 +462,151 @@ test('F14: retryStage clears a failed stage and reports honestly when there is n
 
   // edge: no driver at all
   assert.throws(() => retryStage({ project: 'x' }), /E-DRIVER/);
+});
+
+// --- Loop Engineering: the deliverable gate + decisions contract (F4) --------
+// "No gate, no real loop." The driver's success test was "non-empty text", which
+// is how a planner's clarifying question was accepted as a finished spec and
+// handed to the architect as its input.
+
+test('parseDecisions: finds the section, tolerates formatting, and reports absence', () => {
+  // success: ordinary bullets
+  assert.deepEqual(
+    parseDecisions('spec body\n\n## DECISIONS\n- Chose stateless hashing — no stored state\n- SQLite over JSON — concurrent writes\n'),
+    ['Chose stateless hashing — no stored state', 'SQLite over JSON — concurrent writes']
+  );
+
+  // explicit "none" is a valid answer, not a missing section
+  assert.deepEqual(parseDecisions('body\n## DECISIONS\n- none\n'), []);
+  assert.deepEqual(parseDecisions('body\n## Decisions:\n- N/A\n'), []);
+
+  // absence is the failure the gate acts on — distinct from an empty list
+  assert.equal(parseDecisions('a spec with no such section'), null);
+  assert.equal(parseDecisions(''), null);
+  assert.equal(parseDecisions(undefined), null);
+
+  // the LAST heading wins: a deliverable may quote the contract before answering it
+  assert.deepEqual(
+    parseDecisions('## DECISIONS\n- quoted requirement\n\n# Spec\n\n## DECISIONS\n- the real one\n'),
+    ['the real one']
+  );
+
+  // stops at the next heading, accepts *, +, and numbered bullets
+  assert.deepEqual(
+    parseDecisions('## DECISIONS\n* one\n+ two\n1. three\n\n## Appendix\n- not a decision\n'),
+    ['one', 'two', 'three']
+  );
+
+  // edge: capped, and long items truncated rather than unbounded
+  const many = '## DECISIONS\n' + Array.from({ length: 40 }, (_, i) => `- d${i}`).join('\n');
+  assert.equal(parseDecisions(many).length, 12);
+  assert.equal(parseDecisions('## DECISIONS\n- ' + 'x'.repeat(900)).at(0).length, 300);
+});
+
+test('gateDeliverable: a question fails the gate, a real deliverable passes', () => {
+  // THE F4 CASE, near-verbatim from the run that failed: the planner ended by
+  // asking which rollout model to use. This used to score ok:true and advance.
+  const question = [
+    'Fresh project, no prior memory.',
+    '',
+    'One sharp question before I finalise:',
+    '',
+    '**The percentage rollout** — what determines which 50% a user is in?',
+    '(A) Stateless deterministic  (B) Stateful sticky  (C) Pure random',
+    '',
+    'The answer shapes the entire flag-evaluation interface. Which model do you want?'
+  ].join('\n');
+  const bad = gateDeliverable(question);
+  assert.equal(bad.ok, false);
+  assert.match(bad.why, /DECISIONS/);
+  assert.deepEqual(bad.decisions, []);
+
+  // the same stage, having decided instead of asked, passes and yields the record
+  const good = gateDeliverable('# Spec\n...\n\n## DECISIONS\n- Stateless deterministic hashing — no stored state, caller passes entityId\n');
+  assert.equal(good.ok, true);
+  assert.equal(good.decisions.length, 1);
+  assert.match(good.decisions[0], /Stateless deterministic/);
+
+  // edge: a deliverable that made no judgement calls is still complete
+  const none = gateDeliverable('# Spec\n\n## DECISIONS\n- none\n');
+  assert.equal(none.ok, true);
+  assert.deepEqual(none.decisions, []);
+});
+
+test('the stage prompt carries the no-human rule and the decisions contract', () => {
+  const prompt = renderStagePrompt('plan', { project: 'p', brief: 'b', input: 'b', priorKind: null });
+  assert.match(prompt, /NO HUMAN in this loop/);
+  assert.match(prompt, /Never end by asking for clarification/);
+  assert.match(prompt, /## DECISIONS/);
+  // deciding for yourself must never read as permission to cross the boundary
+  assert.match(prompt, /never authorises a deploy/);
+});
+
+test('decisions and honesty markers land on the stage record', () => {
+  const state = driverState();
+  applyStageResult(state, 'develop', {
+    ok: true,
+    output: 'x',
+    decisions: ['Chose SQLite — concurrent writes'],
+    tokens: 100,
+    tokensCaptured: true,
+    elapsedMs: 4000,
+    sessionId: 's'
+  });
+  const rec = state.driver.stages.develop;
+  assert.deepEqual(rec.decisions, ['Chose SQLite — concurrent writes']);
+  assert.equal(rec.tokens_captured, true);
+  assert.equal(rec.elapsed_ms, 4000);
+
+  // a stage whose cost was never measured says so, instead of storing a bare 0
+  const s2 = driverState();
+  applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
+  applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
+  applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
+  const dead = s2.driver.stages.develop;
+  assert.equal(dead.status, 'failed');
+  assert.equal(dead.tokens_captured, false, 'the terminal branch must carry the marker too');
+  assert.equal(dead.elapsed_ms, 1800000, 'duration accumulates across passes even when tokens cannot');
+});
+
+test('develop gets a longer clock than the default; other kinds do not invent one', () => {
+  assert.equal(resolvePolicy('develop').timeoutMs, 1500000);   // 25 minutes, measured
+  assert.equal(resolvePolicy('plan').timeoutMs, undefined);    // falls back to the driver default
+  assert.equal(resolvePolicy('review').timeoutMs, undefined);
+});
+
+test('the runner REJECTS a deliverable that is really a question (F4, end to end)', async () => {
+  // The pure gate is tested above; this proves makeStageRunner actually CALLS it.
+  // Without this the gate could be deleted from the runner and every other test
+  // would still pass — which is what happened on the first attempt.
+  const question = 'One sharp question before I finalise: which rollout model do you want, A, B or C?';
+  const asked = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({
+      status: 0,
+      stdout: JSON.stringify({ subtype: 'success', is_error: false, result: question, usage: { input_tokens: 10, output_tokens: 20 } })
+    })
+  });
+  const r = await asked({ prompt: 'x', policy: POLICY, sessionId: 'q1' });
+  assert.equal(r.ok, false, 'a question must not pass as a completed stage');
+  assert.equal(r.gateFailed, true);
+  assert.match(r.error, /DECISIONS/);
+  assert.equal(r.tokens, 30, 'the tokens it burned are still counted');
+
+  // the same stage, having decided instead, passes and surfaces its decisions
+  const decided = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({
+      status: 0,
+      stdout: JSON.stringify({
+        subtype: 'success',
+        is_error: false,
+        result: 'THE SPEC\n\n## DECISIONS\n- Stateless deterministic rollout — no stored state',
+        usage: { input_tokens: 10, output_tokens: 20 }
+      })
+    })
+  });
+  const ok = await decided({ prompt: 'x', policy: POLICY, sessionId: 'q2' });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.decisions, ['Stateless deterministic rollout — no stored state']);
 });

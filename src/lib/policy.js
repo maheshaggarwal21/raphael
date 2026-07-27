@@ -40,7 +40,12 @@ export const POLICY = [
     why: 'a wrong spec is the most expensive bug — spend reasoning here' },
   { kind: 'architect',   agent: 'architect', model: 'sonnet', effort: 'high',
     why: 'design decisions compound; effort up front is cheapest' },
-  { kind: 'develop',     agent: 'developer', model: 'sonnet', effort: 'medium', escalate: 'opus',
+  // timeoutMs: 25 minutes, not the default 10. Measured, not guessed — `develop`
+  // was cut off TWICE at ten minutes on a real build, the second pass having
+  // produced 341,647 billable tokens, 99,373 of them output, across 15 files and
+  // 49 passing tests. This is the one kind where the default is provably wrong,
+  // so it is the one kind that carries an override.
+  { kind: 'develop',     agent: 'developer', model: 'sonnet', effort: 'medium', escalate: 'opus', timeoutMs: 1500000,
     why: 'the bulk tier: real code in small verified diffs; a genuinely stuck implementation escalates' },
   { kind: 'test',        agent: null,        model: 'sonnet', effort: 'medium',
     why: 'writing tests is development work at development tier' },
@@ -95,7 +100,11 @@ export function resolvePolicy(kind, { escalated = false, overrides = {} } = {}) 
     effort = overrides.effort;
   }
 
-  return { kind, agent: entry.agent, model, effort, escalated, why: entry.why };
+  // timeoutMs is OPTIONAL and deliberately sparse: undefined means "use the
+  // driver's default". Only populated where a real run proved the default wrong,
+  // because eight invented numbers dressed up as a policy table is worse than
+  // one honest default.
+  return { kind, agent: entry.agent, model, effort, escalated, why: entry.why, timeoutMs: entry.timeoutMs };
 }
 
 // Resolve by roster slug — what a driver holding an agent name calls.

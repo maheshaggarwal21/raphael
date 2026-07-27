@@ -1126,3 +1126,10 @@ autopilot build a real project (Gatepost) while observing every action. Unlike P
       `develop` gained an escalation target, since the bulk tier is the one that actually
       fails (F12); and `raph academy retry` exists, so a failed stage is no longer a dead
       end reachable only by hand-editing state.json (F14). 612 -> 617.
+- [x] 22.3 Loop Engineering applied to the autopilot (Loop Engineering.md): the stage prompt
+      states there is NO HUMAN and that deciding is the job (F4 prevention); every deliverable
+      must carry a "## DECISIONS" section, parsed deterministically and gated on — a question
+      cannot satisfy it (F4 detection, and the doc's "no gate, no real loop"); the decisions
+      are stored per stage and shown by `raph academy status` so the owner can review what the
+      machine chose; develop gets a measured 25-minute clock via an optional policy timeoutMs;
+      elapsed_ms and tokens_captured are recorded on every branch. 617 -> 623.
