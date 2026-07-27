@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.3 — 2026-07-27
+
+Both fixes here were found by watching the autopilot complete a real 7-stage
+build, not by reading code — and one of them corrects a call I got wrong in 0.5.2.
+
+- **A stage that claims success now has to prove it.** `raph academy drive
+  --verify "npm test"` runs your command in the workspace after code-writing
+  stages; a non-zero exit fails the stage instead of advancing it. 0.5.2's
+  DECISIONS contract checks the *shape* of a deliverable — it cannot check
+  whether a claim is *true*. Observed live: the test stage reported "135 total
+  tests", walked through `parseBody` in its own deliverable and ticked it,
+  satisfied the contract, and was marked done — while `npm test` failed on
+  exactly that function.
+
+  The command is yours and is never discovered (a guessed command is a red gate
+  on correct work), never parsed out of stage output (that would let a model
+  choose what the driver executes), and its output is scrubbed before it reaches
+  `state.json` or a retry prompt, because a failing test can print an env var.
+  Only `develop`/`test`/`debug`/`implement`/`refactor` are judged; `review` and
+  `security` are advisory and must not fail for a defect they did not introduce.
+
+- **A partially-measured stage no longer claims a complete cost.**
+  `tokens_captured` let a later measured pass overwrite an earlier unmeasured
+  one. Live case: a stage was killed at its budget reporting nothing, resumed,
+  finished — and the record then showed `captured: true` over a figure that was
+  only the second pass. It is sticky-false now: once any pass goes unmeasured,
+  the total stays flagged incomplete.
+
 ## 0.5.2 — 2026-07-27
 
 The observation release. Everything here came from letting the autopilot build a
