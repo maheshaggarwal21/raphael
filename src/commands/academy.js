@@ -17,7 +17,7 @@ import {
   renderStatus,
   parseMilestones
 } from '../lib/academy.js';
-import { initDriver, drive, makeStageRunner, renderPlan, DEFAULT_PIPELINE } from '../lib/driver.js';
+import { initDriver, drive, makeStageRunner, renderPlan, retryStage, DEFAULT_PIPELINE } from '../lib/driver.js';
 
 function flag(args, name) {
   const i = args.indexOf(name);
@@ -35,6 +35,7 @@ function usage(code = 1) {
       '  raph academy boundary <project> --reason "what the owner must do"',
       '  raph academy limit <project> [--reset "12am IST"]',
       '  raph academy drive <project> --brief "..."|--brief-file <f> [--pipeline "plan,architect,..."] [--dry-run] [--max-stages N]',
+      '  raph academy retry <project>                 clear a failed stage and let drive continue',
       '  raph academy list'
     ].join('\n')
   );
@@ -235,9 +236,48 @@ export default async function academy(args) {
       console.log('raph: stopped at --max-stages; rerun to continue from the checkpoint.');
       return 0;
     }
+    // Say what ACTUALLY happened. This used to read "failed twice" unconditionally,
+    // which was false for every kind that cannot escalate: `develop` has no
+    // escalation model, so canEscalate() is false and the driver fails on the
+    // FIRST attempt. A user then hunts for a second failure that never happened,
+    // and concludes the stronger model was already tried when it never was (F11).
     const kind = final.driver?.pipeline?.[final.driver.stage];
-    console.error(`raph: stage "${kind}" failed twice — needs attention (raph academy status ${project}).`);
+    const rec = final.driver?.stages?.[kind] ?? {};
+    const attempts = [];
+    if (rec.timeouts) attempts.push(`${rec.timeouts} interrupted by the time budget`);
+    if (rec.escalated || rec.retry_escalated) attempts.push('one escalated retry');
+    const how = attempts.length ? ` (${attempts.join(', ')})` : '';
+    console.error(`raph: stage "${kind}" failed${how} — ${rec.error ?? 'no detail recorded'}`);
+    console.error(`      the work already on disk is kept. Retry it with: raph academy retry ${project}`);
     return 2;
+  }
+
+  if (sub === 'retry') {
+    const project = args[1];
+    if (!project) {
+      console.error('raph: usage: raph academy retry <project>');
+      return 1;
+    }
+    const state = readState(project);
+    if (!state) {
+      console.error(`raph: E-ACADEMY: no academy project "${project}"`);
+      return 1;
+    }
+    let outcome;
+    try {
+      outcome = retryStage(state);
+    } catch (err) {
+      console.error(`raph: ${err.message}`);
+      return 1;
+    }
+    if (!outcome.cleared) {
+      console.log(`raph: ${outcome.why}`);
+      return 0;
+    }
+    writeState(project, outcome.state);
+    console.log(`raph: cleared the failed "${outcome.kind}" stage — files in the workspace are untouched.`);
+    console.log(`      continue with: raph academy drive ${project} --brief-file <f>`);
+    return 0;
   }
 
   if (sub === 'limit') {

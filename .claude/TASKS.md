@@ -1120,3 +1120,9 @@ autopilot build a real project (Gatepost) while observing every action. Unlike P
       Measured before/after on the real 88-lesson brain: the session-start digest went from
       five alphabetically-selected `high` lessons to the actual criticals (IDOR, server-side
       authorization, password hashing, env-var secrets, parameterized queries). 607 -> 612.
+- [x] 22.2 Autopilot reliability: a timed-out stage is RESUMED, not discarded (F10, bounded
+      to 3 resumes, never escalated — a slower model does not fix a clock); the failure
+      message reports what actually happened instead of a hardcoded "failed twice" (F11);
+      `develop` gained an escalation target, since the bulk tier is the one that actually
+      fails (F12); and `raph academy retry` exists, so a failed stage is no longer a dead
+      end reachable only by hand-editing state.json (F14). 612 -> 617.

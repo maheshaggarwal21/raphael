@@ -9,6 +9,7 @@ import {
   nextAction,
   applyStageResult,
   renderStagePrompt,
+  retryStage,
   buildStageArgs,
   drive,
   renderPlan,
@@ -151,11 +152,14 @@ test('failure path: a kind with an escalation retries once on the stronger model
     assert.equal(s.driver.status, 'failed');
     assert.equal(s.driver.stages.debug.status, 'failed');
 
-    // develop has no escalation: one failure = failed driver
+    // `review` has no escalation: one failure = failed driver.
+    // (This used to assert on `develop`. F12 gave develop an escalation target —
+    // it is the bulk tier and the one that actually fails — so the "fails fast"
+    // case now needs a kind that genuinely has none.)
     const s2 = { ...readState('kit3') };
     delete s2.driver;
-    initDriver(s2, { brief: 'brief', pipeline: ['develop'] });
-    applyStageResult(s2, 'develop', { ok: false, error: 'boom', tokens: 1 });
+    initDriver(s2, { brief: 'brief', pipeline: ['review'] });
+    applyStageResult(s2, 'review', { ok: false, error: 'boom', tokens: 1 });
     assert.equal(s2.driver.status, 'failed');
     assert.equal(nextAction(s2).type, 'failed');
   } finally {
@@ -295,8 +299,18 @@ test('makeStageRunner: a REAL limit refusal throws E-LIMIT with reset info', asy
 test('makeStageRunner: spawn failure, error envelope, unparseable output, empty deliverable', async () => {
   const spawnFail = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ error: new Error('ENOENT') }) });
   assert.deepEqual(await spawnFail({ prompt: 'x', policy: POLICY, sessionId: 'a' }), {
-    ok: false, error: 'spawn failed: ENOENT', output: null, tokens: 0
+    ok: false, timedOut: false, tokensCaptured: false, error: 'spawn failed: ENOENT', output: null, tokens: 0
   });
+
+  // A TIMEOUT is reported distinctly, because it is an interruption with work
+  // already on disk and a live session — applyStageResult resumes it (F10).
+  const timedOutErr = Object.assign(new Error('spawnSync claude ETIMEDOUT'), { code: 'ETIMEDOUT' });
+  const timeout = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ error: timedOutErr }), timeout: 600000 });
+  const t = await timeout({ prompt: 'x', policy: POLICY, sessionId: 'a' });
+  assert.equal(t.timedOut, true);
+  assert.equal(t.tokensCaptured, false, 'a killed child never reports usage — never claim 0 is the real cost');
+  assert.match(t.error, /10-minute budget/);
+  assert.match(t.error, /work on disk is kept/);
 
   const errEnv = makeStageRunner({
     bin: 'claude',
@@ -341,4 +355,98 @@ test('makeStageRunner: API keys are stripped and the session flag matches resume
   } finally {
     delete process.env.ANTHROPIC_API_KEY;
   }
+});
+
+// --- observation run 2026-07-27: F10 / F11 / F12 / F14 -----------------------
+// Measured by letting the autopilot build a real project: `develop` hit the
+// ten-minute cap twice, and both times the driver recorded "failed, 0 tokens"
+// while the workspace held 15 files and 49 passing tests.
+
+function driverState(over = {}) {
+  return {
+    project: 'gatepost',
+    driver: {
+      pipeline: ['plan', 'develop', 'review'],
+      stage: 1,
+      brief: 'b',
+      status: 'running',
+      stages: { plan: { status: 'done', output: 'spec' } },
+      ...over
+    }
+  };
+}
+
+test('F10: an interrupted stage stays resumable instead of being discarded', () => {
+  const state = driverState();
+  applyStageResult(state, 'develop', {
+    ok: false,
+    timedOut: true,
+    tokensCaptured: false,
+    error: 'stage exceeded its 10-minute budget and was interrupted',
+    sessionId: 'sess-1',
+    tokens: 0
+  });
+
+  const rec = state.driver.stages.develop;
+  assert.equal(rec.status, 'running', 'a timeout must NOT be written as failed');
+  assert.equal(rec.timeouts, 1);
+  assert.equal(rec.tokens_captured, false, 'the killed child never reported usage — say so');
+  assert.equal(state.driver.status, 'running', 'the pipeline is not dead');
+  assert.equal(state.driver.stage, 1, 'and it has not advanced past the unfinished stage');
+
+  // and the very next action must CONTINUE that session, not start a new one
+  const action = nextAction(state);
+  assert.equal(action.type, 'run');
+  assert.equal(action.kind, 'develop');
+  assert.equal(action.resumeSessionId, 'sess-1', 'must resume the interrupted session');
+});
+
+test('F10: resumes are bounded — a stage that never finishes gives up cleanly', () => {
+  const state = driverState({ stages: { plan: { status: 'done' }, develop: { timeouts: 2, session_id: 'sess-1' } } });
+  applyStageResult(state, 'develop', { ok: false, timedOut: true, sessionId: 'sess-1', tokens: 0, error: 'interrupted' });
+
+  const rec = state.driver.stages.develop;
+  assert.equal(rec.timeouts, 3);
+  assert.equal(rec.status, 'failed', 'the third interruption stops trying');
+  assert.equal(nextAction(state).type, 'failed');
+});
+
+test('F10: a genuine failure is still a failure, not a resume', () => {
+  const state = driverState();
+  applyStageResult(state, 'develop', { ok: false, error: 'stage produced no text deliverable', sessionId: 's', tokens: 12 });
+  const rec = state.driver.stages.develop;
+  assert.notEqual(rec.status, 'running', 'a real failure must never masquerade as resumable');
+  assert.equal(rec.timeouts, 0);
+});
+
+test('F12: develop can escalate, so a real failure gets one stronger retry', () => {
+  const state = driverState();
+  applyStageResult(state, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 5 });
+  assert.equal(state.driver.stages.develop.retry_escalated, true);
+  assert.equal(state.driver.stages.develop.status, 'retry');
+  assert.equal(state.driver.status, 'running', 'still alive for the escalated attempt');
+
+  const action = nextAction(state);
+  assert.equal(action.policy.model, 'opus', 'the escalated pass uses the stronger model');
+  assert.equal(action.resumeSessionId, null, 'a failed session is never resumed — fresh start');
+});
+
+test('F14: retryStage clears a failed stage and reports honestly when there is nothing to clear', () => {
+  // success case: a failed pipeline becomes drivable again
+  const failed = driverState({ status: 'failed', stages: { plan: { status: 'done' }, develop: { status: 'failed', error: 'x' } } });
+  const out = retryStage(failed);
+  assert.equal(out.cleared, true);
+  assert.equal(out.kind, 'develop');
+  assert.equal(failed.driver.status, 'running');
+  assert.equal(failed.driver.stages.develop, undefined, 'the failed attempt is dropped');
+  assert.equal(nextAction(failed).type, 'run', 'drive can proceed again');
+
+  // failure case: nothing to retry is said plainly, not pretended
+  const healthy = driverState();
+  const noop = retryStage(healthy);
+  assert.equal(noop.cleared, false);
+  assert.match(noop.why, /not failed/);
+
+  // edge: no driver at all
+  assert.throws(() => retryStage({ project: 'x' }), /E-DRIVER/);
 });

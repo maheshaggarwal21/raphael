@@ -31,6 +31,17 @@ import { scanProject, buildAtlas, renderDigest } from './atlas.js';
 
 const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 minutes
 
+// How many times a single stage may be RESUMED after being cut off mid-run.
+// Observation 2026-07-27 (F10): `develop` writes an entire codebase and hit the
+// ten-minute cap twice in a row. Both times the driver recorded "failed, 0
+// tokens" and gave up — while the workspace held 15 files and 49 passing tests,
+// and 423,523 billable tokens had actually been spent. A cut-off stage is not a
+// failed stage: the CLI keeps the session, so the right move is to continue it
+// with --resume, which is machinery the driver already has and only ever used
+// for crashes. Bounded, because a stage that cannot finish in three passes needs
+// a human, not an infinite loop.
+const MAX_STAGE_RESUMES = 3;
+
 // The default build loop (Phase 12): spec -> design -> code -> tests -> review ->
 // security pass -> deploy CHECKLIST. Every kind must exist in the policy table.
 export const DEFAULT_PIPELINE = ['plan', 'architect', 'develop', 'test', 'review', 'security', 'deploy-prep'];
@@ -96,8 +107,32 @@ export function nextAction(state) {
 export function applyStageResult(state, kind, result) {
   const d = state.driver;
   const rec = d.stages[kind] ?? {};
+
+  // An interrupted stage keeps its session and stays RESUMABLE, up to a bound.
+  // nextAction() already continues any stage left in 'running' with --resume;
+  // before this, a timeout was written as 'failed', which routed around that
+  // machinery and abandoned both the files and the session context (F10).
+  const timeouts = (rec.timeouts ?? 0) + (result.timedOut ? 1 : 0);
+  const resumable = Boolean(result.timedOut) && timeouts < MAX_STAGE_RESUMES;
+  if (resumable) {
+    d.stages[kind] = {
+      ...rec,
+      status: 'running',            // nextAction resumes this session
+      session_id: result.sessionId ?? rec.session_id ?? null,
+      model: result.model ?? null,
+      effort: result.effort ?? null,
+      timeouts,
+      tokens_captured: false,       // the killed child never reported usage
+      error: result.error ?? 'interrupted',
+      at: new Date().toISOString()
+    };
+    d.updated_at = new Date().toISOString();
+    return state;
+  }
+
   d.stages[kind] = {
     ...rec,
+    timeouts,
     status: result.ok ? 'done' : 'failed',
     session_id: result.sessionId ?? rec.session_id ?? null,
     model: result.model ?? null,
@@ -112,6 +147,11 @@ export function applyStageResult(state, kind, result) {
   if (result.ok) {
     d.stage += 1;
     if (d.stage >= d.pipeline.length) d.status = 'done';
+  } else if (result.timedOut) {
+    // Out of resumes. Do NOT escalate: escalation buys deeper reasoning, and a
+    // stage that ran out of clock needs less work per pass or a bigger budget —
+    // a stronger, slower model would simply time out too, at a higher price.
+    d.status = 'failed';
   } else if (canEscalate(kind) && !rec.retry_escalated) {
     d.stages[kind].retry_escalated = true; // next nextAction() resolves the stronger model
     d.stages[kind].status = 'retry';       // fresh session — never resume a failed one
@@ -120,6 +160,28 @@ export function applyStageResult(state, kind, result) {
   }
   d.updated_at = new Date().toISOString();
   return state;
+}
+
+// Clear a failed stage so the pipeline can be driven again (F14). Before this
+// there was NO supported route back: `academy status` said "NEXT: run stage:
+// develop" while `drive` refused with "failed twice", and the only way forward
+// was hand-editing state.json — on the pipeline's most common failure, no less.
+//
+// Deliberately drops the failed attempt's record rather than resuming it: a
+// stage a human had to intervene on should start clean, and a fresh session is
+// correct once the prior one has gone stale. Files in the workspace are never
+// touched, so the work already produced is what the retry builds on.
+export function retryStage(state) {
+  if (!state?.driver) throw new Error('E-DRIVER: no autopilot run to retry — start one with "raph academy drive"');
+  const d = state.driver;
+  const kind = d.pipeline[d.stage];
+  if (d.status !== 'failed') {
+    return { state, kind, cleared: false, why: `stage "${kind}" is ${d.status}, not failed — nothing to retry` };
+  }
+  delete d.stages[kind];
+  d.status = 'running';
+  d.updated_at = new Date().toISOString();
+  return { state, kind, cleared: true, why: null };
 }
 
 // resolvePolicy returns the DECISION (no escalate field) — "can this kind
@@ -225,7 +287,24 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
       maxBuffer: 20 * 1024 * 1024
     });
 
-    if (r.error) return { ok: false, error: `spawn failed: ${r.error.message}`, output: null, tokens: 0 };
+    // A timeout is NOT a failure — it is an interruption with work already on
+    // disk and a live session to continue. Distinguish it so applyStageResult
+    // can resume instead of discarding (F10). Everything else is a real failure.
+    if (r.error) {
+      const timedOut = r.error.code === 'ETIMEDOUT' || /ETIMEDOUT/i.test(String(r.error.message));
+      return {
+        ok: false,
+        timedOut,
+        // Honest about cost: the child was killed, so its usage envelope never
+        // arrived. Report "not captured" rather than a 0 that reads as "free".
+        tokensCaptured: false,
+        error: timedOut
+          ? `stage exceeded its ${Math.round(timeout / 60000)}-minute budget and was interrupted (work on disk is kept; token cost not captured)`
+          : `spawn failed: ${r.error.message}`,
+        output: null,
+        tokens: 0
+      };
+    }
 
     // Parse FIRST, then judge. A stage deliverable that *recommends* rate
     // limiting is not a subscription limit — detectLimit only inspects failure

@@ -45,11 +45,15 @@ test('resolvePolicy: lookup, escalation, overrides, and coded errors', () => {
   assert.equal(dev.effort, 'medium');
   assert.equal(dev.escalated, false);
 
-  // debug escalates to the top model; kinds without an escape hatch refuse
+  // debug and develop escalate to the top model; kinds without an escape hatch refuse.
+  // (develop gained an escalation target in F12 — it is the bulk tier and the one
+  // stage that actually fails, so "the retry ladder cannot help it" was backwards.
+  // `review` still has none, and stands in as the fails-fast case.)
   const hard = resolvePolicy('debug', { escalated: true });
   assert.equal(hard.model, 'opus');
   assert.equal(hard.escalated, true);
-  assert.throws(() => resolvePolicy('develop', { escalated: true }), /E-POLICY.*no escalation/);
+  assert.equal(resolvePolicy('develop', { escalated: true }).model, 'opus');
+  assert.throws(() => resolvePolicy('review', { escalated: true }), /E-POLICY.*no escalation/);
 
   // distill deliberately rides the CLI default model
   assert.equal(resolvePolicy('distill').model, null);
