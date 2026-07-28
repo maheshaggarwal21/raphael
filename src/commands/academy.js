@@ -18,6 +18,9 @@ import {
   parseMilestones
 } from '../lib/academy.js';
 import { initDriver, drive, makeStageRunner, renderPlan, retryStage, DEFAULT_PIPELINE } from '../lib/driver.js';
+import { getGraphTemplate, graphNames, EXPERIMENTAL_GRAPHS } from '../lib/graph-templates.js';
+import { validateGraph, renderGraph, renderGraphMermaid } from '../lib/graph.js';
+import { ensureGraph, cursorNodeId } from '../lib/graphstate.js';
 
 function flag(args, name) {
   const i = args.indexOf(name);
@@ -34,9 +37,12 @@ function usage(code = 1) {
       '  raph academy checkpoint <project> [--milestone id] [--step "..."] [--next "..."] [--status s] [--note "..."] [--done id] [--tests N] [--lessons N] [--tried "dead-end to not repeat"]',
       '  raph academy boundary <project> --reason "what the owner must do"',
       '  raph academy limit <project> [--reset "12am IST"]',
-      '  raph academy drive <project> --brief "..."|--brief-file <f> [--pipeline "plan,architect,..."] [--verify "npm test"] [--dry-run] [--max-stages N]',
-      '  raph academy retry <project>                 clear a failed stage and let drive continue',
-      '  raph academy list'
+      '  raph academy drive <project> --brief "..."|--brief-file <f> [--graph <name>|--graph-file <f>] [--pipeline "plan,architect,..."] [--verify "npm test"] [--dry-run] [--max-stages N]',
+      '  raph academy graph [<project>|<name>] [--mermaid]   print the locked plan + each node\'s attempt budget',
+      '  raph academy retry <project> [--reset-loops]  clear a stopped node and let drive continue',
+      '  raph academy list',
+      '',
+      '  exit codes: 0 ok · 2 stopped · 3 escalated (a human must look) · 4 usage limit (retry after the reset)'
     ].join('\n')
   );
   return code;
@@ -188,11 +194,34 @@ export default async function academy(args) {
     // nowhere else; a stage's output must never choose what the driver runs.
     const verify = flag(args, '--verify');
 
+    // 23.5 — the topology comes from a SHIPPED TEMPLATE or the owner's own file,
+    // never from a model. --graph-file is how someone runs a shape we do not
+    // ship, and it still passes the full validator including the boundary scan.
+    const graphName = flag(args, '--graph');
+    const graphFile = flag(args, '--graph-file');
+    let graph = null;
+    if (graphName && graphFile) {
+      console.error('raph: E-GRAPH: pass --graph or --graph-file, not both');
+      return 1;
+    }
     try {
-      // idempotent mid-flight: an existing unfinished driver keeps its brief/pipeline
+      if (graphName) graph = getGraphTemplate(graphName);
+      if (graphFile) graph = JSON.parse(readFileSync(graphFile, 'utf8'));
+    } catch (err) {
+      console.error(`raph: ${err.message.startsWith('E-') ? '' : 'E-GRAPH: could not read the graph: '}${err.message}`);
+      return 1;
+    }
+    if (graphName && EXPERIMENTAL_GRAPHS.has(graphName)) {
+      console.log(`raph: note — the "${graphName}" graph is EXPERIMENTAL and has not yet completed an observed live run.`);
+    }
+
+    try {
+      // idempotent mid-flight: an existing unfinished driver keeps its locked graph
       if (!state.driver || state.driver.status === 'done') {
-        initDriver(state, { brief, pipeline, verify });
+        initDriver(state, { brief, pipeline, graph, verify, graphName: graphName ?? (graphFile ? 'custom' : null) });
         writeState(project, state);
+      } else if (graph) {
+        console.log('raph: this run already has a locked graph — commitment 1 keeps it. Finish or retry the run first.');
       }
     } catch (err) {
       console.error(`raph: ${err.message}`);
@@ -236,24 +265,71 @@ export default async function academy(args) {
       console.log(`raph: limit hit mid-pipeline — checkpointed; rerun \`raph academy drive ${project}\` after the reset${final.limit?.reset_at ? ` (${final.limit.reset_at})` : ''}.`);
       return 4;
     }
-    if (outcome.stopped === 'max-stages') {
+    if (outcome.stopped === 'paused' || outcome.stopped === 'max-stages') {
+      // An owner-requested partial run is a clean pause, not an escalation.
       console.log('raph: stopped at --max-stages; rerun to continue from the checkpoint.');
       return 0;
     }
-    // Say what ACTUALLY happened. This used to read "failed twice" unconditionally,
-    // which was false for every kind that cannot escalate: `develop` has no
-    // escalation model, so canEscalate() is false and the driver fails on the
-    // FIRST attempt. A user then hunts for a second failure that never happened,
-    // and concludes the stronger model was already tried when it never was (F11).
-    const kind = final.driver?.pipeline?.[final.driver.stage];
-    const rec = final.driver?.stages?.[kind] ?? {};
-    const attempts = [];
-    if (rec.timeouts) attempts.push(`${rec.timeouts} interrupted by the time budget`);
-    if (rec.escalated || rec.retry_escalated) attempts.push('one escalated retry');
-    const how = attempts.length ? ` (${attempts.join(', ')})` : '';
-    console.error(`raph: stage "${kind}" failed${how} — ${rec.error ?? 'no detail recorded'}`);
+    if (outcome.stopped === 'busy') {
+      console.error(`raph: another "raph academy drive ${project}" is already running — two drives would corrupt the cursor.`);
+      return 2;
+    }
+    // Say what ACTUALLY happened. This used to read "failed twice"
+    // unconditionally, which was false for every kind that cannot escalate (F11),
+    // and it read the node from pipeline[stage], which is undefined one past the
+    // end of a completed run.
+    const esc = outcome.escalation;
+    const nodeId = esc?.node ?? cursorNodeId(final.driver) ?? 'unknown';
+    if (outcome.stopped === 'escalated') {
+      // Exit 3 is its own code so a scheduler can tell "retry later" (4 = limit)
+      // from "a human must look at this" (3) from "it broke" (2).
+      const byClass = {};
+      for (const a of esc?.attempts ?? []) byClass[a.class] = (byClass[a.class] ?? 0) + 1;
+      const spent = Object.entries(byClass).map(([c, n]) => `${c}x${n}`).join(' ');
+      console.error(`raph: ESCALATED at node "${nodeId}" — ${esc?.reason ?? 'a declared bound was exhausted'}`);
+      console.error(`      bound: ${esc?.bound ?? 'unknown'}${spent ? ` · attempts this visit: ${spent}` : ''}`);
+      console.error(`      the work already on disk is kept. Look at it, then: raph academy retry ${project}`);
+      return 3;
+    }
+    console.error(`raph: run stopped at node "${nodeId}" (${final.driver?.status ?? 'unknown'}).`);
     console.error(`      the work already on disk is kept. Retry it with: raph academy retry ${project}`);
     return 2;
+  }
+
+  // `raph academy graph [<project>|<name>] [--mermaid]` — print the plan a run is
+  // locked to, or a shipped template, with each node's CONCRETE attempt budget.
+  // Zero spawns, zero tokens.
+  if (sub === 'graph') {
+    const target = args[1];
+    const mermaid = args.includes('--mermaid');
+    if (!target) {
+      console.log(`shipped graphs: ${graphNames().join(', ')}`);
+      console.log('  raph academy graph <name>       show a shipped template');
+      console.log('  raph academy graph <project>    show the graph a run is locked to');
+      return 0;
+    }
+    let graph = null;
+    const state = readState(target, { onCorrupt: 'null' });
+    if (state) {
+      ensureGraph(state);
+      graph = state.driver?.graph ?? null;
+      if (!graph) {
+        console.error(`raph: project "${target}" has no autopilot run yet — start one with "raph academy drive"`);
+        return 1;
+      }
+    } else {
+      try {
+        graph = validateGraph(getGraphTemplate(target), { name: target });
+      } catch (err) {
+        console.error(`raph: ${err.message}`);
+        return 1;
+      }
+    }
+    console.log(mermaid ? renderGraphMermaid(graph) : renderGraph(graph));
+    if (!mermaid && EXPERIMENTAL_GRAPHS.has(graph.name)) {
+      console.log('\nNOTE: this graph is EXPERIMENTAL — it has not yet completed an observed live run.');
+    }
+    return 0;
   }
 
   if (sub === 'retry') {
@@ -269,7 +345,9 @@ export default async function academy(args) {
     }
     let outcome;
     try {
-      outcome = retryStage(state);
+      // Loop counters are PRESERVED by default: a retry that quietly restored
+      // the budget would let a run exceed a bound it already declared.
+      outcome = retryStage(state, { resetLoops: args.includes('--reset-loops') });
     } catch (err) {
       console.error(`raph: ${err.message}`);
       return 1;

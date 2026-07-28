@@ -15,6 +15,7 @@ import { existsSync, readdirSync, readFileSync, mkdirSync, renameSync } from 'no
 import path from 'node:path';
 import { atomicWrite } from './files.js';
 import { p } from './paths.js';
+import { decisionsByNode } from './graphstate.js';
 
 const SCHEMA = 'raphael/academy-state/v1';
 export const STATUSES = ['in-progress', 'blocked-limit', 'blocked-boundary', 'done'];
@@ -197,9 +198,18 @@ export function renderStatus(state) {
   // Judgement calls the autopilot made in place of a human. The whole point of
   // letting a stage decide for itself is that the owner can read what it decided
   // afterwards — an unread decision is indistinguishable from a silent guess.
+  //
+  // Read through decisionsByNode(), which handles BOTH the pre-graph shape and
+  // the graph shape. The old reader iterated `state.driver?.stages ?? {}` and so
+  // failed OPEN: moving the records would have silently emptied the only place a
+  // human sees what the machine decided, and no existing test would have caught
+  // it. A graph-shaped state also carries EVERY visit of a looping node, not
+  // just the last, which is exactly what a review loop needs to be auditable.
   const decided = [];
-  for (const [kind, rec] of Object.entries(state.driver?.stages ?? {})) {
-    for (const d of rec?.decisions ?? []) decided.push({ kind, note: d });
+  for (const entry of decisionsByNode(state.driver)) {
+    for (const d of entry.decisions) {
+      decided.push({ kind: entry.visit > 1 ? `${entry.id} #${entry.visit}` : entry.id, note: d });
+    }
   }
   if (decided.length > 0) {
     lines.push('  DECIDED (the autopilot chose these itself — review them):');
