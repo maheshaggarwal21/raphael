@@ -157,6 +157,11 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
   // the end, so "map stage to the cursor" yields cursor: undefined for every
   // completed run. null is a legal, documented terminal value.
   const cursor = complete ? null : idOf(stageIndex);
+  // The node the run is SITTING ON has been entered, even if it has no record
+  // yet (it may never have spawned). Leaving its counter unset would make the
+  // three maps disagree the moment it finishes — visits is the loop counter, and
+  // an unset one reads as "never entered".
+  if (cursor && !visits[cursor]) visits[cursor] = 1;
   if (!complete) {
     for (const [index] of pipeline.entries()) {
       const id = idOf(index);

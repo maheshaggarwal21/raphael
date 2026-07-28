@@ -38,6 +38,30 @@ export const RECOVERY = Object.freeze({
 
 export const FAILURE_CLASSES = Object.freeze(Object.keys(RECOVERY));
 
+// The ONLY producer of a failure class.
+//
+// This is why `failureClass` is banned from the stage runner's return value: the
+// RECOVERY table above is keyed by it, one-to-one with an action, so a runner
+// that emitted `failureClass: 'timeout'` would already have chosen `resume`.
+// That is the execution layer making a recovery decision, which is precisely the
+// separation commitment 2 asks for. The runner emits raw observations; this pure
+// function turns them into a class; the table turns the class into an action.
+//
+// Order matters and is deliberate:
+//   1. An interruption is not a failure — work is on disk and the session lives.
+//   2. A child that never produced an envelope is environmental, not reasoning.
+//   3. Shape first, then claim: a deliverable that is malformed has not earned a
+//      verifier run, and a verdict that cannot be parsed cannot route.
+//   4. Everything left is the model getting the work wrong.
+export function classifyFailure(result = {}) {
+  if (result.timedOut) return 'timeout';
+  if (result.spawned === false) return 'infra';
+  if (result.gateFailed) return 'gate';
+  if (result.verdictFailed) return 'verdict';
+  if (result.verifyFailed) return 'verify';
+  return 'model';
+}
+
 // Total spawns allowed for one node VISIT, all classes combined.
 //
 // Why a second bound on top of the per-class ones: six independent counters with

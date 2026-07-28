@@ -22,6 +22,7 @@ import {
 } from '../src/lib/driver.js';
 import { startProject, readState, writeState } from '../src/lib/academy.js';
 import { resolvePolicy } from '../src/lib/policy.js';
+import { ensureGraph } from '../src/lib/graphstate.js';
 
 function sandbox() {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-driver-'));
@@ -59,8 +60,10 @@ test('driver state machine: brief feeds stage 0, outputs chain, done records the
 
     initDriver(state, { brief: 'Build a tiny CLI that says hi.' });
     assert.deepEqual(state.driver.pipeline, DEFAULT_PIPELINE);
+    assert.equal(state.driver.cursor, 'plan', 'the cursor starts at the graph entry');
+    assert.ok(state.driver.graph_hash, 'the plan is locked by content (commitment 1)');
 
-    // stage 0 runs on the brief with the policy table's decision
+    // the entry node runs on the brief with the policy table's decision
     let a = nextAction(state);
     assert.equal(a.type, 'run');
     assert.equal(a.kind, 'plan');
@@ -69,33 +72,37 @@ test('driver state machine: brief feeds stage 0, outputs chain, done records the
     assert.equal(a.input, 'Build a tiny CLI that says hi.');
     assert.equal(a.resumeSessionId, null);
 
-    // completing a stage advances and chains the output
+    // completing a node advances along a declared edge and chains the output
     applyStageResult(state, 'plan', { ok: true, output: 'THE SPEC', tokens: 5, sessionId: 's1' });
     a = nextAction(state);
     assert.equal(a.kind, 'architect');
-    assert.equal(a.input, 'THE SPEC');
-    assert.equal(a.priorKind, 'plan');
+    assert.match(a.input, /THE SPEC/);
+    assert.match(a.input, /raphael-stage-input from="plan"/, 'inputs arrive in a data envelope');
+    assert.equal(state.driver.history.at(-1).from, 'plan', 'the transition is on the audit trail');
+    assert.equal(state.driver.history.at(-1).to, 'architect');
 
     // the full loop against the DISK state, with a fake runner (fresh driver written)
     const diskState = readState('kit');
+    delete diskState.driver;
     initDriver(diskState, { brief: 'Build a tiny CLI that says hi.' });
     writeState('kit', diskState);
     const calls = [];
     const out = await drive('kit', { runner: fakeRunner(calls), log: () => {} });
     assert.equal(out.stopped, 'done');
     assert.equal(calls.length, DEFAULT_PIPELINE.length);
-    // every stage ran with the policy table's model/effort, fresh sessions
+    // every node ran with the policy table's model/effort, fresh sessions
     assert.equal(calls[0].policy.kind, 'plan');
     assert.equal(calls.at(-1).policy.kind, 'deploy-prep');
     assert.ok(new Set(calls.map((c) => c.sessionId)).size === calls.length);
 
-    // pipeline completion = the autonomy boundary, recorded on the academy state
+    // completion = the autonomy boundary, recorded on the academy state
     const final = readState('kit');
     assert.equal(final.driver.status, 'done');
+    assert.equal(final.driver.cursor, null, 'a finished run has no cursor, and null is the legal value');
     assert.equal(final.status, 'blocked-boundary');
     assert.match(final.boundary.reason, /deploy.*owner/i);
 
-    // a second drive on a completed pipeline is a no-op owner surface
+    // a second drive on a completed run is a no-op owner surface
     const again = await drive('kit', { runner: fakeRunner([]), log: () => {} });
     assert.equal(again.stopped, 'owner');
   } finally {
@@ -118,8 +125,8 @@ test('limit mid-stage: checkpointed as blocked-limit, then the SAME stage resume
     const paused = readState('kit2');
     assert.equal(paused.status, 'blocked-limit');
     assert.equal(paused.limit.reset_at, '5:50pm Asia/Calcutta');
-    assert.equal(paused.driver.stages.develop.status, 'running'); // started, not finished
-    const interruptedSession = paused.driver.stages.develop.session_id;
+    assert.equal(paused.driver.nodes.develop.status, 'running'); // started, not finished
+    const interruptedSession = paused.driver.nodes.develop.session_id;
     assert.ok(interruptedSession);
 
     // rerun (the reset happened): the develop stage RESUMES the interrupted session
@@ -144,29 +151,32 @@ test('failure path: a kind with an escalation retries once on the stronger model
     initDriver(state, { brief: 'brief', pipeline: ['debug', 'develop'] });
     writeState('kit3', state);
 
-    // debug fails every time -> first attempt sonnet, retry escalates to opus, then failed
+    // debug fails every time -> first attempt sonnet, retry escalates to opus,
+    // then the declared bound is spent and it ESCALATES to a human (exit 3),
+    // which is a distinct, visible state rather than a bare "failed".
     const calls = [];
     const out = await drive('kit3', { runner: fakeRunner(calls, { failKinds: new Set(['debug']) }), log: () => {} });
-    assert.equal(out.stopped, 'failed');
+    assert.equal(out.stopped, 'escalated');
     assert.equal(calls.length, 2);
     assert.equal(calls[0].policy.model, 'sonnet');
     assert.equal(calls[1].policy.model, 'opus');
     assert.equal(calls[1].policy.escalated, true);
     assert.notEqual(calls[1].sessionId, calls[0].sessionId); // escalation = fresh session
     const s = readState('kit3');
-    assert.equal(s.driver.status, 'failed');
-    assert.equal(s.driver.stages.debug.status, 'failed');
+    assert.equal(s.driver.status, 'escalated');
+    assert.equal(s.driver.nodes.debug.status, 'escalated');
+    assert.equal(out.escalation.node, 'debug');
+    assert.equal(out.escalation.bound, 'class:model', 'the escalation names the bound that tripped');
+    assert.ok(out.escalation.graph_hash, 'and which plan it was running');
 
-    // `review` has no escalation: one failure = failed driver.
-    // (This used to assert on `develop`. F12 gave develop an escalation target —
-    // it is the bulk tier and the one that actually fails — so the "fails fast"
-    // case now needs a kind that genuinely has none.)
+    // `review` has no escalation model: its first real failure goes straight to
+    // a human, because there is no stronger pass to buy.
     const s2 = { ...readState('kit3') };
     delete s2.driver;
     initDriver(s2, { brief: 'brief', pipeline: ['review'] });
     applyStageResult(s2, 'review', { ok: false, error: 'boom', tokens: 1 });
-    assert.equal(s2.driver.status, 'failed');
-    assert.equal(nextAction(s2).type, 'failed');
+    assert.equal(s2.driver.status, 'escalated');
+    assert.equal(nextAction(s2).type, 'escalated');
   } finally {
     delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });
@@ -201,9 +211,9 @@ test('stage prompts carry the boundary rules + roster mission; args resume sessi
 
   const state = { project: 'kit', driver: { pipeline: ['plan', 'develop'], stage: 1, brief: 'b', status: 'running', stages: { plan: { status: 'done' } } } };
   const plan = renderPlan(state);
-  assert.match(plan, /\[x\]\s+1\. plan/);
-  assert.match(plan, /\[>\]\s+2\. develop/);
-  assert.match(plan, /no deploy stage exists/);
+  assert.match(plan, /\[x\] plan/);
+  assert.match(plan, /\[>\] develop/);
+  assert.match(plan, /no deploy kind exists/);
 });
 
 test('16.3 stage prompts carry the workspace atlas map for code-bearing kinds only', async () => {
@@ -253,9 +263,31 @@ test('16.3 stage prompts carry the workspace atlas map for code-bearing kinds on
 // that shape since 23.2 and is not optional: buildStageArgs fails closed without
 // it, because a missing grant would mean "every built-in tool".
 const POLICY = { model: 'sonnet', effort: 'medium', tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'] };
+
+// The node's DECLARED gate, injected by the caller. Required since 23.4: a
+// runner with no gate would accept any non-empty text, which is precisely the
+// F4 defect, so a permissive default is not allowed.
+const GATE = (output) => gateDeliverable(output);
+
 function fakeSpawn(result) {
   return () => result;
 }
+
+// Every result carries the full declared key set, so tests assert on the fields
+// they care about rather than restating the whole shape.
+function assertResultFields(actual, expected, message) {
+  for (const [k, v] of Object.entries(expected)) {
+    assert.deepEqual(actual[k], v, `${message ?? 'result'}.${k}`);
+  }
+}
+
+test('a stage runner with NO gate refuses to run — a permissive default is the F4 defect', async () => {
+  const run = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({ status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: 'anything at all' }) })
+  });
+  await assert.rejects(run({ prompt: 'x', policy: POLICY, sessionId: 'nogate' }), /needs the node's declared gate/);
+});
 
 test('makeStageRunner: a success envelope returns the deliverable and token count', async () => {
   const run = makeStageRunner({
@@ -272,7 +304,7 @@ test('makeStageRunner: a success envelope returns the deliverable and token coun
       })
     })
   });
-  const out = await run({ prompt: 'go', policy: POLICY, sessionId: 's1' });
+  const out = await run({ prompt: 'go', policy: POLICY, gate: GATE, sessionId: 's1' });
   assert.equal(out.ok, true);
   assert.equal(out.tokens, 100);
   assert.deepEqual(out.decisions, []);
@@ -295,7 +327,7 @@ test('makeStageRunner: a deliverable that RECOMMENDS rate limiting is not a limi
       })
     })
   });
-  const out = await run({ prompt: 'audit', policy: POLICY, sessionId: 's2' });
+  const out = await run({ prompt: 'audit', policy: POLICY, gate: GATE, sessionId: 's2' });
   assert.equal(out.ok, true);
   assert.match(out.output, /rate-limit the auth endpoints/);
 });
@@ -306,7 +338,7 @@ test('makeStageRunner: a REAL limit refusal throws E-LIMIT with reset info', asy
     spawn: fakeSpawn({ status: 1, stdout: '', stderr: "You've hit your session limit · resets 5:50pm (Asia/Calcutta)" })
   });
   await assert.rejects(
-    run({ prompt: 'go', policy: POLICY, sessionId: 's3' }),
+    run({ prompt: 'go', policy: POLICY, gate: GATE, sessionId: 's3' }),
     (err) => {
       assert.equal(err.code, 'E-LIMIT');
       assert.equal(err.resetText, '5:50pm');
@@ -318,15 +350,20 @@ test('makeStageRunner: a REAL limit refusal throws E-LIMIT with reset info', asy
 
 test('makeStageRunner: spawn failure, error envelope, unparseable output, empty deliverable', async () => {
   const spawnFail = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ error: new Error('ENOENT') }) });
-  assert.deepEqual(await spawnFail({ prompt: 'x', policy: POLICY, sessionId: 'a' }), {
-    ok: false, timedOut: false, tokensCaptured: false, elapsedMs: 0, error: 'spawn failed: ENOENT', output: null, tokens: 0
-  });
+  const failed = await spawnFail({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'a' });
+  assertResultFields(failed, {
+    ok: false, timedOut: false, tokensCaptured: false, elapsedMs: 0, error: 'spawn failed: ENOENT', output: null, tokens: 0,
+    // A child that never produced an envelope is ENVIRONMENTAL, and `spawned` is
+    // the raw observation the recovery layer reads to classify it as 'infra'.
+    // The runner never names the class itself.
+    spawned: false
+  }, 'spawn failure');
 
   // A TIMEOUT is reported distinctly, because it is an interruption with work
   // already on disk and a live session — applyStageResult resumes it (F10).
   const timedOutErr = Object.assign(new Error('spawnSync claude ETIMEDOUT'), { code: 'ETIMEDOUT' });
   const timeout = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ error: timedOutErr }), timeout: 600000 });
-  const t = await timeout({ prompt: 'x', policy: POLICY, sessionId: 'a' });
+  const t = await timeout({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'a' });
   assert.equal(t.timedOut, true);
   assert.equal(t.tokensCaptured, false, 'a killed child never reports usage — never claim 0 is the real cost');
   assert.match(t.error, /10-minute budget/);
@@ -336,13 +373,13 @@ test('makeStageRunner: spawn failure, error envelope, unparseable output, empty 
     bin: 'claude',
     spawn: fakeSpawn({ status: 0, stdout: JSON.stringify({ subtype: 'error_max_turns', is_error: true, usage: { input_tokens: 5, output_tokens: 5 } }) })
   });
-  const e = await errEnv({ prompt: 'x', policy: POLICY, sessionId: 'b' });
+  const e = await errEnv({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'b' });
   assert.equal(e.ok, false);
   assert.match(e.error, /error_max_turns/);
   assert.equal(e.tokens, 10, 'tokens are still counted on a failed stage');
 
   const garbage = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ status: 0, stdout: 'not json at all' }) });
-  const g = await garbage({ prompt: 'x', policy: POLICY, sessionId: 'c' });
+  const g = await garbage({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'c' });
   assert.equal(g.ok, false);
   assert.equal(g.tokens, 0);
 
@@ -350,8 +387,10 @@ test('makeStageRunner: spawn failure, error envelope, unparseable output, empty 
     bin: 'claude',
     spawn: fakeSpawn({ status: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, result: '   ' }) })
   });
-  const em = await empty({ prompt: 'x', policy: POLICY, sessionId: 'd' });
-  assert.deepEqual(em, { ok: false, elapsedMs: 0, tokensCaptured: true, error: 'stage produced no text deliverable', output: null, tokens: 0 });
+  const em = await empty({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'd' });
+  assertResultFields(em, {
+    ok: false, elapsedMs: 0, tokensCaptured: true, error: 'stage produced no text deliverable', output: null, tokens: 0
+  }, 'empty deliverable');
 });
 
 test('makeStageRunner: API keys are stripped and the session flag matches resume', async () => {
@@ -363,13 +402,13 @@ test('makeStageRunner: API keys are stripped and the session flag matches resume
   process.env.ANTHROPIC_API_KEY = 'sk-should-be-stripped';
   try {
     const run = makeStageRunner({ bin: 'claude', spawn, workspace: os.tmpdir() });
-    await run({ prompt: 'go', policy: POLICY, sessionId: 'sess-9', resume: false });
+    await run({ prompt: 'go', policy: POLICY, gate: GATE, sessionId: 'sess-9', resume: false });
     assert.equal(seen.opts.env.ANTHROPIC_API_KEY, undefined, 'subscription billing, never metered');
     assert.equal(seen.opts.env.ANTHROPIC_AUTH_TOKEN, undefined);
     assert.equal(seen.args[seen.args.indexOf('--session-id') + 1], 'sess-9');
     assert.equal(seen.args.includes('--resume'), false);
 
-    await run({ prompt: 'go', policy: POLICY, sessionId: 'sess-9', resume: true });
+    await run({ prompt: 'go', policy: POLICY, gate: GATE, sessionId: 'sess-9', resume: true });
     assert.equal(seen.args[seen.args.indexOf('--resume') + 1], 'sess-9');
     assert.equal(seen.args.includes('--session-id'), false);
   } finally {
@@ -382,21 +421,34 @@ test('makeStageRunner: API keys are stripped and the session flag matches resume
 // ten-minute cap twice, and both times the driver recorded "failed, 0 tokens"
 // while the workspace held 15 files and 49 passing tests.
 
-function driverState(over = {}) {
-  return {
+// Since 23.4 these run on the GRAPH engine. The behaviours are identical — a
+// timeout resumes, resumes are bounded, a real failure escalates once, a stopped
+// run is retryable — but records now live per NODE and per VISIT rather than in
+// one slot keyed by kind, which is what makes a loop expressible at all.
+//
+// Built through ensureGraph on purpose: it exercises the same migration path a
+// real on-disk run takes, rather than hand-assembling a shape nothing produces.
+function driverState(over = {}, stages = { plan: { status: 'done', output: 'spec' } }) {
+  return ensureGraph({
     project: 'gatepost',
     driver: {
       pipeline: ['plan', 'develop', 'review'],
       stage: 1,
       brief: 'b',
       status: 'running',
-      stages: { plan: { status: 'done', output: 'spec' } },
+      stages,
       ...over
     }
-  };
+  });
 }
 
-test('F10: an interrupted stage stays resumable instead of being discarded', () => {
+const visitOf = (state, id) => {
+  const v = state.driver.nodes[id].visits;
+  return v[v.length - 1];
+};
+const attemptsOf = (state, id, cls) => visitOf(state, id).attempts.filter((a) => a.class === cls);
+
+test('F10: an interrupted node stays resumable instead of being discarded', () => {
   const state = driverState();
   applyStageResult(state, 'develop', {
     ok: false,
@@ -407,12 +459,11 @@ test('F10: an interrupted stage stays resumable instead of being discarded', () 
     tokens: 0
   });
 
-  const rec = state.driver.stages.develop;
-  assert.equal(rec.status, 'running', 'a timeout must NOT be written as failed');
-  assert.equal(rec.timeouts, 1);
-  assert.equal(rec.tokens_captured, false, 'the killed child never reported usage — say so');
-  assert.equal(state.driver.status, 'running', 'the pipeline is not dead');
-  assert.equal(state.driver.stage, 1, 'and it has not advanced past the unfinished stage');
+  assert.equal(state.driver.nodes.develop.status, 'running', 'a timeout must NOT be written as failed');
+  assert.equal(attemptsOf(state, 'develop', 'timeout').length, 1);
+  assert.equal(visitOf(state, 'develop').tokensCaptured, false, 'the killed child never reported usage — say so');
+  assert.equal(state.driver.status, 'running', 'the run is not dead');
+  assert.equal(state.driver.cursor, 'develop', 'and it has not advanced past the unfinished node');
 
   // and the very next action must CONTINUE that session, not start a new one
   const action = nextAction(state);
@@ -421,29 +472,41 @@ test('F10: an interrupted stage stays resumable instead of being discarded', () 
   assert.equal(action.resumeSessionId, 'sess-1', 'must resume the interrupted session');
 });
 
-test('F10: resumes are bounded — a stage that never finishes gives up cleanly', () => {
-  const state = driverState({ stages: { plan: { status: 'done' }, develop: { timeouts: 2, session_id: 'sess-1' } } });
-  applyStageResult(state, 'develop', { ok: false, timedOut: true, sessionId: 'sess-1', tokens: 0, error: 'interrupted' });
+test('F10: a resume is NOT a traversal — it must not consume a loop budget', () => {
+  // Three limit interruptions inside a maxTraversals:3 loop would otherwise
+  // exhaust the edge and escalate a run that never actually looped.
+  const state = driverState();
+  const before = JSON.stringify(state.driver.edge_visits);
+  applyStageResult(state, 'develop', { ok: false, timedOut: true, sessionId: 's', tokens: 0, error: 'interrupted' });
+  assert.equal(JSON.stringify(state.driver.edge_visits), before, 'no edge was traversed');
+  assert.equal(state.driver.visits.develop, 1, 'and the node was not re-entered');
+});
 
-  const rec = state.driver.stages.develop;
-  assert.equal(rec.timeouts, 3);
-  assert.equal(rec.status, 'failed', 'the third interruption stops trying');
-  assert.equal(nextAction(state).type, 'failed');
+test('F10: resumes are bounded — a node that never finishes escalates cleanly', () => {
+  const state = driverState();
+  let out;
+  for (let i = 0; i < 4; i += 1) {
+    out = applyStageResult(state, 'develop', { ok: false, timedOut: true, sessionId: 'sess-1', tokens: 0, error: 'interrupted' });
+  }
+  assert.equal(out.outcome, 'escalated', 'it gives up cleanly instead of retrying forever');
+  assert.equal(state.driver.status, 'escalated');
+  assert.equal(state.driver.escalation.bound, 'class:timeout', 'and it names the bound that tripped');
+  assert.equal(nextAction(state).type, 'escalated');
 });
 
 test('F10: a genuine failure is still a failure, not a resume', () => {
   const state = driverState();
   applyStageResult(state, 'develop', { ok: false, error: 'stage produced no text deliverable', sessionId: 's', tokens: 12 });
-  const rec = state.driver.stages.develop;
-  assert.notEqual(rec.status, 'running', 'a real failure must never masquerade as resumable');
-  assert.equal(rec.timeouts, 0);
+  assert.notEqual(state.driver.nodes.develop.status, 'running', 'a real failure must never masquerade as resumable');
+  assert.equal(attemptsOf(state, 'develop', 'timeout').length, 0);
 });
 
 test('F12: develop can escalate, so a real failure gets one stronger retry', () => {
   const state = driverState();
-  applyStageResult(state, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 5 });
-  assert.equal(state.driver.stages.develop.retry_escalated, true);
-  assert.equal(state.driver.stages.develop.status, 'retry');
+  const out = applyStageResult(state, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 5 });
+  assert.equal(out.outcome, 'retry');
+  assert.equal(attemptsOf(state, 'develop', 'model').length, 1);
+  assert.equal(visitOf(state, 'develop').escalated, true);
   assert.equal(state.driver.status, 'running', 'still alive for the escalated attempt');
 
   const action = nextAction(state);
@@ -451,24 +514,71 @@ test('F12: develop can escalate, so a real failure gets one stronger retry', () 
   assert.equal(action.resumeSessionId, null, 'a failed session is never resumed — fresh start');
 });
 
-test('F14: retryStage clears a failed stage and reports honestly when there is nothing to clear', () => {
-  // success case: a failed pipeline becomes drivable again
-  const failed = driverState({ status: 'failed', stages: { plan: { status: 'done' }, develop: { status: 'failed', error: 'x' } } });
+test('a node with NO escalation model escalates to the owner on its first real failure', () => {
+  // `review` carries no escalate target, so there is no stronger pass to buy.
+  const state = driverState({ pipeline: ['review'], stage: 0 }, {});
+  const out = applyStageResult(state, 'review', { ok: false, error: 'boom', sessionId: 's', tokens: 5 });
+  assert.equal(out.outcome, 'escalated');
+  assert.equal(state.driver.escalation.bound, 'not-escalatable');
+});
+
+test('escalation is per VISIT, so a looping node can escalate again on its second pass', () => {
+  // The pre-graph driver set retry_escalated permanently on the stage record, so
+  // under a loop a node that escalated on visit 1 could never escalate on visit
+  // 2 — its genuine second failure would fall straight through to failed.
+  const state = driverState();
+  applyStageResult(state, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 1 });
+  assert.equal(attemptsOf(state, 'develop', 'model').length, 1);
+
+  // simulate the node being entered again (a fresh visit)
+  state.driver.nodes.develop.visits.push({
+    n: 2, startedAt: null, output: null, verdict: null, decisions: [],
+    tokens: 0, tokensCaptured: true, elapsedMs: 0, escalated: false, attempts: []
+  });
+  const second = applyStageResult(state, 'develop', { ok: false, error: 'boom again', sessionId: 's2', tokens: 1 });
+  assert.equal(second.outcome, 'retry', 'visit 2 has its own budget');
+  assert.equal(attemptsOf(state, 'develop', 'model').length, 1, 'counted against THIS visit, not the node');
+});
+
+test('F14: retryStage clears a stopped node and reports honestly when there is nothing to clear', () => {
+  // success case: an escalated run becomes drivable again. `escalated` MUST be
+  // accepted — otherwise the human it just handed control to is told "nothing to
+  // retry" while status still shows a NEXT action, which is verbatim F14.
+  const failed = driverState();
+  applyStageResult(failed, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 1 });
+  applyStageResult(failed, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 1 });
+  assert.equal(failed.driver.status, 'escalated');
+
   const out = retryStage(failed);
   assert.equal(out.cleared, true);
   assert.equal(out.kind, 'develop');
   assert.equal(failed.driver.status, 'running');
-  assert.equal(failed.driver.stages.develop, undefined, 'the failed attempt is dropped');
+  assert.deepEqual(failed.driver.nodes.develop.visits, [], 'the stopped attempt is dropped');
+  assert.equal(failed.driver.escalation, null);
   assert.equal(nextAction(failed).type, 'run', 'drive can proceed again');
 
   // failure case: nothing to retry is said plainly, not pretended
   const healthy = driverState();
   const noop = retryStage(healthy);
   assert.equal(noop.cleared, false);
-  assert.match(noop.why, /not failed/);
+  assert.match(noop.why, /not failed or escalated/);
 
   // edge: no driver at all
   assert.throws(() => retryStage({ project: 'x' }), /E-DRIVER/);
+});
+
+test('retryStage preserves loop counters by default and clears them on request', () => {
+  const state = driverState();
+  applyStageResult(state, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 1 });
+  applyStageResult(state, 'develop', { ok: false, error: 'boom', sessionId: 's', tokens: 1 });
+  state.driver.edge_visits['develop->review'] = 2;
+
+  retryStage(state);
+  assert.equal(state.driver.edge_visits['develop->review'], 2, 'a retry that restored the budget could exceed a declared bound');
+
+  state.driver.status = 'escalated';
+  retryStage(state, { resetLoops: true });
+  assert.equal(state.driver.edge_visits['develop->review'], undefined);
 });
 
 // --- Loop Engineering: the deliverable gate + decisions contract (F4) --------
@@ -549,7 +659,7 @@ test('the stage prompt carries the no-human rule and the decisions contract', ()
   assert.match(prompt, /never authorises a deploy/);
 });
 
-test('decisions and honesty markers land on the stage record', () => {
+test('decisions and honesty markers land on the visit record', () => {
   const state = driverState();
   applyStageResult(state, 'develop', {
     ok: true,
@@ -560,20 +670,21 @@ test('decisions and honesty markers land on the stage record', () => {
     elapsedMs: 4000,
     sessionId: 's'
   });
-  const rec = state.driver.stages.develop;
-  assert.deepEqual(rec.decisions, ['Chose SQLite — concurrent writes']);
-  assert.equal(rec.tokens_captured, true);
-  assert.equal(rec.elapsed_ms, 4000);
+  const visit = visitOf(state, 'develop');
+  assert.deepEqual(visit.decisions, ['Chose SQLite — concurrent writes']);
+  assert.equal(visit.tokensCaptured, true);
+  assert.equal(visit.elapsedMs, 4000);
+  assert.equal(state.driver.nodes.develop.status, 'done');
 
-  // a stage whose cost was never measured says so, instead of storing a bare 0
+  // a node whose cost was never measured says so, instead of storing a bare 0
   const s2 = driverState();
-  applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
-  applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
-  applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
-  const dead = s2.driver.stages.develop;
-  assert.equal(dead.status, 'failed');
-  assert.equal(dead.tokens_captured, false, 'the terminal branch must carry the marker too');
-  assert.equal(dead.elapsed_ms, 1800000, 'duration accumulates across passes even when tokens cannot');
+  for (let i = 0; i < 3; i += 1) {
+    applyStageResult(s2, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
+  }
+  const dead = visitOf(s2, 'develop');
+  assert.equal(dead.tokensCaptured, false, 'the marker survives every branch');
+  assert.equal(dead.elapsedMs, 1800000, 'duration accumulates across passes even when tokens cannot');
+  assert.equal(s2.driver.spent.tokens.complete, false, 'and the run-level total admits it is incomplete');
 });
 
 test('develop gets a longer clock than the default; other kinds do not invent one', () => {
@@ -594,7 +705,7 @@ test('the runner REJECTS a deliverable that is really a question (F4, end to end
       stdout: JSON.stringify({ subtype: 'success', is_error: false, result: question, usage: { input_tokens: 10, output_tokens: 20 } })
     })
   });
-  const r = await asked({ prompt: 'x', policy: POLICY, sessionId: 'q1' });
+  const r = await asked({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'q1' });
   assert.equal(r.ok, false, 'a question must not pass as a completed stage');
   assert.equal(r.gateFailed, true);
   assert.match(r.error, /DECISIONS/);
@@ -613,7 +724,7 @@ test('the runner REJECTS a deliverable that is really a question (F4, end to end
       })
     })
   });
-  const ok = await decided({ prompt: 'x', policy: POLICY, sessionId: 'q2' });
+  const ok = await decided({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'q2' });
   assert.equal(ok.ok, true);
   assert.deepEqual(ok.decisions, ['Stateless deterministic rollout — no stored state']);
 });
@@ -678,8 +789,10 @@ test('a stage that claims success but fails the verifier does NOT advance', asyn
     });
 
     const s = readState('vk');
-    assert.equal(s.driver.stages.develop.status !== 'done', true, 'a red suite must not be recorded as a completed stage');
-    assert.match(s.driver.stages.develop.error ?? '', /verifier disagreed/);
+    assert.notEqual(s.driver.nodes.develop.status, 'done', 'a red suite must not be recorded as a completed node');
+    const attempt = s.driver.nodes.develop.visits.at(-1).attempts.at(-1);
+    assert.equal(attempt.class, 'verify', 'a false claim is its own failure class, with its own recovery');
+    assert.match(attempt.evidence ?? '', /verifier disagreed/);
     assert.notEqual(out.stopped, 'done');
   } finally {
     delete process.env.RAPHAEL_HOME;
@@ -696,20 +809,21 @@ test('the verifier only judges code-bearing stages, and only when configured', (
   assert.equal(VERIFIED_KINDS.has('plan'), false);
 });
 
-test('tokens_captured is sticky-false once any pass went unmeasured', () => {
+test('tokensCaptured is sticky-false once any pass went unmeasured', () => {
   // Observed live: `test` was killed at 600s (nothing reported), resumed, then
   // finished — and the record claimed captured:true over a second-pass-only total.
   const state = driverState();
   applyStageResult(state, 'develop', { ok: false, timedOut: true, tokensCaptured: false, elapsedMs: 600000, sessionId: 's', tokens: 0 });
-  assert.equal(state.driver.stages.develop.tokens_captured, false);
+  assert.equal(visitOf(state, 'develop').tokensCaptured, false);
 
   applyStageResult(state, 'develop', { ok: true, output: 'x\n\n## DECISIONS\n- none', tokensCaptured: true, elapsedMs: 300000, sessionId: 's', tokens: 24176, decisions: [] });
   assert.equal(
-    state.driver.stages.develop.tokens_captured,
+    visitOf(state, 'develop').tokensCaptured,
     false,
     'a partial total must not advertise itself as complete'
   );
-  assert.equal(state.driver.stages.develop.status, 'done', 'the stage still succeeded — only the COST is unknown');
+  assert.equal(state.driver.nodes.develop.status, 'done', 'the node still succeeded — only the COST is unknown');
+  assert.equal(state.driver.spent.tokens.complete, false);
 });
 
 // --- F9 (absorb): steer agents to the sanctioned channel, not the host's ------
