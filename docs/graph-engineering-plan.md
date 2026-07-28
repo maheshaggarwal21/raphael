@@ -816,6 +816,18 @@ after the fact loses the baseline — not because a dashboard will be meaningful
 
 ## 11. Build order
 
+**STATUS (2026-07-28, session 18): 23.1–23.8 and 23.10 are SHIPPED.** Test count 629 → 788.
+`23.9` (the observed live `full-build` run) is the last gate; `full-build` stays EXPERIMENTAL
+until it passes. Two things found while building, both written back above rather than left in
+a commit message: rule 3's orphan case was dead code behind rule 4 (§4 D3), and rule 6 needs a
+bound on *every* intra-SCC edge because "at least one per SCC" is unsound (§4 rule 6). One
+thing found by reading the shipped 23.4 code afterwards: the RECOVERY table's `action` names
+("restate", "repair") were decoration — every retry got a byte-identical prompt, so a stage
+that failed the verifier had no idea it had. A retry now carries the failure class's guidance
+and the recorded evidence, framed as data, which is what makes the table's own bar ("a human
+reading it in advance can predict exactly what happens") actually true.
+
+
 Reordered per the critique: **tests ship with each milestone**, not two milestones later. The
 draft landed the engine swap ("one path, no fallback") before its coverage, which makes the
 repo's own red-without/green-with rule unsatisfiable — you cannot show a test red for a bug you
