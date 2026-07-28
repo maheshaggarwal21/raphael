@@ -102,8 +102,30 @@ export function computeStats(events, activeLessons = []) {
     }))
     .sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
 
+  // 23.8 — autopilot runs, and WHICH recovery step ran out when one escalated.
+  // That breakdown is the source's named diagnostic and the thing a flat loop
+  // cannot give you: repeated escalations at the same step mean that step's
+  // protocol is miscalibrated, not that the work is hard.
+  const runs = events.filter((e) => e.event === 'graph-run');
+  const escalations = events.filter((e) => e.event === 'graph-escalation');
+  const byBound = {};
+  for (const e of escalations) {
+    const b = e.bound || 'unknown';
+    byBound[b] = (byBound[b] ?? 0) + 1;
+  }
+  const graphRuns = {
+    total: runs.length,
+    byTerminal: runs.reduce((m, e) => ({ ...m, [e.terminal || 'unknown']: (m[e.terminal || 'unknown'] ?? 0) + 1 }), {}),
+    escalations: escalations.length,
+    // The rate is only meaningful once there are runs to divide by; null says
+    // "not enough data yet" instead of printing a confident 0%.
+    escalationRate: runs.length ? escalations.length / runs.length : null,
+    byBound: Object.entries(byBound).sort((a, b) => b[1] - a[1]).map(([bound, count]) => ({ bound, count }))
+  };
+
   return {
     window: { from: first, to: last },
+    graphRuns,
     injections: {
       total: injected.length,
       sessionStart,
@@ -141,12 +163,32 @@ export function renderStats(s, { topN = 8, listN = 12 } = {}) {
   const hasInj = s.injections.total > 0;
   const hasReview = s.review.approved + s.review.rejected + s.review.suppressed > 0;
   const benches = s.atlas?.benches ?? [];
+  const gr = s.graphRuns ?? { total: 0, escalations: 0, byBound: [], byTerminal: {} };
 
-  if (!hasInj && !hasReview && !benches.length) {
+  if (!hasInj && !hasReview && !benches.length && !gr.total) {
     L.push('');
     L.push('  nothing recorded yet — approve some lessons and use the agent with');
     L.push('  injection on ("raph on"), then check back. Mining and review work regardless.');
     return L.join('\n');
+  }
+
+  if (gr.total) {
+    L.push('');
+    L.push('Autopilot runs (the graph layer)');
+    const terminals = Object.entries(gr.byTerminal).map(([k, n]) => `${n} ${k}`).join(', ');
+    L.push(`  runs        : ${gr.total}${terminals ? `  (${terminals})` : ''}`);
+    const rate = gr.escalationRate === null ? 'n/a' : `${Math.round(gr.escalationRate * 100)}%`;
+    L.push(`  escalations : ${gr.escalations}  (${rate} of runs)`);
+    if (gr.byBound.length) {
+      // WHICH step ran out is the diagnostic a flat loop cannot give: repeated
+      // escalations at the same bound mean that step's protocol is
+      // miscalibrated, not that the work is hard.
+      L.push('  which bound ran out:');
+      for (const b of gr.byBound) L.push(`    ${String(b.count).padStart(3)}x  ${b.bound}`);
+    }
+    if (gr.total < 5) {
+      L.push('  (too few runs to read a trend from — recorded now so the baseline exists later)');
+    }
   }
 
   L.push('');

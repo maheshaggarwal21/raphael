@@ -578,3 +578,129 @@ test('a STALE lock is stolen, so a crashed run cannot wedge a project forever', 
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+// ---- 23.8: measuring whether the graph layer helps ---------------------------
+
+test('a completed run and an escalation each log their own event', async () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-ev-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    const { startProject, readState, writeState } = await import('../src/lib/academy.js');
+    const { drive, initDriver } = await import('../src/lib/driver.js');
+    const { readEvents } = await import('../src/lib/events.js');
+
+    // a clean run
+    startProject('okrun', { title: 'Ok', workspace: home });
+    const s1 = readState('okrun');
+    initDriver(s1, { brief: 'Build it.', pipeline: ['plan'] });
+    writeState('okrun', s1);
+    await drive('okrun', { runner: async () => ({ ok: true, output: 'x', tokens: 42, elapsedMs: 500, decisions: [] }), log: () => {}, workspace: home });
+
+    // a run that runs out of budget
+    startProject('badrun', { title: 'Bad', workspace: home });
+    const s2 = readState('badrun');
+    initDriver(s2, { brief: 'Build it.', pipeline: ['review'] });
+    writeState('badrun', s2);
+    await drive('badrun', { runner: async () => ({ ok: false, error: 'nope', tokens: 7, elapsedMs: 100 }), log: () => {}, workspace: home });
+
+    const events = readEvents();
+    const runs = events.filter((e) => e.event === 'graph-run');
+    const escs = events.filter((e) => e.event === 'graph-escalation');
+
+    assert.equal(runs.length, 2, 'both runs are recorded');
+    assert.equal(runs.find((e) => e.project === 'okrun').terminal, 'done');
+    assert.equal(runs.find((e) => e.project === 'okrun').tokens, 42);
+    assert.equal(runs.find((e) => e.project === 'okrun').tokens_complete, true);
+
+    assert.equal(escs.length, 1);
+    assert.equal(escs[0].project, 'badrun');
+    assert.equal(escs[0].node, 'review');
+    // WHICH recovery step ran out is the whole point of recording this — a flat
+    // loop cannot tell you that, and it is what says whether a step is
+    // miscalibrated rather than the task being hard.
+    assert.equal(escs[0].bound, 'not-escalatable');
+    assert.ok(escs[0].graph_hash, 'and which plan was running when it happened');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME; else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('an unmeasured run reports its token total as INCOMPLETE, never as a bare number', async () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-ev2-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    const { startProject, readState, writeState } = await import('../src/lib/academy.js');
+    const { drive, initDriver } = await import('../src/lib/driver.js');
+    const { readEvents } = await import('../src/lib/events.js');
+
+    startProject('killed', { title: 'Killed', workspace: home });
+    const st = readState('killed');
+    initDriver(st, { brief: 'Build it.', pipeline: ['plan'] });
+    writeState('killed', st);
+
+    // interrupted once (no usage envelope), then finishes
+    let call = 0;
+    await drive('killed', {
+      runner: async () => {
+        call += 1;
+        return call === 1
+          ? { ok: false, timedOut: true, tokensCaptured: false, tokens: 0, elapsedMs: 600000, error: 'interrupted' }
+          : { ok: true, output: 'x', tokens: 500, elapsedMs: 1000, tokensCaptured: true, decisions: [] };
+      },
+      log: () => {}, workspace: home
+    });
+
+    const run = readEvents().filter((e) => e.event === 'graph-run').at(-1);
+    assert.equal(run.terminal, 'done');
+    assert.equal(run.tokens_complete, false, 'a partial total must not advertise itself as complete');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME; else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('stats and the weekly report read the escalation breakdown, honestly', async () => {
+  const { computeStats, renderStats } = await import('../src/lib/stats.js');
+  const { computeWeekly, renderWeekly } = await import('../src/lib/report.js');
+  const now = new Date('2026-07-28T12:00:00.000Z');
+  const ts = '2026-07-28T10:00:00.000Z';
+  const events = [
+    { event: 'graph-run', ts, project: 'a', graph: 'fix', terminal: 'done', nodes: 3, wall_ms: 10, tokens: 100, tokens_complete: true },
+    { event: 'graph-run', ts, project: 'b', graph: 'fix', terminal: 'escalated', nodes: 2, wall_ms: 10, tokens: 50, tokens_complete: true },
+    { event: 'graph-escalation', ts, project: 'b', graph: 'fix', node: 'debug', bound: 'class:timeout', attempts: 3, by_class: { timeout: 3 } }
+  ];
+
+  const s = computeStats(events, []);
+  assert.equal(s.graphRuns.total, 2);
+  assert.equal(s.graphRuns.escalations, 1);
+  assert.equal(s.graphRuns.escalationRate, 0.5);
+  assert.deepEqual(s.graphRuns.byBound, [{ bound: 'class:timeout', count: 1 }]);
+  const text = renderStats(s);
+  assert.match(text, /Autopilot runs/);
+  assert.match(text, /class:timeout/);
+  // With this few runs the number cannot mean anything yet, and the report says so
+  // rather than presenting a confident trend.
+  assert.match(text, /too few runs to read a trend/);
+
+  const w = computeWeekly({ states: [], events, adoptions: [], activeLessons: [], now, days: 7 });
+  assert.equal(w.graph.runs, 2);
+  assert.equal(w.graph.done, 1);
+  assert.equal(w.graph.escalations, 1);
+  assert.deepEqual(w.graph.topBound, ['class:timeout', 1]);
+  assert.match(renderWeekly(w), /Autopilot \(the graph layer\)/);
+});
+
+test('edge: with no runs at all, neither report invents a rate', async () => {
+  const { computeStats } = await import('../src/lib/stats.js');
+  const { computeWeekly, renderWeekly } = await import('../src/lib/report.js');
+  const s = computeStats([], []);
+  assert.equal(s.graphRuns.total, 0);
+  assert.equal(s.graphRuns.escalationRate, null, 'null says "not enough data", 0% would be a claim');
+
+  const w = computeWeekly({ states: [], events: [], adoptions: [], activeLessons: [], now: new Date(), days: 7 });
+  assert.equal(w.graph.runs, 0);
+  assert.equal(/Autopilot \(the graph layer\)/.test(renderWeekly(w)), false, 'an empty section is not printed');
+});

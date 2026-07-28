@@ -67,6 +67,20 @@ export function computeWeekly({ states = [], events = [], adoptions = [], active
       : null
   };
 
+  // 23.8 — autopilot runs inside the window, and which recovery step ran out on
+  // the ones that escalated.
+  const runsWin = win.filter((e) => e.event === 'graph-run');
+  const escWin = win.filter((e) => e.event === 'graph-escalation');
+  const boundCounts = {};
+  for (const e of escWin) boundCounts[e.bound || 'unknown'] = (boundCounts[e.bound || 'unknown'] ?? 0) + 1;
+  const graph = {
+    runs: runsWin.length,
+    escalations: escWin.length,
+    done: runsWin.filter((e) => e.terminal === 'done').length,
+    topBound: Object.entries(boundCounts).sort((a, b) => b[1] - a[1])[0] ?? null,
+    graphs: [...new Set(runsWin.map((e) => e.graph).filter(Boolean))]
+  };
+
   // Retrieval miss is an ALL-TIME signal (a lesson that never fired is dead
   // weight regardless of the window) — computed over the full log on purpose.
   const firedIds = new Set(
@@ -101,7 +115,7 @@ export function computeWeekly({ states = [], events = [], adoptions = [], active
       boundary: s.boundary?.reason || null
     }));
 
-  return { window: { from, to, days }, builds, brain, recall, atlas, misses, adoptions: adopted, next };
+  return { window: { from, to, days }, builds, brain, recall, atlas, graph, misses, adoptions: adopted, next };
 }
 
 // Disk wrapper — the one the CLI verb and the console both call.
@@ -146,6 +160,16 @@ export function renderWeekly(r) {
     const a = r.atlas;
     const best = a.bestRatio != null ? `${a.bestRatio}x fewer tokens to answer (best)` : 'no readable-file comparison';
     L.push(`  ${a.benches} bench run(s) — ${best}${a.latest ? `; latest: ${a.latest.project}, ${a.latest.questions} question(s)` : ''}`);
+  }
+
+  if (r.graph && r.graph.runs) {
+    L.push('');
+    L.push('Autopilot (the graph layer)');
+    L.push(`  ${r.graph.runs} run(s) — ${r.graph.done} completed, ${r.graph.escalations} escalated to a human`);
+    // WHICH bound ran out is the diagnostic worth acting on: the same one
+    // repeatedly means that recovery step is miscalibrated, not that the work is hard.
+    if (r.graph.topBound) L.push(`  most common bound: ${r.graph.topBound[0]} (${r.graph.topBound[1]}x)`);
+    if (r.graph.graphs.length) L.push(`  graphs used: ${r.graph.graphs.join(', ')}`);
   }
 
   L.push('');

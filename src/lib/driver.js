@@ -47,6 +47,7 @@ import {
 import { makeStageRunner, buildStageArgs } from './stage-runner.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
 import { scanProject, buildAtlas, renderDigest } from './atlas.js';
+import { logEvent } from './events.js';
 import { scrubSecrets } from './scrub.js';
 import { p } from './paths.js';
 
@@ -679,15 +680,72 @@ export async function drive(project, {
 
       if (applied.outcome === 'escalated') {
         log(`  ESCALATED at "${node.id}": ${state.driver.escalation.reason}`);
+        logGraphEscalation(project, state.driver, node.id);
+        logGraphRun(project, state.driver, 'escalated');
         return { stopped: 'escalated', state, escalation: state.driver.escalation };
       }
       if (applied.outcome === 'owner') {
+        logGraphRun(project, state.driver, 'owner');
         return { stopped: 'owner', state, escalation: state.driver.escalation };
       }
+      if (state.driver.status === 'done') logGraphRun(project, state.driver, 'done');
     }
   } finally {
     if (lock) releaseRunLock(project);
   }
+}
+
+// ---- 23.8: measuring whether any of this helps -------------------------------
+//
+// The source closes by saying the most valuable thing is to MEASURE whether the
+// framework reduces the failure modes it targets, so the instrumentation is a
+// build milestone rather than an afterthought.
+//
+// Honest caveat: at the current run volume (a handful of driver runs ever) this
+// cannot pay off yet. It is built now because retrofitting instrumentation after
+// the fact loses the baseline — not because a dashboard will mean anything in
+// week one. If the escalation rate does not improve, that is a finding worth
+// publishing, not one to hide.
+function logGraphRun(project, d, terminal) {
+  try {
+    logEvent({
+      event: 'graph-run',
+      project,
+      graph: d.graph_name,
+      graph_hash: d.graph_hash,
+      terminal,
+      nodes: d.spent?.nodes ?? 0,
+      visits: Object.values(d.visits ?? {}).reduce((a, b) => a + b, 0),
+      wall_ms: d.spent?.wallClockMs ?? 0,
+      // Reported WITH its honesty marker, never as a bare number: a killed child
+      // delivers no usage envelope, so an incomplete total must say so.
+      tokens: d.spent?.tokens?.value ?? 0,
+      tokens_complete: d.spent?.tokens?.complete !== false
+    });
+  } catch { /* telemetry must never break a build */ }
+}
+
+function logGraphEscalation(project, d, nodeId) {
+  try {
+    const esc = d.escalation ?? {};
+    const byClass = {};
+    for (const a of esc.attempts ?? []) byClass[a.class] = (byClass[a.class] ?? 0) + 1;
+    logEvent({
+      event: 'graph-escalation',
+      project,
+      graph: d.graph_name,
+      graph_hash: d.graph_hash,
+      node: nodeId,
+      visit: esc.visit ?? 1,
+      // WHICH recovery step ran out is the source's named diagnostic, and the
+      // thing a flat loop cannot tell you: a graph escalating repeatedly at the
+      // same step means that step's protocol is miscalibrated, not that the task
+      // is hard.
+      bound: esc.bound ?? 'unknown',
+      attempts: esc.attempts?.length ?? 0,
+      by_class: byClass
+    });
+  } catch { /* telemetry must never break a build */ }
 }
 
 // A graph may EXTEND verification to a node the code would not check. It may
