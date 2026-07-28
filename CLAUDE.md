@@ -921,8 +921,48 @@ compaction (manual or automatic) can never lose progress.
   not swallow the `--session-id` that follows it. No fallback needed. Dead kinds pruned
   (implement/refactor/qa were never POLICY kinds so could never fire); both kind sets now have
   ONE definition in policy.js + a test that every member resolves. 7 gates proven RED-WITHOUT.
-  NEXT = 23.3 (ensureGraph + the 8-shape migration table, fixtures byte-copied from the real
-  gatepost/microcache state.json; 4 named regressions each shown red-without).
+  23.3 SHIPPED (698 -> 721): src/lib/graphstate.js ensureGraph = the 8-shape migration, with
+  fixtures from the REAL gatepost/microcache states (the only two authentic pre-graph runs in
+  existence; both are edge cases). Three shapes were silent bugs: a completed run has `stage`
+  one past the end so "map stage to cursor" yields cursor:undefined for EVERY completed run
+  (null is now legal + documented); status `retry` means "the session FAILED, start fresh at
+  the escalated model", the opposite of `running`, so the obvious lift would hand a failed
+  session to --resume; and dropping the timeouts/retry_escalated scalars RESETS the retry
+  budget (a stage at 2 timeouts would get 3 more spawns, and develop carries a 25-min clock).
+  CAUGHT A REAL FALSE POSITIVE: the gatepost brief ends "Out of scope: deploying it,
+  publishing it, ..." — which STATES the boundary — and the deny-scan rejected the completed
+  run outright. Fixed by teaching the scan scope-exclusion phrasing, scoped to the same line
+  BEFORE the match so it cannot become a one-line bypass (tested both directions); migration
+  also skips the scan entirely, because refusing to LOAD a user's finished run is worse than
+  the risk. + decisionsByNode/cursorNodeId (the two outside readers). 11 gates RED-WITHOUT
+  incl. the 4 named regressions.
+  23.4+23.6 SHIPPED (721 -> 757): the ENGINE SWAP, one path no fallback. Runner extracted to
+  stage-runner.js so "separated layers" is a fact about the module graph (set-equality on its
+  return keys; it may not import recovery.js); `failureClass` BANNED from it — classifyFailure
+  is the only producer. Per-VISIT recovery bounds (fixing a latent bug: retry_escalated was
+  permanent, so a looping node could never escalate twice) + MAX_NODE_ATTEMPTS closing the
+  between-classes seam. Resume checks the graph, its HASH, and the state-vs-graph BINDING.
+  Verdict contract hardened against ECHO (a reviewer's prompt contains the reviewed output, so
+  "last heading wins" would hand routing to the input) and fails closed. Tokens ADVISORY,
+  wall clock binds as SUMMED SPAWN TIME. Run lock, input caps, `escalated` + retryStage
+  accepting it. 15 gates RED-WITHOUT.
+  23.5 SHIPPED (757 -> 774): `linear`/`fix`/`full-build` templates; full-build's security node
+  routes `changes` to @owner NEVER to a fixer — invariant #4 enforced structurally for the
+  first time. --graph/--graph-file (owner files pass the SAME validator incl. the deny-scan),
+  `raph academy graph [--mermaid]`, exit 3 = escalated.
+  23.7 SHIPPED (774 -> 781) THE BRAIN IN THE LOOP: lessonMatchesFor's results now REACH the
+  stage prompt in a <raphael-lessons> envelope (they were computed and discarded — the
+  autopilot ran its most expensive builds with zero lessons injected). SPINE became DATA so
+  rules 1/5 render in the form each agent can follow — 4 of 12 have no Bash and had been told
+  to run `raph search` since the roster existed.
+  23.8 SHIPPED (781 -> 785): graph-run/graph-escalation events -> stats + weekly, broken down
+  by WHICH bound ran out; says plainly when there are too few runs to read a trend.
+  23.10 SPIKE DONE: the SubagentStop payload DOES carry `agent_id`, `agent_type`,
+  `agent_transcript_path` and `last_assistant_message` — read from the zod schemas in the
+  installed binary, not inferred. So a deterministic cursor for the manager path IS buildable;
+  recorded as a NEW milestone, not folded into Phase 23. The manager still has no Bash and
+  that stays rejected.
+  NEXT = 23.9 (live full-build run; `fix` already ran live and clean end to end).
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.

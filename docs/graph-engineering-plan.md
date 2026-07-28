@@ -728,16 +728,56 @@ from the harness, not from the model's goodwill — precisely the property the d
 unavailable. And the installed Claude Code binary contains the strings **`SubagentStart` (28
 occurrences) and `SubagentStop` (74)** alongside the four events Raphael already uses.
 
-**Honest limit:** that confirms the events *exist*. It does not confirm the payload carries the
-subagent's identity or result. So the correct statement is "unchecked assumption", not
-"architectural impossibility", and 23.10 is a **spike**: wire a `SubagentStop` hook that
-appends to a cursor file, run one manager build, and read what the payload actually contains.
+**RESOLVED 2026-07-28 (23.10) — the payload DOES carry subagent identity.**
 
-Two outcomes, both honest:
-- payload carries subagent identity → a deterministic, model-independent cursor for the
-  interactive path is buildable, and it becomes a real milestone.
-- it does not → §9 states "we checked `SubagentStop` and its payload lacks X, therefore no
-  guarantee", with the event named.
+The spike did not need a manager build: the installed CLI (v2.1.168) ships its hook payload
+definitions as zod schemas in the binary, so the answer is readable directly rather than
+inferred from behaviour. Verbatim, with the minified helper names left as they are:
+
+```js
+// SubagentStop
+hj().and(E.object({
+  hook_event_name: E.literal("SubagentStop"),
+  stop_hook_active: E.boolean(),
+  agent_id: E.string(),
+  agent_transcript_path: E.string(),
+  agent_type: E.string(),
+  last_assistant_message: E.string().optional()
+    .describe("Text content of the last assistant message before stopping. Avoids the need to read and parse the transcript file."),
+  background_tasks: E.array(...).optional()
+}))
+
+// SubagentStart
+hj().and(E.object({
+  hook_event_name: E.literal("SubagentStart"),
+  agent_id: E.string(),
+  agent_type: E.string()
+}))
+```
+
+So the payload carries **`agent_id`** (which subagent), **`agent_type`** (which roster agent),
+**`agent_transcript_path`**, and even **`last_assistant_message`** (its result text, explicitly
+so a consumer need not parse the transcript). The binary also contains
+`"Converting Stop hook to SubagentStop for ... (subagents trigger SubagentStop)"`, confirming
+subagents route to this event rather than `Stop`.
+
+**Both of the draft's premises were therefore wrong**, and each was checked rather than argued:
+the first draft said Raphael "does not own that runtime" (refuted last session — Raphael
+already ships four hooks into it), and the fallback position said the payload might lack
+identity (refuted here).
+
+**What this unlocks, and what it does not.** A deterministic, model-independent cursor for the
+manager-orchestrated path IS buildable: a `SubagentStop` hook appending `{agent_id, agent_type,
+at}` to a per-session cursor file would give that path the durable orchestration position it
+completely lacks today — the gap proven live by run 05, where stopping the manager left files
+on disk and no record of where it was. That is a **new milestone**, not part of Phase 23, and
+it is recorded as such rather than quietly folded in.
+
+Two things stay true regardless: the hook fires from the harness, needing no model cooperation,
+and **the manager still cannot call `raph` at all** — its tools are `Read, Grep, Glob, Task`,
+no Bash. Granting shell to the cheapest model in the roster, the one that also holds `Task`, is
+a real privilege expansion and remains rejected. The hook is the right mechanism precisely
+because it needs neither.
 
 One thing already settled: **the manager cannot call `raph` at all** — its tools are
 `Read, Grep, Glob, Task`, no Bash. A CLI-recorded cursor would first require granting shell to
@@ -745,10 +785,11 @@ the cheapest model in the roster, the one that also holds `Task`. That is a real
 expansion and it is rejected: the hook is the right mechanism precisely because it needs no
 model cooperation.
 
-Until the spike resolves: **Driver = the governed path** (all graph machinery, checkpointed,
-auditable). **Manager = the convenience path**, which gets the graph rendered as a bounded
-procedure via `raph academy graph <name>` and is documented as *best-effort prompt steering
-with no checkpoint guarantee*. Anything else would misstate what the guarantee covers.
+Until that milestone is built: **Driver = the governed path** (all graph machinery,
+checkpointed, auditable). **Manager = the convenience path**, which gets the graph rendered as
+a bounded procedure via `raph academy graph <name>` and is documented as *best-effort prompt
+steering with no checkpoint guarantee*. Anything else would misstate what the guarantee covers
+today — the spike says the guarantee is *achievable*, not that it exists.
 
 ---
 

@@ -1244,24 +1244,89 @@ VERIFIED GAPS found while designing (each re-checked against real code, not infe
 - [ ] 23.3 ensureGraph + the 8-shape migration table + fixtures byte-copied from the real
       gatepost/microcache state.json. Four regression tests shown RED-without: verifier
       default, legacy retry_escalated, renderStatus DECIDED, duplicate-kind pipeline.
-- [ ] 23.4 Driver on the graph: route(), classifyFailure() (failureClass BANNED from the
-      runner's return — it IS the routing decision), RECOVERY table scoped per-visit,
-      MAX_NODE_ATTEMPTS, per-visit records, verdict contract (exactly-one + final-section
-      + fail-closed), `escalated` status + exit 3, retryStage status matrix, lock, input
-      caps, budgets with injected `now`. One path, no fallback.
-- [ ] 23.5 CLI: --graph/--graph-file, `raph academy graph [--mermaid]` printing each node's
-      CONCRETE attempt budget, status rendering, both outside readers.
-- [ ] 23.6 The three commitment stress-tests + the anti-vacuity rules (end-to-end through
-      the runner; assert what did NOT happen; never assert a constant's contents back).
-- [ ] 23.7 THE BRAIN IN THE LOOP: render the already-computed lessonMatchesFor results +
-      SPINE rules 2-4 into stage prompts; emit spine rules 1/5 only for agents that have
-      Bash (4 of 12 structurally cannot follow them today, in the shipped plugin).
-- [ ] 23.8 graph-run / graph-escalation events -> raph stats + weekly report (escalation
-      rate broken down by which recovery attempt failed — the source's named diagnostic).
+- [x] 23.4 + 23.6 SHIPPED (2026-07-28, 721 -> 757 tests). THE ENGINE SWAP: one path, no
+      fallback — every state is read through ensureGraph, so the driver only knows graphs.
+      COMMITMENT 2 is now a fact about the MODULE GRAPH, not a comment: makeStageRunner
+      moved to src/lib/stage-runner.js, emits raw observations only, and a test asserts SET
+      EQUALITY of its return keys (a subset check would let a routing key be added later
+      with nothing failing), that no key names a node, and that the file neither imports
+      recovery.js nor names its contents in code. `failureClass` BANNED from it —
+      classifyFailure() in recovery.js is the only producer of a class.
+      COMMITMENT 3: four declared bounds. Per-class attempts scoped PER VISIT, which also
+      fixed a latent bug (the old driver set retry_escalated permanently, so under a loop a
+      node that escalated on visit 1 could never escalate on visit 2). MAX_NODE_ATTEMPTS
+      closes the between-classes seam where six counters with no composition rule allow 8
+      spawns while every individual bound holds — the stress-test drives a DIFFERENT class
+      on every call and asserts it stops at the composite cap.
+      COMMITMENT 1: three checks on resume — the graph revalidates, its hash matches (a
+      hand-edited state.json is caught), and every cursor/visit/edge key names something in
+      the locked graph (the binding check is the one that can actually drift).
+      VERDICT CONTRACT hardened against echo (exactly one section, must be final, anything
+      ambiguous is null, null fails closed). The null-verdict test asserts what did NOT
+      happen — no edge traversed, nothing on the audit trail.
+      Tokens ADVISORY (a declared maxTokens is ignored on purpose — a killed child delivers
+      no envelope, so the number undercounts hardest exactly where a token bound would
+      matter); wall clock binds, as SUMMED SPAWN TIME so a post-limit resume is not punished.
+      + run lock (stale-steal, owner-only release), per-source input caps in a data envelope
+      carrying the echo warning, `escalated` as a distinct state, retryStage accepting it.
+      15 gates proven RED-WITHOUT. Two of my own test bugs found: a loop harness that kept
+      driving an already-stopped run, and lock tests depending on a leftover file.
+      Raphael's own pre-commit guard caught a `token = ...` binding and was right to —
+      renamed rather than bypassed or allowlisted.
+- [x] 23.5 SHIPPED (2026-07-28, 757 -> 774 tests): src/lib/graph-templates.js = `linear`
+      (the default, today's pipeline verbatim), `fix` (test is a VERDICT node — "still red"
+      is that stage succeeding and reporting bad news), `full-build` (11 nodes, EXPERIMENTAL,
+      announced on every use). full-build's security node routes a `changes` verdict to
+      @owner, never to a fixer — invariant #4 enforced structurally for the first time
+      instead of hoped for in a prompt, with a test asserting no edge out of security
+      reaches one. `--graph <name>` / `--graph-file <path>` (an owner file passes the SAME
+      validator, boundary deny-scan included — a graph whose criteria says "Publish the
+      package to npm" is refused before anything spawns). `raph academy graph
+      [<project>|<name>] [--mermaid]` prints each node's CONCRETE budget. Both outside
+      readers fixed (DECIDED via decisionsByNode, which shows every visit of a looping node;
+      failure message via cursorNodeId). Exit 3 = escalated, distinct from 2 and 4.
+- [x] 23.7 SHIPPED (2026-07-28, 774 -> 781 tests) — THE BRAIN IN THE LOOP, the sharpest
+      finding of the whole review: lessonMatchesFor() ranked the right lessons and its ONLY
+      consumer was a log line, so the autopilot ran its most expensive builds with lesson
+      injection computed and thrown away. Matches now render into the stage prompt in a
+      <raphael-lessons> envelope carrying inject.js's own PREAMBLE (invariant #3 in the one
+      place it was missing), computed once and used for both the effort router and the
+      prompt. An end-to-end test asserts the carrier survives drive(), because the pure
+      renderer passing proves nothing about the wiring — which is exactly how the gap
+      existed. Stage prompts also carry SPINE rules 2-4 (rule 1 is already done for them;
+      rule 5 stays out of scope pending its own chokepoint decision).
+      + SPINE is now DATA (SPINE_RULES + renderSpine): rules 1 and 5 tell an agent to run
+      `raph search`/`raph note`, and 4 of 12 agents have no Bash and structurally cannot —
+      those instructions had been failing silently in the shipped plugin for every user.
+      They now get the form that fits their hands (lessons arrive in context; a durable
+      finding goes back as a LESSON: line). An existing test that REQUIRED every agent to be
+      told to run `raph search` was asserting the defect; it now checks the capability.
+- [x] 23.8 SHIPPED (2026-07-28, 781 -> 785 tests): graph-run + graph-escalation events ->
+      `raph stats` ("Autopilot runs" block, escalations broken down by WHICH bound ran out —
+      the source's named diagnostic, which a flat loop cannot give) + `raph report weekly`.
+      Honest in the OUTPUT, not just in a comment: under 5 runs it says plainly there is not
+      enough to read a trend from, and the escalation rate is null rather than 0% when there
+      are no runs (null = no data; 0% = a claim). Token totals carry tokens_complete.
+      Live-verified end to end through the real CLI.
 - [ ] 23.9 Live run: full-build over a real brief, observed. full-build stays EXPERIMENTAL
       until this passes; `linear` remains the default.
-- [ ] 23.10 SubagentStop payload spike. VERIFIED this session: SubagentStart/SubagentStop
-      exist in the installed Claude Code binary, so the draft's claim that Raphael "does
-      not own that runtime" was FALSE (Raphael already ships 4 hooks into it). Unknown is
-      whether the payload carries subagent identity/result. Spike, then rewrite the
-      interactive-path section either way with the checked event named.
+- [x] 23.10 SPIKE DONE (2026-07-28) — ANSWER: YES, the payload carries identity. No manager
+      build was needed: the installed CLI (v2.1.168) ships its hook payload definitions as
+      zod schemas inside the binary, so the answer is READABLE rather than inferred from
+      behaviour. SubagentStop carries `hook_event_name`, `stop_hook_active`, `agent_id`,
+      `agent_transcript_path`, `agent_type`, optional `last_assistant_message` (explicitly
+      described as "avoids the need to read and parse the transcript file") and optional
+      `background_tasks`; SubagentStart carries `agent_id` + `agent_type`. The binary also
+      contains "Converting Stop hook to SubagentStop for ... (subagents trigger
+      SubagentStop)". So BOTH of the draft's premises were wrong, and each was checked
+      rather than argued: "Raphael does not own that runtime" (refuted last session) and
+      "the payload may lack identity" (refuted here).
+      CONSEQUENCE: a deterministic, model-independent cursor for the manager-orchestrated
+      path IS buildable — a SubagentStop hook appending {agent_id, agent_type, at} to a
+      per-session cursor file gives that path the durable orchestration position it
+      completely lacks today (the gap run 05 proved live). Recorded as a NEW milestone,
+      deliberately NOT folded into Phase 23. Unchanged either way: the manager still cannot
+      call `raph` at all (Read/Grep/Glob/Task, no Bash), and granting shell to the cheapest
+      model in the roster — the one that also holds Task — stays rejected. The hook is the
+      right mechanism precisely because it needs no model cooperation.
+      Design §9 rewritten with the schema quoted verbatim.
