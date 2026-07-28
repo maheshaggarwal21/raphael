@@ -388,7 +388,10 @@ Rejects, each with a distinct `E-GRAPH` message:
 1. no nodes; duplicate node id; empty/non-string id; id colliding with `@done`/`@owner`
 2. an edge referencing an unknown node (either end)
 3. **`entry` missing, or not naming an existing node**; any node with no inbound edge that is
-   not the entry
+   not the entry. **Order matters, found by its own test in 23.1:** this check must run
+   *before* rule 4, because a non-entry node with no inbound edge is *always* also
+   unreachable — checked the other way round, rule 3's orphan case is dead code and every
+   orphan reports the vaguer "unreachable" diagnosis instead.
 4. a node unreachable from `entry` (forward BFS)
 5. **co-reachability** (replaces the draft's self-contradictory rule 5): at least one terminal
    must exist, and **every node must reach a terminal** (reverse BFS from the terminal set).
@@ -397,7 +400,17 @@ Rejects, each with a distinct `E-GRAPH` message:
 6. **SCC form** (replaces cycle enumeration, which is exponential): every edge whose endpoints
    lie in the same **Tarjan SCC of size > 1**, plus every self-loop, must carry a positive
    integer `maxTraversals`. O(V+E). This is the structural guarantee that **an unbounded retry
-   cycle cannot exist in a valid graph**
+   cycle cannot exist in a valid graph**.
+   **Clarified while implementing 23.1:** "every edge inside a cyclic SCC" means *every* one,
+   including the forward edge. So a two-node loop carries a bound in **both** directions —
+   `frontend --always(≤3)--> design-review` as well as `design-review --changes(≤3)-->
+   frontend`. This is stronger than strictly necessary and it is the price of the O(V+E)
+   check: "at least one bounded edge per SCC" is **unsound**, because one SCC can hold two
+   disjoint cycles (bound `b→a` in `{a,b,c}` and `a→c→a` still spins), and identifying the
+   true back edges needs a DFS tree whose result depends on input order. Requiring all of
+   them is sound, order-independent, and reads naturally — the forward bound states how many
+   times this node may hand off into the loop. The `full-build` diagram below annotates only
+   the `changes` edges for readability; the shipped template carries both.
 7. `when` exclusivity per D5
 8. a `changes` edge leaving a non-verdict node; a verdict node missing either its `pass` or
    its `changes` edge

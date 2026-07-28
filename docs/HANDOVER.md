@@ -231,11 +231,11 @@ Ordered by how ready each is.
    (`src/lib/graph.js`: the graph model + `validateGraph()`, pure, zero spawns, fully
    testable alone) if the owner says go. Full milestone list and rationale in
    `docs/graph-engineering-plan.md` §11.
-3. **Phase 18 (v2 vision, 13 milestones) — designed since session 14, still not built.**
-   `docs/v2-vision.md`. Priority order already decided: 18.1 (cache-stable injection
-   ordering) → 18.11 (unverifiable-claim reviewer check) → 18.6 (AGENTS.md reach). Awaiting
-   owner go — this predates Phase 23 and may now be lower priority; ask if unclear rather
-   than assuming.
+3. ~~**Phase 18 (v2 vision) — still not built.**~~ **CORRECTED 2026-07-28 (session 18): this
+   was wrong.** Phase 18 shipped in session 15 — `.claude/TASKS.md` shows 18.1–18.14 all
+   ticked "SHIPPED 2026-07-25" (18.8 was dropped deliberately), and `CLAUDE.md` records
+   "PHASE 18 COMPLETE + v0.4.0 TAGGED". Nothing is open here. Verify against TASKS.md before
+   trusting any "not built" claim in this document.
 4. **§5.1 below — the paused Notecard build.** Not Raphael code; a test artifact. Do nothing
    with it unless asked.
 5. **A9 / 19.6 — per-agent outcome mining.** Deliberately deferred; needs its own design pass.

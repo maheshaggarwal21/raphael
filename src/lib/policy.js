@@ -107,6 +107,20 @@ export function resolvePolicy(kind, { escalated = false, overrides = {} } = {}) 
   return { kind, agent: entry.agent, model, effort, escalated, why: entry.why, timeoutMs: entry.timeoutMs };
 }
 
+// Does this kind have an escalation model at all? resolvePolicy returns the
+// DECISION (it carries no escalate field), so "can this escalate" is exactly
+// "does escalated resolution succeed". Only `develop` and `debug` do — 2 of 14 —
+// which is why the graph layer resolves it PER NODE at validate time instead of
+// discovering it at failure time.
+export function canEscalate(kind) {
+  try {
+    resolvePolicy(kind, { escalated: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Resolve by roster slug — what a driver holding an agent name calls.
 export function resolveForAgent(slug, opts = {}) {
   const entry = POLICY.find((p) => p.agent === slug);

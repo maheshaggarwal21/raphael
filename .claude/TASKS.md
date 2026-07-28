@@ -1185,10 +1185,31 @@ VERIFIED GAPS found while designing (each re-checked against real code, not infe
     (academy.js:201 DECIDED loop, commands/academy.js:248 failure message) both break on
     the new shape and academy.js:201 fails OPEN (?? {}) so no existing test catches it.
 
-- [ ] 23.1 src/lib/graph.js: node/edge model, validateGraph() (16 rules — explicit required
-      `entry`, forward reachability, CO-REACHABILITY to a terminal, Tarjan-SCC bounded
-      cycles, `when` exclusivity, required declarative `check`, boundary deny-scan),
-      pipelineToGraph(), renderGraph(). Pure, zero spawns. Success/failure/edge per rule.
+- [x] 23.1 src/lib/graph.js SHIPPED (2026-07-28, session 18, 629 -> 685 tests): the planning
+      layer, pure — zero spawns, zero tokens, no clock, no file reads. validateGraph() runs
+      all 16 rules and returns a deep-frozen NORMALISED graph carrying the two facts the
+      driver must not recompute at failure time (`escalatable` per node from POLICY, since
+      only 2 of 14 kinds have an escalation model; `effectiveVerify`). Edges are the ONLY
+      control relation; `inputs` is a pure data selector validated as ancestors. Tarjan SCC
+      is iterative (a 20k-node chain is a test, so a long graph cannot blow the stack).
+      pipelineToGraph() lifts a linear pipeline and gives a REPEATED KIND ITS OWN NODE
+      (`develop`, `develop-2`) — the record the pre-graph driver silently overwrote, which is
+      the whole justification for this phase. renderGraph() prints each node's CONCRETE
+      per-visit budget (classes that cannot apply read 0, not the table default);
+      renderGraphMermaid() emits hyphen-free ids so mermaid cannot misread them as arrows.
+      + src/lib/recovery.js (RECOVERY + MAX_NODE_ATTEMPTS) in its OWN module so the stage
+      runner can be proven not to import it in 23.4. + policy.js gains canEscalate()
+      (driver.js's private copy deleted — one definition).
+      TWO REAL FINDINGS, both from writing the tests rather than from reading the design:
+      (a) rule 3's orphan case was DEAD CODE behind rule 4 — a non-entry node with no inbound
+      edge is always also unreachable, so the specific diagnosis has to run first (its test
+      could not go red until the order was fixed); (b) rule 6 requires a bound on EVERY
+      intra-SCC edge, both directions of a two-node loop — "at least one per SCC" is unsound
+      (one SCC can hold two disjoint cycles). Both written back into the design doc.
+      56 tests: every rule gets a pass case, a fail case and its edges. NINE gates proven
+      RED-WITHOUT via a harness that disables each one and asserts the covering test fails —
+      including the false-positive direction of the boundary scan (disable the negation
+      exemption and "never deploy the app yourself" is wrongly rejected).
 - [ ] 23.2 POLICY gains `frontend` (NOT redteam — POLICY membership is what --pipeline
       validates against, so adding redteam would make an offensive agent drivable
       unattended with Edit/Write) + a `tools` field per kind sourced from the roster;

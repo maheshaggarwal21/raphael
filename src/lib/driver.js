@@ -21,7 +21,7 @@ import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { claudeBinary, detectLimit, isSuccessEnvelope } from './provider.js';
-import { resolvePolicy, routeEffortWithLessons } from './policy.js';
+import { resolvePolicy, routeEffortWithLessons, canEscalate } from './policy.js';
 import { loadIndex } from './compile.js';
 import { rank } from './match.js';
 import { computeConfidence } from './confidence.js';
@@ -331,17 +331,6 @@ export function retryStage(state) {
   d.status = 'running';
   d.updated_at = new Date().toISOString();
   return { state, kind, cleared: true, why: null };
-}
-
-// resolvePolicy returns the DECISION (no escalate field) — "can this kind
-// escalate" = does escalated resolution succeed.
-function canEscalate(kind) {
-  try {
-    resolvePolicy(kind, { escalated: true });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ---- prompts + args (pure; fully unit-tested) --------------------------------

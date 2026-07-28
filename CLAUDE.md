@@ -877,6 +877,35 @@ compaction (manual or automatic) can never lose progress.
   - REMAINING (deliberate): 19.6 / A9 per-agent outcome mining still needs its own design
     pass (transcript evidence cannot separate ignored-because-wrong from
     ignored-because-busy). Phase 10 self-use is calendar. Owner switch: publishing 0.4.0.
+- Session 18 (2026-07-28) — PHASE 23 STARTED. Read the handover + plan, verified state
+  independently (629/629, doctor healthy, 88 active / 9 pending), and CORRECTED a real error
+  in docs/HANDOVER.md: it claimed Phase 18 was unbuilt, but 18.1-18.14 all shipped in session
+  15. Then shipped 23.1 (629 -> 685 tests): src/lib/graph.js = the PLANNING layer, pure (zero
+  spawns/tokens/clock/file reads). validateGraph() runs 16 rules and returns a deep-frozen
+  normalised graph carrying `escalatable` (resolved PER NODE from POLICY at validate time —
+  only develop+debug escalate, 2 of 14, so a shared table is wrong for 12 unless resolved in
+  advance) and `effectiveVerify`. Edges are the ONLY control relation; `inputs` is a data
+  selector validated as ancestors. verify is ADDITIVE-ONLY (a graph may extend the owner's
+  verifier, never switch it off). `check` is required; `check.command` REFUSED — a shell
+  command in a graph would be a new execution channel reachable from an npm-updated template,
+  and the only command the driver runs stays the owner's --verify typed on the CLI. Boundary
+  deny-scan is action-phrased (not keyword) and reuses match.js's isNegatedAt, so "Publish the
+  package to npm" is refused while "never deploy the app yourself" passes. `redteam` refused by
+  its OWN rule checked BEFORE policy membership, so a future POLICY addition cannot silently
+  make it drivable. Tarjan SCC is iterative (20k-node chain is a test). pipelineToGraph() gives
+  a REPEATED KIND ITS OWN NODE (develop, develop-2) — the record the kind-keyed driver silently
+  overwrote, which is this phase's whole justification. + src/lib/recovery.js in its OWN module
+  (so 23.4 can prove the runner never imports it) + policy.js canEscalate() (driver's private
+  copy deleted). TWO REAL FINDINGS from writing the tests, both written back into the design
+  doc: rule 3's orphan case was DEAD CODE behind rule 4 (a non-entry node with no inbound edge
+  is always also unreachable — the specific check has to run first), and rule 6 needs a bound
+  on EVERY intra-SCC edge because "at least one per SCC" is unsound (one SCC can hold two
+  disjoint cycles). NINE gates proven RED-WITHOUT by a harness that disables each and asserts
+  the covering test fails — incl. the false-positive direction of the boundary scan. Doc drift
+  caught by the suite: README module count stale AND its test count was 93 stale (592 vs 629)
+  because that guard only checks the README against ITSELF, never reality — now 685.
+  NEXT = 23.2 (POLICY gains `frontend` not `redteam`, + a `tools` field so read-only agents
+  stop getting Edit/Write in the driver; LIVE-VERIFY `--tools <list>` before closing).
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.
