@@ -101,6 +101,21 @@ const BOUNDARY_RULES_SCAN = [
     'spending money is the owner\'s action']
 ];
 
+// A brief states its boundary as an EXCLUSION at least as often as a negation —
+// the real gatepost brief ends "Out of scope: deploying it, publishing it, any
+// hosted component, any sign-up flow." The generic negation helper misses that,
+// because it stops at the colon and so never sees "Out of scope".
+//
+// Scoped tightly to avoid becoming a bypass: only the text BEFORE the match, on
+// the SAME line, is considered. "Deploy the app. Out of scope: nothing." is
+// still flagged, because the exclusion marker comes after the instruction.
+const SCOPE_EXCLUSION = /\b(?:out of scope|not in scope|outside (?:the )?scope|non-?goals?|excluded|explicitly not|do not|don't|never|no need to|without)\b/i;
+
+function isStatedAsExcluded(text, index) {
+  const lineStart = text.lastIndexOf('\n', index - 1) + 1;
+  return SCOPE_EXCLUSION.test(text.slice(lineStart, index));
+}
+
 // Returns [{ rule, match, index, why }] — empty means clean. Pure and total.
 export function scanBoundaryVerbs(text, { label = 'text' } = {}) {
   const s = String(text ?? '');
@@ -111,6 +126,7 @@ export function scanBoundaryVerbs(text, { label = 'text' } = {}) {
       // A negated mention is the CORRECT way to state the boundary, not a
       // violation of it: "never deploy the app yourself" must pass.
       if (isNegatedAt(s, m.index)) continue;
+      if (isStatedAsExcluded(s, m.index)) continue;
       found.push({ rule, label, match: m[0], index: m.index, why });
       if (found.length >= 8) return found;
     }
@@ -270,7 +286,12 @@ export function tarjanSCC(nodeIds, adjacency) {
 //   effectiveVerify  — whether the owner's verifier runs after this node
 //
 // Throws on the first violation, with a message naming the node or edge.
-export function validateGraph(graph, { brief = '', name = null } = {}) {
+// scanBoundary defaults ON. It is switched off in exactly one place — migrating
+// a state that already exists on disk (graphstate.js) — because that state was
+// already accepted by the pre-graph driver, and refusing to LOAD a user's
+// completed run is a worse outcome than the risk the scan covers. A new graph is
+// always scanned, which is where the scan can actually prevent something.
+export function validateGraph(graph, { brief = '', name = null, scanBoundary = true } = {}) {
   if (!graph || typeof graph !== 'object' || Array.isArray(graph)) {
     throw bad('a graph must be an object with entry, nodes and edges');
   }
@@ -493,7 +514,7 @@ export function validateGraph(graph, { brief = '', name = null } = {}) {
     ]),
     { text: brief, label: 'the project brief' }
   ];
-  for (const target of scanTargets) {
+  for (const target of scanBoundary ? scanTargets : []) {
     const hits = scanBoundaryVerbs(target.text, { label: target.label });
     if (hits.length) {
       const h = hits[0];

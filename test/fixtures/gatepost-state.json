@@ -1,0 +1,177 @@
+{
+  "schema": "raphael/academy-state/v1",
+  "project": "gatepost",
+  "title": "Gatepost — self-hosted feature flags",
+  "workspace": "C:/Users/Mahesh/Desktop/Projects/gatepost",
+  "status": "blocked-boundary",
+  "milestones": [],
+  "current": {
+    "milestone": null,
+    "step": "autopilot stage: deploy-prep complete",
+    "next_action": "OWNER ACTION NEEDED: autopilot pipeline complete — review the deploy-prep checklist; deploying/publishing is the owner's action"
+  },
+  "boundary": {
+    "reason": "autopilot pipeline complete — review the deploy-prep checklist; deploying/publishing is the owner's action",
+    "at": "2026-07-27T16:22:16.535Z"
+  },
+  "log": [
+    {
+      "at": "2026-07-27T15:27:48.971Z",
+      "note": "started: Gatepost — self-hosted feature flags"
+    },
+    {
+      "at": "2026-07-27T15:30:10.725Z",
+      "note": "autopilot: plan done (5554 tokens)"
+    },
+    {
+      "at": "2026-07-27T15:34:01.612Z",
+      "note": "autopilot: architect done (10617 tokens)"
+    }
+  ],
+  "created_at": "2026-07-27T15:27:48.972Z",
+  "updated_at": "2026-07-27T16:22:16.535Z",
+  "driver": {
+    "pipeline": [
+      "plan",
+      "architect",
+      "develop",
+      "test",
+      "review",
+      "security",
+      "deploy-prep"
+    ],
+    "stage": 7,
+    "brief": "Build \"Gatepost\": a self-hosted feature-flag and runtime-config service that a small\nteam can run on one box, with no external dependencies.\n\nWhy it exists: feature-flag services are either SaaS (send your traffic to a vendor)\nor heavyweight (Redis, Postgres, a control plane). A team that wants a kill switch\nfor a risky feature should be able to run one file and get one.\n\nCore requirements:\n- A flag store: named flags, each either on/off or a percentage rollout, plus\n  optional per-environment values (dev/staging/prod). Reads must be fast and must\n  never fail closed in a way that takes the caller's app down.\n- An HTTP API: read flags (public to the caller's app, authenticated by a\n  project-scoped read key) and write flags (authenticated by a separate admin key).\n  Reading must never expose another project's flags.\n- A CLI to create projects, mint and rotate keys, set flags, and inspect state.\n- A small web console page to view and toggle flags.\n- An audit trail: every write recorded with who, what, when, and the previous value,\n  so a bad flag flip can be explained and reverted.\n\nConstraints:\n- Node.js ESM, Node >= 18. ZERO runtime dependencies — the standard library only.\n- Windows-first: no POSIX assumptions, no flock, atomic writes via temp-file+rename.\n- Persistence is local files. No database.\n- Automated tests with node:test. The suite must be green and must cover success,\n  failure, and edge cases for every function.\n- Secrets (keys) must never be written to logs or committed to the repo.\n\nOut of scope: deploying it, publishing it, any hosted component, any sign-up flow.",
+    "status": "done",
+    "stages": {
+      "plan": {
+        "status": "done",
+        "session_id": "b743eac7-cf1a-4319-a5e2-9e028acc4629",
+        "model": "sonnet",
+        "effort": "high",
+        "at": "2026-07-27T15:30:10.725Z",
+        "timeouts": 0,
+        "escalated": false,
+        "output": "Fresh directory. Now I'll produce the finalized spec.\n\n---\n\n# Gatepost — Finalized Spec\n\n**Version:** 1.0  \n**Date:** 2026-07-27  \n**Status:** Ready to design a …[truncated for the fixture]",
+        "error": null,
+        "tokens": 5554,
+        "tokens_captured": true,
+        "elapsed_ms": 133157,
+        "decisions": [
+          "**`crypto.scryptSync` instead of bcrypt for key hashing** — bcrypt would require a native npm module, which violates the",
+          "**Read key returns all flags for a project, not just requested ones** — returning the full flag map in one call lets the"
+        ]
+      },
+      "architect": {
+        "status": "done",
+        "session_id": "20f0f256-2b41-46f8-931e-722d8e335ce8",
+        "model": "sonnet",
+        "effort": "high",
+        "at": "2026-07-27T15:34:01.612Z",
+        "timeouts": 0,
+        "escalated": false,
+        "output": "Architecture document written to `ARCHITECTURE.md`. Here is the summary for the next stage:\n\n---\n\n## Architecture Summary\n\n**System topology:** Single Node.js p …[truncated for the fixture]",
+        "error": null,
+        "tokens": 10617,
+        "tokens_captured": true,
+        "elapsed_ms": 230864,
+        "decisions": [
+          "**scryptSync N=16384, r=8, p=1** — OWASP minimum; ~10ms per verify is acceptable at target scale; faster params weaken t",
+          "**Module-level Maps as singleton store** — ESM module cache gives one instance per process cleanly; no class or DI neede"
+        ]
+      },
+      "develop": {
+        "status": "done",
+        "session_id": "342ecea7-aff2-4a34-9023-2744fde80f38",
+        "model": "sonnet",
+        "effort": "medium",
+        "at": "2026-07-27T15:48:38.666Z",
+        "timeouts": 0,
+        "escalated": false,
+        "output": "The merge logic is correct — when `env='default'`, both defaults and envSpecific resolve to the same Map, and spreading a Map twice into a new Map is idempotent …[truncated for the fixture]",
+        "error": null,
+        "tokens": 45304,
+        "tokens_captured": true,
+        "elapsed_ms": 877029,
+        "decisions": [
+          "**`verifyServerKey` uses `timingSafeEqual` on padEnd(64) buffers plus a `&&` string equality guard** — the pad-to-64 tri",
+          "**`handleDeleteFlag` accepts the `env` from the request body, not query string** — DELETE bodies are unorthodox but the "
+        ]
+      },
+      "test": {
+        "status": "done",
+        "session_id": "e8966764-2515-4414-94b7-e2bfb3d77dd9",
+        "model": "sonnet",
+        "effort": "medium",
+        "at": "2026-07-27T16:06:09.533Z",
+        "timeouts": 1,
+        "tokens_captured": true,
+        "elapsed_ms": 1050704,
+        "error": null,
+        "escalated": false,
+        "output": "The counts are exact: **135 total tests** (29+17+7+14+14+11+9+34).\n\nNow let me do a final sanity-check on the most likely runtime edge cases:\n\n**`parseBody` + R …[truncated for the fixture]",
+        "tokens": 24176,
+        "decisions": [
+          "**Added 7 new tests rather than replacing existing ones** — the existing 128 tests are structurally sound; adding fills ",
+          "**Placed single-flag GET tests inside the existing `Flag operations via API` describe** — they share `readKey`, `adminKe"
+        ]
+      },
+      "review": {
+        "status": "done",
+        "session_id": "6cdd882c-9fa4-47d8-a586-4146cfd6b7bf",
+        "model": "sonnet",
+        "effort": "high",
+        "at": "2026-07-27T16:12:30.867Z",
+        "timeouts": 0,
+        "escalated": false,
+        "output": "I have a complete read of all source and test files. Performing the final trace now.\n\n---\n\n## Review: Gatepost — Test stage additions (api.test.js, 7 new tests) …[truncated for the fixture]",
+        "error": null,
+        "tokens": 25317,
+        "tokens_captured": true,
+        "elapsed_ms": 381299,
+        "decisions": [
+          "**Reported F1 (NaN limit) as a main finding even though it's pre-existing** — it was not introduced by this diff, but th",
+          "**Reported F2 (weak assertion) in the main list, not the appendix** — the quoted line is `assert.equal(res.body.length, "
+        ]
+      },
+      "security": {
+        "status": "done",
+        "session_id": "ec72cf8b-e4d6-45b2-8097-7be86c72883d",
+        "model": "sonnet",
+        "effort": "high",
+        "at": "2026-07-27T16:18:27.917Z",
+        "timeouts": 0,
+        "escalated": false,
+        "output": "---\n\n# Gatepost Security Audit Report\n\n**Date:** 2026-07-27  \n**Auditor:** raphael-security (defensive static audit)  \n**Scope:** All source files in the projec …[truncated for the fixture]",
+        "error": null,
+        "tokens": 19502,
+        "tokens_captured": true,
+        "elapsed_ms": 357029,
+        "decisions": [
+          "**Classified SEC-2 (scrypt DoS) as MEDIUM rather than LOW** — the absence of any rate-limiting layer is the critical amp",
+          "**Did not flag server-key plaintext comparison as a bug** — the server key is a symmetric secret held only in memory fro"
+        ]
+      },
+      "deploy-prep": {
+        "status": "done",
+        "session_id": "9da88010-94e3-4b2c-a315-4227800380db",
+        "model": "sonnet",
+        "effort": "high",
+        "at": "2026-07-27T16:22:16.524Z",
+        "timeouts": 0,
+        "escalated": false,
+        "output": "Now I have the full picture. Let me produce the deployment checklist.\n\n---\n\n# Gatepost — Pre-Ship Production Deployment Checklist\n\n**Prepared:** 2026-07-27  \n** …[truncated for the fixture]",
+        "error": null,
+        "tokens": 10364,
+        "tokens_captured": true,
+        "elapsed_ms": 228586,
+        "decisions": [
+          "**Chose Nginx over Windows IIS as the reverse proxy** — Nginx's `limit_req_zone` is the required SEC-2 mitigation and it",
+          "**Chose PM2 over NSSM for process management** — PM2 is Node.js-native, provides structured logs and memory restart, and"
+        ]
+      }
+    },
+    "started_at": "2026-07-27T15:27:57.525Z",
+    "updated_at": "2026-07-27T16:22:16.524Z"
+  }
+}

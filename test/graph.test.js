@@ -536,6 +536,20 @@ test('rule 15 rejects boundary instructions in criteria, in a title, and in the 
   });
 });
 
+test('a scope-exclusion elsewhere in the text does NOT excuse a later instruction', () => {
+  // The exemption is scoped to the text BEFORE the match on the SAME line. If it
+  // were a whole-text check, one "Out of scope:" line anywhere would disarm the
+  // scan for the entire brief — turning a safety rule into a one-line bypass.
+  const hits = scanBoundaryVerbs('Out of scope: hosting.\nDeploy the app to production when ready.');
+  assert.equal(hits.length, 1, 'the instruction on the second line must still be flagged');
+  assert.equal(hits[0].rule, 'deploy');
+
+  // Same line, marker AFTER the instruction: still flagged.
+  assert.ok(scanBoundaryVerbs('Deploy the app to prod. Out of scope: nothing.').length >= 1);
+  // Same line, marker BEFORE the instruction: exempt, which is the real brief's shape.
+  assert.deepEqual(scanBoundaryVerbs('Out of scope: deploying it, publishing it.'), []);
+});
+
 test('rule 15 edge: a normal brief and the shipped pipeline\'s own kind names pass', () => {
   const g = pipelineToGraph(DEFAULT_PIPELINE);
   assert.ok(validateGraph(g, { brief: 'Build a small CLI that reads a CSV and prints a summary.' }));
