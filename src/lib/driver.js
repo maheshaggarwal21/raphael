@@ -720,6 +720,15 @@ export async function drive(project, {
           ? `run node: ${state.driver.cursor}`
           : 'review the deploy-prep checklist; deploying is the owner\'s action';
         state.updated_at = new Date(now()).toISOString();
+      } else if (state.driver.status === 'escalated') {
+        // An escalated run MUST update NEXT too. Leaving it pointing at the old
+        // node is verbatim the F14 symptom: status tells the human to run
+        // something while the run is actually waiting on them.
+        const esc = state.driver.escalation ?? {};
+        state.log.push({ at: new Date(now()).toISOString(), note: `autopilot: ESCALATED at ${node.id} (${esc.bound ?? 'bound exhausted'})` });
+        state.current.step = `autopilot escalated at node: ${node.id}`;
+        state.current.next_action = `OWNER: look at "${node.id}" — ${esc.reason ?? 'a declared bound was exhausted'}; then "raph academy retry ${project}"`;
+        state.updated_at = new Date(now()).toISOString();
       }
       writeState(project, state);
       ran += 1;

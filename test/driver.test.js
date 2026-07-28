@@ -1028,3 +1028,28 @@ test('a verifier failure reaches the RETRY prompt, end to end', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('an escalated run updates NEXT, instead of pointing at the node it gave up on', async () => {
+  // Leaving NEXT stale is verbatim the F14 symptom: `academy status` telling the
+  // human to run a stage while the run is actually waiting on THEM.
+  const dir = sandbox();
+  try {
+    startProject('esc', { title: 'Esc', workspace: dir });
+    const st = readState('esc');
+    initDriver(st, { brief: 'Build it.', pipeline: ['review'] });   // review cannot escalate
+    writeState('esc', st);
+
+    const out = await drive('esc', { runner: async () => ({ ok: false, error: 'boom', tokens: 1 }), log: () => {}, workspace: dir });
+    assert.equal(out.stopped, 'escalated');
+
+    const final = readState('esc');
+    assert.match(final.current.next_action, /OWNER/);
+    assert.match(final.current.next_action, /review/);
+    assert.match(final.current.next_action, /raph academy retry esc/);
+    assert.equal(/^run node:/.test(final.current.next_action), false, 'it must not still be telling a human to run the node');
+    assert.match(final.log.at(-1).note, /ESCALATED/);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
