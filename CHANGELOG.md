@@ -1,6 +1,49 @@
 # Changelog
 
-## 0.5.4 — unreleased
+## 0.6.0 — unreleased
+
+### The graph layer (Phase 23)
+
+"What runs next" is now declared before a run starts, instead of being decided inside it.
+A minor bump rather than a patch: this adds a subsystem, a CLI verb, a new exit code, and
+changes how every autopilot run records itself.
+
+- **The autopilot can express a loop.** Stage records used to be keyed by task kind, so a
+  pipeline containing the same kind twice silently overwrote the first record — which made
+  "frontend builds → design reviews → send it back → repeat" not expressible at all. Runs now
+  keep per-visit records. Confirmed on a real build: a `critique` node returned CHANGES
+  REQUESTED, the work went back to `architect`, and both visits are on record with separate
+  attempts and token accounting.
+- **`raph academy drive --graph <name>` / `--graph-file <path>`**, with three shipped graphs:
+  `linear` (the default, unchanged behaviour), `fix`, and `full-build` (experimental, and it
+  says so on every use). The model never authors topology — same rule as `--verify`.
+- **`raph academy graph [<project>|<name>] [--mermaid]`** prints the plan a run is locked to,
+  with each node's concrete attempt budget.
+- **Every loop is bounded, and exhausting a bound escalates.** There is no "carry on anyway"
+  path: on a review loop that could only mean treating a reviewer who said CHANGES three times
+  as having approved.
+- **`security` findings can no longer route into an automatic fix.** In `full-build` a security
+  objection goes to the owner. Invariant #4 was already the rule; this is the first time it is
+  enforced by structure rather than by a prompt.
+- **New exit code 3 — escalated**, distinct from 2 (stopped) and 4 (usage limit), so a
+  scheduler can tell "a human must look at this" from "retry later".
+- **The brain is finally in the loop.** The driver computed the lessons relevant to each stage
+  and then threw them away, so the autopilot ran its most expensive builds with lesson
+  injection calculated and discarded. They now reach the stage, framed as data.
+- **Agents are no longer told to run commands they cannot run.** Four of the twelve ship
+  without a shell and had been instructed to run `raph search` and `raph note` since the roster
+  existed — failing silently for every user. They now get the form that fits their tools.
+- **A driver stage can no longer exceed its agent's reviewed tool set.** Read-only agents were
+  being handed Edit/Write/Bash inside the driver, which made a design-reviews-the-frontend loop
+  meaningless. The grant is explicit, comes from the roster, and fails closed.
+- **A retried stage is told why the last attempt was rejected**, including the verifier's actual
+  output when a claim turned out to be false.
+- **`raph stats` and `raph report weekly`** report autopilot runs and break escalations down by
+  which recovery step ran out — and say plainly when there are too few runs to read a trend.
+
+Existing runs are migrated on read; nothing needs to be re-run.
+
+## 0.5.4 — superseded by 0.6.0 before release
 
 The version is bumped the moment work lands past a published release, so the repo
 never quietly differs from the registry under the same number. (That trap cost a
