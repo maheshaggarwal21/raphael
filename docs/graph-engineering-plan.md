@@ -816,9 +816,15 @@ after the fact loses the baseline — not because a dashboard will be meaningful
 
 ## 11. Build order
 
-**STATUS (2026-07-28, session 18): 23.1–23.8 and 23.10 are SHIPPED.** Test count 629 → 788.
-`23.9` (the observed live `full-build` run) is the last gate; `full-build` stays EXPERIMENTAL
-until it passes. Two things found while building, both written back above rather than left in
+**STATUS (2026-07-28, session 18): 23.1–23.8 and 23.10 are SHIPPED.** Test count 629 → 789.
+**23.9 was observed and is PARTIAL** (`.claude/observation/2026-07-28-run-06-graph-live.md`):
+the `fix` graph completed clean and independently verified, and a `full-build` run reached 4
+of 11 nodes before hitting a subscription limit. That partial run nevertheless proved the
+central claim live — **`critique --changes--> architect` fired and architect holds two visits**,
+the shape the pre-graph driver could not represent at all — plus a real timeout→resume on
+`architect` and honest incomplete-cost accounting. **`full-build` KEEPS its EXPERIMENTAL flag**:
+the gate is a run that finishes, and removing it on a partial result would be exactly the
+self-reported success this design was written against. Two things found while building, both written back above rather than left in
 a commit message: rule 3's orphan case was dead code behind rule 4 (§4 D3), and rule 6 needs a
 bound on *every* intra-SCC edge because "at least one per SCC" is unsound (§4 rule 6). One
 thing found by reading the shipped 23.4 code afterwards: the RECOVERY table's `action` names

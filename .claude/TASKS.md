@@ -1308,8 +1308,32 @@ VERIFIED GAPS found while designing (each re-checked against real code, not infe
       enough to read a trend from, and the escalation rate is null rather than 0% when there
       are no runs (null = no data; 0% = a claim). Token totals carry tokens_complete.
       Live-verified end to end through the real CLI.
-- [ ] 23.9 Live run: full-build over a real brief, observed. full-build stays EXPERIMENTAL
-      until this passes; `linear` remains the default.
+- [~] 23.9 OBSERVED, PARTIAL (2026-07-28). Two real driver runs; full writeup in
+      `.claude/observation/2026-07-28-run-06-graph-live.md`.
+      RUN A — `fix` graph, COMPLETE and clean: 3 nodes, 9,319 tokens, 205s, terminal done.
+      Fixed a genuinely failing test in a real workspace; INDEPENDENTLY verified afterwards
+      (suite 1 fail -> 2 pass, and it fixed src/slug.js rather than editing the test). Proved
+      live: verdict routing (`why=APPROVED` on the history edge), the owner's verifier on
+      code-bearing nodes, boundary at completion, graph-run telemetry, DECIDED from
+      graph-shaped state, 5 lessons injected per node. Notable: the `test` stage's own
+      DECISIONS admitted it could not execute tests ("sandbox restrictions... traced
+      manually") while the VERIFIER ran them independently and passed — exactly the split the
+      verifier exists for.
+      RUN B — `full-build`, INCOMPLETE (subscription limit at 4 of 11 nodes). What it DID
+      prove live is the point of the whole phase: **the loop fired** —
+      `critique --changes--> architect`, and architect now holds TWO VISITS each with its own
+      attempts and token accounting. The pre-graph driver keyed records by kind, so the second
+      visit would have silently overwritten the first. Also proved live: architect TIMED OUT
+      at 10 min, was recorded as a `timeout` attempt (not a failure) and RESUMED THE SAME
+      SESSION to completion (F10 on a real stage); cost honesty held (visit 1
+      tokensCaptured:false, run total complete:false, so 32,511 does not pose as the real
+      cost); and the limit checkpointed cleanly with the reset time and the cursor intact.
+      NOT proved: full-build never completed, so the frontend<->design loop, the review<->debug
+      loop, the security->@owner edge and deploy-prep have NO live evidence, and no escalation
+      occurred. THEREFORE **full-build KEEPS its EXPERIMENTAL flag** — the gate is a run that
+      FINISHES, and removing the flag on a partial result would be the self-reported success
+      this phase was designed against. `linear` remains the default. The run is resumable from
+      its checkpoint; it is a multi-limit-window job, not a single-session one.
 - [x] 23.10 SPIKE DONE (2026-07-28) — ANSWER: YES, the payload carries identity. No manager
       build was needed: the installed CLI (v2.1.168) ships its hook payload definitions as
       zod schemas inside the binary, so the answer is READABLE rather than inferred from

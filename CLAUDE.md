@@ -962,7 +962,31 @@ compaction (manual or automatic) can never lose progress.
   installed binary, not inferred. So a deterministic cursor for the manager path IS buildable;
   recorded as a NEW milestone, not folded into Phase 23. The manager still has no Bash and
   that stays rejected.
-  NEXT = 23.9 (live full-build run; `fix` already ran live and clean end to end).
+  23.9 OBSERVED, PARTIAL (writeup: .claude/observation/2026-07-28-run-06-graph-live.md).
+  Run A (`fix` graph) COMPLETED CLEAN on a real workspace and was INDEPENDENTLY verified
+  (suite 1 fail -> 2 pass; it fixed src/slug.js, not the test). Its `test` stage admitted in
+  its own DECISIONS that it could NOT execute tests ("sandbox restrictions... traced
+  manually") while the VERIFIER ran them and passed — the verifier's whole argument,
+  demonstrated by accident on the first real run.
+  Run B (`full-build`) hit the subscription limit at 4 of 11 nodes, and still proved the
+  central claim LIVE: **the loop fired** — `critique --changes--> architect`, architect now
+  holds TWO VISITS with separate attempts + token accounting (the pre-graph driver keyed
+  records by kind and would have overwritten the first). Also live: architect TIMED OUT at
+  10 min and RESUMED THE SAME SESSION to completion (F10 on a real stage); cost honesty held
+  (visit1 tokensCaptured:false -> run total complete:false, so 32,511 does not pose as the
+  real cost); limit checkpointed cleanly, resumable.
+  **full-build KEEPS its EXPERIMENTAL flag** — the gate is a run that FINISHES. The
+  frontend<->design loop, review<->debug loop, security->@owner edge and deploy-prep have NO
+  live evidence yet; no escalation occurred. An 11-node build on a real brief is a
+  MULTI-LIMIT-WINDOW job — plan for that before scheduling another.
+  Two more gaps found by re-reading my own shipped 23.4 code (not by failing tests): the
+  RECOVERY table's `restate`/`repair` actions were DECORATION (every retry got a
+  byte-identical prompt, so a stage that failed the verifier never learned it had) — a retry
+  now carries the class guidance + scrubbed evidence in a data envelope; and an escalated run
+  left `current.next_action` pointing at the node it gave up on, which is verbatim the F14
+  symptom. 789 tests.
+  PHASE 23 = 9 of 10 milestones shipped; 23.9 is the only partial, and it is partial for a
+  usage-limit reason, not a correctness one.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.
