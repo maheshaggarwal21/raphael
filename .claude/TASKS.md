@@ -1151,3 +1151,70 @@ autopilot build a real project (Gatepost) while observing every action. Unlike P
       sanctioned DECISIONS channel that already exists and is already reviewable. Watching
       whether this makes the reach-for-host-memory behavior stop, or whether a real lint is
       still needed (govern). 628 -> 629.
+
+## Phase 23 — Graph engineering: making "what runs next" inspectable (PLANNED 2026-07-28)
+
+Full design: `docs/graph-engineering-plan.md` (FINAL). Source: owner-supplied
+`Graph-Engineering.md`. The draft was put through a 7-lens adversarial critique (91
+findings, 42 critical/high); every critical and high finding is resolved in the design's
+§12 disposition and in the milestones below.
+
+HONEST PREMISE (the critique forced this correction): Phase 22 already fixed F4/F10/F11/
+F12/F14 + the verifier + sticky tokens, and BOTH real post-fix driver runs on disk
+completed clean. So this phase is not repairing observed breakage. What is genuinely
+earned: (a) the driver structurally CANNOT express a loop (stage records are keyed by
+kind, so a repeated kind silently overwrites), which makes the owner's requested
+"frontend builds -> design reviews -> send back -> repeat" build inexpressible; (b) run
+05 ran that loop as prose in a prompt with no bound and no cursor. Everything else is
+prophylactic and is sized as such — the earned part (23.1-23.4) ships and proves itself
+before the general machinery follows.
+
+VERIFIED GAPS found while designing (each re-checked against real code, not inferred):
+  - POLICY has no `frontend` kind -> the governed path CANNOT run the Frontend agent at
+    all; it builds UI with the general developer agent today.
+  - driver.js imports AGENTS but never SPINE -> no driver stage gets the brain-first rule.
+  - lessonMatchesFor() ranks the right lessons at driver.js:555 and its ONLY consumer is
+    an effort-recommendation log line. The autopilot runs its most expensive builds with
+    lesson injection computed and DISCARDED.
+  - buildStageArgs emits acceptEdits and NO --tools, so read-only roster agents (design,
+    critique, planner) get Edit/Write/Bash in the driver — which makes a design-reviews-
+    frontend loop incoherent (the reviewer can silently fix what it reviews).
+  - VERIFIED_KINDS/CODE_BEARING_KINDS carry 3 kinds that are not POLICY kinds (implement,
+    refactor, qa) and can never fire.
+  - No lock on a build; retryStage guards on status 'failed' only; two outside readers
+    (academy.js:201 DECIDED loop, commands/academy.js:248 failure message) both break on
+    the new shape and academy.js:201 fails OPEN (?? {}) so no existing test catches it.
+
+- [ ] 23.1 src/lib/graph.js: node/edge model, validateGraph() (16 rules — explicit required
+      `entry`, forward reachability, CO-REACHABILITY to a terminal, Tarjan-SCC bounded
+      cycles, `when` exclusivity, required declarative `check`, boundary deny-scan),
+      pipelineToGraph(), renderGraph(). Pure, zero spawns. Success/failure/edge per rule.
+- [ ] 23.2 POLICY gains `frontend` (NOT redteam — POLICY membership is what --pipeline
+      validates against, so adding redteam would make an offensive agent drivable
+      unattended with Edit/Write) + a `tools` field per kind sourced from the roster;
+      buildStageArgs emits --tools; DRIVER_FORBIDDEN_KINDS; prune the 3 dead kinds.
+      LIVE-VERIFY --tools <list> against the real CLI before closing.
+- [ ] 23.3 ensureGraph + the 8-shape migration table + fixtures byte-copied from the real
+      gatepost/microcache state.json. Four regression tests shown RED-without: verifier
+      default, legacy retry_escalated, renderStatus DECIDED, duplicate-kind pipeline.
+- [ ] 23.4 Driver on the graph: route(), classifyFailure() (failureClass BANNED from the
+      runner's return — it IS the routing decision), RECOVERY table scoped per-visit,
+      MAX_NODE_ATTEMPTS, per-visit records, verdict contract (exactly-one + final-section
+      + fail-closed), `escalated` status + exit 3, retryStage status matrix, lock, input
+      caps, budgets with injected `now`. One path, no fallback.
+- [ ] 23.5 CLI: --graph/--graph-file, `raph academy graph [--mermaid]` printing each node's
+      CONCRETE attempt budget, status rendering, both outside readers.
+- [ ] 23.6 The three commitment stress-tests + the anti-vacuity rules (end-to-end through
+      the runner; assert what did NOT happen; never assert a constant's contents back).
+- [ ] 23.7 THE BRAIN IN THE LOOP: render the already-computed lessonMatchesFor results +
+      SPINE rules 2-4 into stage prompts; emit spine rules 1/5 only for agents that have
+      Bash (4 of 12 structurally cannot follow them today, in the shipped plugin).
+- [ ] 23.8 graph-run / graph-escalation events -> raph stats + weekly report (escalation
+      rate broken down by which recovery attempt failed — the source's named diagnostic).
+- [ ] 23.9 Live run: full-build over a real brief, observed. full-build stays EXPERIMENTAL
+      until this passes; `linear` remains the default.
+- [ ] 23.10 SubagentStop payload spike. VERIFIED this session: SubagentStart/SubagentStop
+      exist in the installed Claude Code binary, so the draft's claim that Raphael "does
+      not own that runtime" was FALSE (Raphael already ships 4 hooks into it). Unknown is
+      whether the payload carries subagent identity/result. Spike, then rewrite the
+      interactive-path section either way with the checked event named.
