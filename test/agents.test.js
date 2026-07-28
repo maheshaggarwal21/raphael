@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AGENTS, EVAL_COVERAGE, RECIPES, SPINE, renderAgent, renderRecipe } from '../src/lib/agents.js';
+import { AGENTS, EVAL_COVERAGE, RECIPES, SPINE, renderAgent, renderRecipe, SPINE_RULES, renderSpine } from '../src/lib/agents.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -91,9 +91,15 @@ test('renderAgent embeds the spine, brain-pull, mission, and output in every age
     assert.ok(md.includes(`name: raphael-${a.slug}`));
     assert.ok(md.includes(`model: ${a.model}`));
     assert.ok(md.includes(`tools: ${a.tools.join(', ')}`));
-    // the spine, verbatim, in every agent
+    // the spine, in every agent
     assert.ok(md.includes('## The Raphael spine'), `${a.slug} missing spine`);
-    assert.ok(md.includes('raph search'), `${a.slug} missing brain-pull`);
+    // Brain-first is asserted as a CAPABILITY, not as one literal command:
+    // an agent with no Bash cannot run `raph search`, so telling it to was an
+    // instruction that could only fail silently (23.7). It must still be told
+    // where its lessons come from.
+    assert.ok(md.includes('Brain first'), `${a.slug} missing brain-pull rule`);
+    const brainRoute = a.tools.includes('Bash') ? /raph search/ : /already in your context/;
+    assert.match(md, brainRoute, `${a.slug} must get the brain in a way it can actually use`);
     assert.ok(md.includes('Write back'), `${a.slug} missing write-back rule`);
     assert.ok(md.includes(a.output), `${a.slug} missing its output contract`);
   }
@@ -214,4 +220,54 @@ test('every shipped recipe file is byte-identical to renderRecipe(agents.js)', (
   const expected = new Set(RECIPES.map((r) => `${r.slug}.md`));
   const orphans = readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md' && !expected.has(f));
   assert.deepEqual(orphans, [], 'orphaned generated recipe file(s)');
+});
+
+// ---- 23.7: an agent is never told to do something it cannot do ---------------
+
+test('rules 1 and 5 are rendered for the tools each agent actually has', () => {
+  // These rules tell the agent to run `raph search` and `raph note`. Four of the
+  // twelve agents ship with no Bash and structurally cannot do either, so those
+  // instructions had been failing silently in the shipped plugin, for every
+  // user, since the roster existed. An instruction an agent cannot follow is the
+  // same class of defect as a test that cannot fail.
+  const shellless = AGENTS.filter((a) => !a.tools.includes('Bash'));
+  assert.ok(shellless.length >= 3, 'several agents genuinely have no shell');
+
+  for (const a of shellless) {
+    const md = renderAgent(a);
+    assert.equal(/raph search "<2-4 keywords/.test(md), false, `${a.slug} cannot run raph search`);
+    assert.equal(/raph note "<one declarative sentence/.test(md), false, `${a.slug} cannot run raph note`);
+    // but it must still be told where its lessons come from, and how to pass one back
+    assert.match(md, /already in your context/, `${a.slug} still gets the brain`);
+    assert.match(md, /you have no shell/i, `${a.slug} is told why`);
+    assert.match(md, /LESSON:/, `${a.slug} still feeds the flywheel`);
+  }
+
+  for (const a of AGENTS.filter((x) => x.tools.includes('Bash'))) {
+    const md = renderAgent(a);
+    assert.match(md, /raph search "<2-4 keywords/, `${a.slug} has a shell and should use it`);
+    assert.match(md, /raph note "<one declarative sentence/, `${a.slug} should write back`);
+  }
+});
+
+test('renderSpine can select a subset of rules, and every agent still gets all six', () => {
+  const some = renderSpine({ only: [2, 3, 4], heading: false });
+  assert.match(some, /Free checks before paid checks/);
+  assert.equal(/Brain first/.test(some), false);
+  assert.equal(/Write back/.test(some), false);
+
+  for (const a of AGENTS) {
+    const md = renderAgent(a);
+    for (const rule of SPINE_RULES) {
+      assert.ok(md.includes(`${rule.n}. **`), `${a.slug} is missing spine rule ${rule.n}`);
+    }
+  }
+});
+
+test('every spine rule renders in both capability forms, with no undefined text', () => {
+  for (const shell of [true, false]) {
+    const text = renderSpine({ shell });
+    assert.equal(/undefined/.test(text), false, `shell=${shell} produced an undefined rule body`);
+    for (const rule of SPINE_RULES) assert.ok(text.includes(`${rule.n}. **`), `rule ${rule.n} missing at shell=${shell}`);
+  }
 });
