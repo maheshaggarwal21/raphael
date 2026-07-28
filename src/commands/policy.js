@@ -24,6 +24,9 @@ export default async function policy(args = []) {
         ? ` timeout=${Math.round(resolved.timeoutMs / 60000)}m`
         : ' timeout=default';
       console.log(`${resolved.kind}: model=${model} effort=${resolved.effort}${clock}${resolved.escalated ? ' (escalated)' : ''}`);
+      // The tool grant is the thing worth being able to audit: a driver stage
+      // may never exceed the tool set its roster agent was reviewed with.
+      console.log(`  tools: ${resolved.tools.length ? resolved.tools.join(', ') : '(none — every built-in tool off)'}${resolved.agent ? ` (from the ${resolved.agent} agent)` : ''}`);
       console.log(`  ${resolved.why}`);
     }
     return 0;

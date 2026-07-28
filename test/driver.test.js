@@ -184,15 +184,17 @@ test('stage prompts carry the boundary rules + roster mission; args resume sessi
   assert.match(p2, /Input from the previous stage \(develop\)/);
   assert.match(p2, /test suite/i); // the non-roster 'test' kind has its own mission
 
-  const fresh = buildStageArgs({ model: 'sonnet', effort: 'high', sessionId: 'abc' });
+  const fresh = buildStageArgs({ model: 'sonnet', effort: 'high', tools: ['Read', 'Write'], sessionId: 'abc' });
   assert.equal(fresh[fresh.indexOf('--session-id') + 1], 'abc');
   assert.equal(fresh[fresh.indexOf('--model') + 1], 'sonnet');
   assert.equal(fresh[fresh.indexOf('--effort') + 1], 'high');
   assert.equal(fresh[fresh.indexOf('--permission-mode') + 1], 'acceptEdits');
-  assert.equal(fresh.includes('--tools'), false); // tools ON — stages write real files
+  // 23.2: the tool grant is EXPLICIT. Before this the flag was absent, which
+  // granted every built-in tool and made read-only roster agents writers.
+  assert.equal(fresh[fresh.indexOf('--tools') + 1], 'Read,Write');
   assert.equal(fresh.includes('--resume'), false);
 
-  const resumed = buildStageArgs({ model: null, effort: 'medium', sessionId: 'abc', resume: true });
+  const resumed = buildStageArgs({ model: null, effort: 'medium', tools: ['Read'], sessionId: 'abc', resume: true });
   assert.equal(resumed[resumed.indexOf('--resume') + 1], 'abc');
   assert.equal(resumed.includes('--session-id'), false);
   assert.equal(resumed.includes('--model'), false); // null model = CLI default, flag absent
@@ -247,7 +249,10 @@ test('16.3 stage prompts carry the workspace atlas map for code-bearing kinds on
 // ---- makeStageRunner: the token-spending surface (audit finding: zero coverage) ----
 // spawn is injectable precisely so every branch is testable without spending.
 
-const POLICY = { model: 'sonnet', effort: 'medium' };
+// A resolved stage policy, as resolvePolicy() returns one. `tools` is part of
+// that shape since 23.2 and is not optional: buildStageArgs fails closed without
+// it, because a missing grant would mean "every built-in tool".
+const POLICY = { model: 'sonnet', effort: 'medium', tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'] };
 function fakeSpawn(result) {
   return () => result;
 }
@@ -720,4 +725,51 @@ test('F9: the boundary explicitly steers decisions away from host memory tools',
   assert.match(p, /memory\/note-taking tools/);
   assert.match(p, /outside this directory/i);
   assert.match(p, /DECISIONS section below is what the next stage reads/);
+});
+
+// ---- 23.2: the tool grant reaches the real spawn -----------------------------
+
+test('buildStageArgs fails CLOSED when the tool grant is missing', () => {
+  // A caller that forgets the grant must not silently receive every built-in
+  // tool — that permissive default is the exact defect 23.2 repairs.
+  assert.throws(
+    () => buildStageArgs({ model: 'sonnet', effort: 'high', sessionId: 'abc' }),
+    /E-DRIVER: buildStageArgs needs an explicit tools list/
+  );
+});
+
+test('buildStageArgs edge: an empty grant disables every tool rather than omitting the flag', () => {
+  const args = buildStageArgs({ model: 'haiku', effort: 'low', tools: [], sessionId: 'abc' });
+  const i = args.indexOf('--tools');
+  assert.ok(i >= 0, 'the flag must always be present');
+  assert.equal(args[i + 1], '', 'an empty list is "all tools off", the safe direction');
+});
+
+test('a read-only stage is spawned read-only — the grant survives the whole path', () => {
+  // End to end through the real arg builder with the real resolved policy, not
+  // a hand-written list: this is what proves the roster actually reaches the CLI.
+  const design = buildStageArgs({ ...resolvePolicy('design'), tools: resolvePolicy('design').tools, sessionId: 'abc' });
+  const granted = design[design.indexOf('--tools') + 1].split(',');
+  assert.deepEqual(granted, ['Read', 'Grep', 'Glob']);
+  for (const forbidden of ['Edit', 'Write', 'Bash']) {
+    assert.equal(granted.includes(forbidden), false, `a design stage must not be spawned with ${forbidden}`);
+  }
+});
+
+test('initDriver refuses a forbidden kind in --pipeline, with the real reason', () => {
+  // `--pipeline` validates against POLICY, so POLICY membership is what makes an
+  // agent drivable unattended. This is the belt-and-braces: even if redteam were
+  // given a policy entry later, the flag still cannot reach it.
+  const state = { project: 'kit', status: 'in-progress', log: [], current: {} };
+  assert.throws(
+    () => initDriver(state, { brief: 'b', pipeline: ['plan', 'redteam'] }),
+    /E-DRIVER: task kind "redteam" may never run unattended/
+  );
+  assert.equal(state.driver, undefined, 'nothing is initialised when the pipeline is refused');
+});
+
+test('initDriver accepts the frontend kind the governed path could not reach before', () => {
+  const state = { project: 'kit', status: 'in-progress', log: [], current: {} };
+  initDriver(state, { brief: 'build a UI', pipeline: ['plan', 'frontend'] });
+  assert.deepEqual(state.driver.pipeline, ['plan', 'frontend']);
 });

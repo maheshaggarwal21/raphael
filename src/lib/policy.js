@@ -33,8 +33,10 @@ export const POLICY = [
   { kind: 'route',       agent: 'manager',   model: 'haiku',  effort: 'low',
     why: 'routing slices to specialists needs speed, not depth' },
   { kind: 'mechanical',  agent: null,        model: 'haiku',  effort: 'low',
+    tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write'],
     why: 'renames, formatting, boilerplate — zero-reasoning work' },
   { kind: 'summarize',   agent: null,        model: 'haiku',  effort: 'medium',
+    tools: ['Read', 'Grep', 'Glob'],
     why: 'compressing text is cheap-model territory' },
   { kind: 'plan',        agent: 'planner',   model: 'sonnet', effort: 'high',
     why: 'a wrong spec is the most expensive bug — spend reasoning here' },
@@ -47,7 +49,18 @@ export const POLICY = [
   // so it is the one kind that carries an override.
   { kind: 'develop',     agent: 'developer', model: 'sonnet', effort: 'medium', escalate: 'opus', timeoutMs: 1500000,
     why: 'the bulk tier: real code in small verified diffs; a genuinely stuck implementation escalates' },
+  // 23.2 — the governed path could not run the Frontend agent AT ALL until this
+  // entry existed: `--pipeline` validates against POLICY membership, and the
+  // roster's frontend slug had no kind. So the autopilot built every UI with the
+  // general `developer` agent, and the design-reviews-frontend loop the owner
+  // asked for had no builder to review. Effort is high because generic
+  // "AI slop" UI is the default failure mode, and the reasoning is what buys
+  // distinctiveness; no escalate, because a stronger model is not what fixes
+  // taste. `redteam` is deliberately NOT given a kind — see DRIVER_FORBIDDEN.
+  { kind: 'frontend',    agent: 'frontend',  model: 'sonnet', effort: 'high',
+    why: 'UI is where a generic default is worst; spend the reasoning on being distinctive' },
   { kind: 'test',        agent: null,        model: 'sonnet', effort: 'medium',
+    tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
     why: 'writing tests is development work at development tier' },
   { kind: 'review',      agent: 'reviewer',  model: 'sonnet', effort: 'high',
     why: 'catching a real defect pays for the extra reasoning' },
@@ -62,8 +75,23 @@ export const POLICY = [
   { kind: 'critique',    agent: 'critique',  model: 'sonnet', effort: 'medium',
     why: 'adversarial pass over one output, not the codebase' },
   { kind: 'distill',     agent: null,        model: null,     effort: 'medium',
+    tools: [],
     why: 'extraction rides the subscription default; containment, not tier, is the guarantee' }
 ];
+
+// Stages that WRITE code and are therefore expected to leave it working. The
+// owner's --verify runs after these only: `review` and `security` are advisory
+// passes, and failing them for a defect they did not introduce would be wrong.
+//
+// 23.2 pruned `implement` and `refactor` from this set: they were never POLICY
+// kinds, so they could never appear in a run — three dead entries across the two
+// sets, quietly implying coverage that did not exist. A test asserts every member
+// of both sets resolves, so they cannot drift apart again.
+export const VERIFIED_KINDS = new Set(['develop', 'frontend', 'test', 'debug']);
+
+// The stage kinds that operate over existing workspace code, so the deterministic
+// project map (atlas) helps them. Plan/spec stages run before there is code to map.
+export const CODE_BEARING_KINDS = new Set(['develop', 'frontend', 'review', 'debug', 'test', 'security']);
 
 export function policyKinds() {
   return POLICY.map((p) => p.kind);
@@ -104,7 +132,31 @@ export function resolvePolicy(kind, { escalated = false, overrides = {} } = {}) 
   // driver's default". Only populated where a real run proved the default wrong,
   // because eight invented numbers dressed up as a policy table is worse than
   // one honest default.
-  return { kind, agent: entry.agent, model, effort, escalated, why: entry.why, timeoutMs: entry.timeoutMs };
+  return { kind, agent: entry.agent, model, effort, escalated, tools: toolsFor(entry), why: entry.why, timeoutMs: entry.timeoutMs };
+}
+
+// Which tools a stage of this kind may use — the ROSTER's answer whenever the
+// kind maps to an agent, so the two cannot drift and a driver stage can never
+// exceed the tool set its agent was reviewed with.
+//
+// This closes a real hole (verified 2026-07-28): buildStageArgs emitted
+// `--permission-mode acceptEdits` and NO --tools, so `design`, `critique` and
+// `planner` — read-only in the roster — were handed Edit/Write/Bash inside the
+// driver. A design agent that can silently fix the code it is reviewing makes a
+// design-reviews-frontend loop meaningless.
+//
+// An empty list is meaningful, not missing: it maps to `--tools ""` (every
+// built-in tool off), which is the safe direction. Defaulting to "no --tools
+// flag" would silently grant everything — exactly the bug being fixed.
+export function toolsFor(entry) {
+  if (entry.agent) {
+    const a = AGENTS.find((x) => x.slug === entry.agent);
+    // Loud, not silent: a policy entry naming a missing agent would otherwise
+    // resolve to zero tools and the stage would fail in a confusing way.
+    if (!a) throw new Error(`E-POLICY: task kind "${entry.kind}" names agent "${entry.agent}", which is not in the roster`);
+    return [...a.tools];
+  }
+  return [...(entry.tools ?? [])];
 }
 
 // Does this kind have an escalation model at all? resolvePolicy returns the

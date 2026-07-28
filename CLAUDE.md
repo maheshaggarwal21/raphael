@@ -904,8 +904,25 @@ compaction (manual or automatic) can never lose progress.
   the covering test fails — incl. the false-positive direction of the boundary scan. Doc drift
   caught by the suite: README module count stale AND its test count was 93 stale (592 vs 629)
   because that guard only checks the README against ITSELF, never reality — now 685.
-  NEXT = 23.2 (POLICY gains `frontend` not `redteam`, + a `tools` field so read-only agents
-  stop getting Edit/Write in the driver; LIVE-VERIFY `--tools <list>` before closing).
+  23.2 SHIPPED same session (685 -> 698): POLICY gains `frontend` (sonnet/high, no escalate —
+  a stronger model does not fix taste), so the governed path can finally run the Frontend
+  agent at all (it built every UI with the general `developer` agent before). `redteam` still
+  has NO kind ON PURPOSE — POLICY membership is exactly what `--pipeline` validates against,
+  so a kind IS what makes an agent drivable unattended; initDriver also refuses
+  DRIVER_FORBIDDEN_KINDS by name ahead of resolvePolicy. THE TOOL GRANT IS NOW EXPLICIT:
+  policy resolves `tools` FROM THE ROSTER (toolsFor()) and buildStageArgs emits `--tools
+  <list>`; before this it emitted acceptEdits and NO --tools, so design/critique/planner —
+  read-only in the roster — were writers inside the driver, which makes a design-reviews-
+  frontend loop meaningless. buildStageArgs FAILS CLOSED on a missing grant; an empty grant
+  emits `--tools ""` (all off) rather than omitting the flag (omitting = granting everything).
+  LIVE-VERIFIED TWICE on the real CLI because help text is a claim not evidence: a two-arm
+  test (read-only arm could not write and said NOTOOL; control arm with Write did) and then
+  the EXACT buildStageArgs vector, which also proved the variadic `--tools <tools...>` does
+  not swallow the `--session-id` that follows it. No fallback needed. Dead kinds pruned
+  (implement/refactor/qa were never POLICY kinds so could never fire); both kind sets now have
+  ONE definition in policy.js + a test that every member resolves. 7 gates proven RED-WITHOUT.
+  NEXT = 23.3 (ensureGraph + the 8-shape migration table, fixtures byte-copied from the real
+  gatepost/microcache state.json; 4 named regressions each shown red-without).
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.

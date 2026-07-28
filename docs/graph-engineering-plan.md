@@ -473,6 +473,19 @@ the CLI rejects a list the milestone ships the fallback (tool restriction stated
 plus a post-run `git status` assertion for read-only nodes) rather than silently dropping the
 guarantee.
 
+**RESOLVED 2026-07-28 (23.2): `--tools <list>` IS enforced — the fallback is not needed.**
+Verified twice against the real CLI, because the `--help` text documenting the list form is a
+claim, not evidence. (a) Two arms, so the result could not be explained by the model merely
+declining: a `Read,Grep,Glob` stage asked to write a file could not and replied `NOTOOL`,
+while an otherwise identical `Read,Write` stage wrote it. (b) The exact `buildStageArgs`
+vector for a real resolved `design` policy — which also settled a question a hand-built vector
+would have missed: `--tools <tools...>` is *variadic*, and `--session-id` now follows it
+immediately, so the run asserts the echoed `session_id` still matches. It does.
+Two hardening decisions made while implementing: `buildStageArgs` **fails closed** on a
+missing grant rather than defaulting to permissive (a caller who forgets must not silently
+receive every tool — that is the defect being repaired), and an empty grant emits
+`--tools ""` rather than omitting the flag, since omitting it grants everything.
+
 ### Shipped graphs
 
 | name | shape | for |

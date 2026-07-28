@@ -21,11 +21,12 @@ import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { claudeBinary, detectLimit, isSuccessEnvelope } from './provider.js';
-import { resolvePolicy, routeEffortWithLessons, canEscalate } from './policy.js';
+import { resolvePolicy, routeEffortWithLessons, canEscalate, VERIFIED_KINDS, CODE_BEARING_KINDS } from './policy.js';
 import { loadIndex } from './compile.js';
 import { rank } from './match.js';
 import { computeConfidence } from './confidence.js';
 import { AGENTS } from './agents.js';
+import { DRIVER_FORBIDDEN_KINDS } from './graph.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
 import { scanProject, buildAtlas, renderDigest } from './atlas.js';
 import { scrubSecrets } from './scrub.js';
@@ -143,10 +144,10 @@ export function gateDeliverable(output) {
   return { ok: true, decisions, why: null };
 }
 
-// Stages that WRITE code and are therefore expected to leave it working. The
-// verifier runs after these only: `review` and `security` are advisory passes,
-// and failing them for a defect they did not introduce would be wrong.
-export const VERIFIED_KINDS = new Set(['develop', 'test', 'debug', 'implement', 'refactor']);
+// Which kinds are claim-checked, and which get the project map. ONE definition,
+// in policy.js — re-exported here because both sets are about task kinds and
+// several callers already import them from the driver.
+export { VERIFIED_KINDS, CODE_BEARING_KINDS };
 
 const VERIFY_TIMEOUT_MS = 300000;
 const VERIFY_OUTPUT_CAP = 2000;
@@ -194,7 +195,19 @@ export function initDriver(state, { brief, pipeline = DEFAULT_PIPELINE, verify =
   if (!state) throw new Error('E-DRIVER: no academy state — start the project first');
   if (state.driver && state.driver.status !== 'done') return state; // idempotent mid-flight
   if (!brief || !String(brief).trim()) throw new Error('E-DRIVER: a project brief is required (--brief or --brief-file)');
-  for (const kind of pipeline) resolvePolicy(kind); // E-POLICY on any unknown kind (there IS no deploy kind)
+  for (const kind of pipeline) {
+    // `--pipeline` validates against POLICY membership, so POLICY membership is
+    // exactly what makes an agent drivable unattended. `redteam` must stay out of
+    // reach of this flag even if it is ever given a policy entry: the driver runs
+    // stages at acceptEdits with BOUNDARY_RULES stating there is NO HUMAN, which
+    // directly overrides the redteam mission's own first rule (authorization
+    // first, confirm before each active step). Checked before resolvePolicy so
+    // the message is the real reason rather than "unknown kind".
+    if (DRIVER_FORBIDDEN_KINDS.has(kind)) {
+      throw new Error(`E-DRIVER: task kind "${kind}" may never run unattended — it stays reachable only where a human is (the manager, the pentest recipe)`);
+    }
+    resolvePolicy(kind); // E-POLICY on any unknown kind (there IS no deploy kind)
+  }
   state.driver = {
     pipeline: [...pipeline],
     stage: 0,
@@ -373,10 +386,6 @@ export function renderStagePrompt(kind, { project, brief, input, priorKind, atla
   return lines.join('\n');
 }
 
-// The stage kinds that operate over existing workspace code (so a map helps).
-// Plan/spec/design stages run before there is code to map.
-export const CODE_BEARING_KINDS = new Set(['develop', 'implement', 'review', 'debug', 'test', 'security', 'qa', 'refactor']);
-
 // Build the workspace's atlas digest for a code-bearing stage — deterministic,
 // zero model tokens. Returns '' on any problem or an empty repo (capability-check:
 // no code yet → no map, so early stages that produced nothing get no phantom map).
@@ -395,13 +404,30 @@ export function workspaceAtlasDigest(workspace) {
 // Tools are ON (the stage writes real files in the workspace) — deliberately unlike
 // distill's zero-tool containment. Session persists under --session-id so an
 // interrupted stage can continue with --resume instead of restarting from zero.
-export function buildStageArgs({ model, effort, sessionId, resume = false }) {
+//
+// 23.2: the grant is now EXPLICIT and comes from the roster (policy.tools), not
+// from whatever acceptEdits happens to allow. Before this, every read-only agent
+// became a writer inside the driver. `--tools <list>` was live-verified against
+// the real CLI on 2026-07-28 with a two-arm test: a Read/Grep/Glob stage asked to
+// write a file could not and reported it had no such tool, while an otherwise
+// identical Read/Write stage wrote it.
+//
+// An empty list emits `--tools ""` (all built-in tools off) rather than omitting
+// the flag: omitting it would silently grant everything, which is the bug.
+export function buildStageArgs({ model, effort, tools, sessionId, resume = false }) {
   const args = [
     '-p',
     '--output-format', 'json',
     '--permission-mode', 'acceptEdits',
     '--strict-mcp-config'
   ];
+  // FAIL CLOSED. A caller that forgets the grant must not get "every tool",
+  // which is precisely the state this milestone is repairing — so a missing
+  // grant is a programming error, not a permissive default.
+  if (!Array.isArray(tools)) {
+    throw new Error('E-DRIVER: buildStageArgs needs an explicit tools list — omitting it would grant every built-in tool');
+  }
+  args.push('--tools', tools.join(','));
   args.push(resume ? '--resume' : '--session-id', sessionId);
   if (model) args.push('--model', model);
   if (effort) args.push('--effort', effort);
@@ -425,7 +451,7 @@ export function makeStageRunner({ bin = claudeBinary(), spawn = spawnSync, timeo
     // envelope does not. Recording it is what turns the next round of timeout
     // tuning from judgement into data.
     const startedAt = Date.now();
-    const r = spawn(bin, buildStageArgs({ model: policy.model, effort: policy.effort, sessionId, resume }), {
+    const r = spawn(bin, buildStageArgs({ model: policy.model, effort: policy.effort, tools: policy.tools, sessionId, resume }), {
       input: prompt,
       cwd: workspace,
       env,

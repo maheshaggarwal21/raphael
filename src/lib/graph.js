@@ -21,7 +21,7 @@
 //     the owner's --graph-file, never from stage output. Same rule as --verify.
 
 import { createHash } from 'node:crypto';
-import { POLICY, policyKinds, canEscalate } from './policy.js';
+import { policyKinds, canEscalate, VERIFIED_KINDS } from './policy.js';
 import { isNegatedAt } from './match.js';
 import { RECOVERY, MAX_NODE_ATTEMPTS } from './recovery.js';
 
@@ -44,11 +44,10 @@ export const DRIVER_FORBIDDEN_KINDS = Object.freeze(new Set(['redteam']));
 export const WHEN_VALUES = Object.freeze(['pass', 'changes', 'always']);
 export const EMIT_VALUES = Object.freeze(['deliverable', 'verdict']);
 
-// Stages that WRITE code and are therefore expected to leave it working.
-// Lifted from driver.js so the planning layer does not import the driver; 23.2
-// prunes the dead members (implement/refactor/qa are not POLICY kinds) and a
-// test there asserts every member resolves.
-export const VERIFIED_KINDS = Object.freeze(new Set(['develop', 'test', 'debug', 'implement', 'refactor']));
+// Re-exported, not redefined: policy.js holds the one definition, so the
+// planning layer and the driver can never disagree about which nodes are
+// claim-checked. (23.1 briefly duplicated it here; 23.2 consolidated it.)
+export { VERIFIED_KINDS } from './policy.js';
 
 export const MAX_GRAPH_NODES = 64;      // bounds the SCC walk and any hand-written file
 export const MAX_TITLE_LEN = 120;

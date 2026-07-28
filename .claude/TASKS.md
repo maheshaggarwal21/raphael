@@ -1210,11 +1210,37 @@ VERIFIED GAPS found while designing (each re-checked against real code, not infe
       RED-WITHOUT via a harness that disables each one and asserts the covering test fails —
       including the false-positive direction of the boundary scan (disable the negation
       exemption and "never deploy the app yourself" is wrongly rejected).
-- [ ] 23.2 POLICY gains `frontend` (NOT redteam — POLICY membership is what --pipeline
-      validates against, so adding redteam would make an offensive agent drivable
-      unattended with Edit/Write) + a `tools` field per kind sourced from the roster;
-      buildStageArgs emits --tools; DRIVER_FORBIDDEN_KINDS; prune the 3 dead kinds.
-      LIVE-VERIFY --tools <list> against the real CLI before closing.
+- [x] 23.2 SHIPPED (2026-07-28, session 18, 685 -> 698 tests). POLICY gains `frontend`
+      (agent frontend, sonnet/high, no escalate — a stronger model is not what fixes taste):
+      the governed path could not run the Frontend agent AT ALL before this, so the autopilot
+      built every UI with the general `developer` agent and the design-reviews-frontend loop
+      had no builder to review. `redteam` deliberately still has NO kind — POLICY membership
+      is exactly what `--pipeline` validates against, so a kind is what makes an agent
+      drivable unattended; initDriver additionally refuses DRIVER_FORBIDDEN_KINDS by name,
+      ahead of resolvePolicy, so a future POLICY addition cannot silently open that door.
+      THE TOOL GRANT IS NOW EXPLICIT: POLICY resolves `tools` FROM THE ROSTER for every agent
+      kind (toolsFor(); literal lists only for the agentless kinds), and buildStageArgs emits
+      `--tools <list>`. Before this it emitted acceptEdits and no --tools, so `design`,
+      `critique` and `planner` — read-only in the roster — were handed Edit/Write/Bash inside
+      the driver, which makes a design-reviews-frontend loop meaningless (the reviewer could
+      silently fix what it reviews). buildStageArgs now FAILS CLOSED on a missing grant rather
+      than defaulting to "everything", and an empty grant emits `--tools ""` (all tools off)
+      rather than omitting the flag.
+      LIVE-VERIFIED TWICE against the real CLI (v2.1.168), because help text is a claim not
+      evidence: (a) two-arm test — a `Read,Grep,Glob` stage asked to write a file could not
+      and replied NOTOOL, while an otherwise identical `Read,Write` stage wrote it (a
+      one-arm test would only have proved the model declined); (b) the EXACT buildStageArgs
+      vector for a real `design` policy, which also proved the variadic `--tools <tools...>`
+      does not swallow the `--session-id` that now follows it (the session id came back
+      matching in the envelope). No fallback needed — the guarantee is real.
+      Dead kinds pruned: VERIFIED_KINDS = develop/frontend/test/debug, CODE_BEARING_KINDS =
+      develop/frontend/review/debug/test/security. `implement`, `refactor` and `qa` were never
+      POLICY kinds and could never fire — three dead entries implying coverage that did not
+      exist. Both sets now have ONE definition in policy.js (23.1 had briefly duplicated
+      VERIFIED_KINDS into graph.js — a drift risk closed here) and a test asserts every member
+      resolves, so they cannot drift again.
+      SEVEN gates proven RED-WITHOUT, incl. the fail-closed grant, the roster sourcing, the
+      copy-not-reference return, and the pruned kinds coming back.
 - [ ] 23.3 ensureGraph + the 8-shape migration table + fixtures byte-copied from the real
       gatepost/microcache state.json. Four regression tests shown RED-without: verifier
       default, legacy retry_escalated, renderStatus DECIDED, duplicate-kind pipeline.
