@@ -1042,6 +1042,27 @@ compaction (manual or automatic) can never lose progress.
   temp root when the guard was disabled, then failed on every later run. Now nested in a
   temp dir it owns. 790 -> 799 tests. Live-verified end to end: a real linear run wrote all
   5 artifacts incl. nested reviews/ paths.
+- MISLEADING ERROR MESSAGE FIXED (session 18, same day). RESET 3 hit a genuinely different
+  wall on the very first `plan` node: `raph: ESCALATED at "plan": model failure ...: claude
+  reported success` — a contradictory message (a failure reason that says "success").
+  Root-caused live rather than guessed: manually resumed the exact killed session with the
+  real CLI and captured the raw envelope: `{subtype:"success", is_error:true,
+  api_error_status:401, result:"Failed to authenticate. API Error: 401 OAuth access token
+  has been revoked."}`. Confirmed ACCOUNT-WIDE (a fresh unrelated call hit the identical
+  401) — the owner's Claude Code OAuth token had been revoked; every subprocess Raphael
+  spawns fails the same way until re-auth, no retry logic fixes it. isSuccessEnvelope's
+  classification was CORRECT (is_error:true -> failure); the bug was narrower: the error
+  MESSAGE picked envMsg.subtype ("success") over envMsg.result (the actual human-readable
+  reason), so a real, actionable auth failure read as a nonsense success label. Fixed:
+  stage-runner.js prefers a non-blank envMsg.result, appends the HTTP status when present,
+  falls back to subtype/error only when result is absent/blank. Escalating a `plan`-class
+  node immediately (no escalation model) on this failure is CORRECT as-is — an unattended
+  retry cannot fix a revoked token, only the owner re-authenticating can. Success/failure/
+  edge cases added to the existing spawn-failure test (the exact live envelope reproduced
+  verbatim, a no-result fallback, a blank-result-must-not-win case). 799 tests (assertions
+  added to an existing test, not new test() blocks). Tallyboard run itself is STILL BLOCKED
+  on the owner re-authenticating `claude` — not a Raphael defect, nothing more to fix here
+  until that happens.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.

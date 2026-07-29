@@ -143,7 +143,20 @@ export function makeStageRunner({
     const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
     if (!isSuccessEnvelope(envMsg)) {
       // No usable envelope came back: environmental, not the model reasoning badly.
-      return result({ spawned: Boolean(envMsg), elapsedMs, error: `claude reported ${envMsg?.subtype || envMsg?.error || 'error'}`, tokens, sessionId });
+      //
+      // The CLI's own `subtype` can read "success" on a FAILED envelope — observed
+      // live 2026-07-29: a revoked OAuth token produces
+      // { subtype:"success", is_error:true, api_error_status:401, result:"Failed
+      // to authenticate..." }. Leading with subtype in that case produced the
+      // actively misleading message "claude reported success" for an auth
+      // failure that blocks every subsequent spawn — exactly the moment an
+      // honest message matters most. `result` (when present) is the CLI's own
+      // human-readable reason and is always more informative than the subtype
+      // label, so it is preferred whenever this is a failure envelope.
+      const reason = (typeof envMsg?.result === 'string' && envMsg.result.trim())
+        || envMsg?.subtype || envMsg?.error || 'error';
+      const status = envMsg?.api_error_status ? ` (HTTP ${envMsg.api_error_status})` : '';
+      return result({ spawned: Boolean(envMsg), elapsedMs, error: `claude reported: ${reason}${status}`, tokens, sessionId });
     }
     const output = typeof envMsg.result === 'string' && envMsg.result.trim() ? envMsg.result : null;
     if (!output) return result({ elapsedMs, error: 'stage produced no text deliverable', tokens, sessionId });

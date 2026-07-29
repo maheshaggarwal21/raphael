@@ -381,6 +381,44 @@ test('makeStageRunner: spawn failure, error envelope, unparseable output, empty 
   assert.match(e.error, /error_max_turns/);
   assert.equal(e.tokens, 10, 'tokens are still counted on a failed stage');
 
+  // THE LIVE FAILURE, reproduced verbatim (2026-07-29): a revoked OAuth token
+  // produces subtype:"success" on a failed (is_error:true) envelope. Leading
+  // with subtype there produced the actively misleading "claude reported
+  // success" for an authentication failure — the worst possible moment for a
+  // dishonest message, since it blocks every subsequent spawn.
+  const revoked = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({
+      status: 1,
+      stdout: JSON.stringify({
+        type: 'result', subtype: 'success', is_error: true, api_error_status: 401,
+        result: 'Failed to authenticate. API Error: 401 OAuth access token has been revoked.',
+        usage: { input_tokens: 0, output_tokens: 0 }
+      })
+    })
+  });
+  const r = await revoked({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'auth' });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /OAuth access token has been revoked/, 'the real reason, not the misleading subtype');
+  assert.match(r.error, /HTTP 401/, 'the status code travels with the message');
+  assert.equal(/claude reported: success\b/.test(r.error), false, 'must never present a failure as "success"');
+
+  // edge: no `result` field at all falls back to subtype, as before
+  const noResult = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({ status: 1, stdout: JSON.stringify({ subtype: 'error_during_execution', is_error: true }) })
+  });
+  const nr = await noResult({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'nr' });
+  assert.match(nr.error, /error_during_execution/);
+
+  // edge: a blank `result` string must not win over a real subtype
+  const blankResult = makeStageRunner({
+    bin: 'claude',
+    spawn: fakeSpawn({ status: 1, stdout: JSON.stringify({ subtype: 'error_max_turns', is_error: true, result: '   ' }) })
+  });
+  const br = await blankResult({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'br' });
+  assert.match(br.error, /error_max_turns/);
+
   const garbage = makeStageRunner({ bin: 'claude', spawn: fakeSpawn({ status: 0, stdout: 'not json at all' }) });
   const g = await garbage({ prompt: 'x', policy: POLICY, gate: GATE, sessionId: 'c' });
   assert.equal(g.ok, false);
