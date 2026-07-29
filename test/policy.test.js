@@ -12,7 +12,8 @@ import {
   canEscalate,
   toolsFor,
   VERIFIED_KINDS,
-  CODE_BEARING_KINDS
+  CODE_BEARING_KINDS,
+  FIRST_PASS_OPUS_KINDS
 } from '../src/lib/policy.js';
 import { AGENTS } from '../src/lib/agents.js';
 import { DRIVER_FORBIDDEN_KINDS } from '../src/lib/graph.js';
@@ -40,8 +41,26 @@ test('the policy table is well-formed and aligned with the agent roster', () => 
   // contradict the roster (roster 'inherit' defers to the policy).
   assert.deepEqual(checkRosterAlignment(), []);
 
-  // opus is never a FIRST-PASS model — only an escalation target
-  assert.equal(POLICY.some((p) => p.model === 'opus'), false);
+  // opus as a FIRST-PASS model is a DELIBERATE, NAMED exception — not casual.
+  // Every kind actually running opus as its base model must be listed in
+  // FIRST_PASS_OPUS_KINDS, and every kind IN that list must actually run opus:
+  // set equality both ways, so a future kind cannot slip onto opus by editing
+  // only POLICY (silent cost growth) or sit in the exception list unused
+  // (a stale, misleading exception).
+  const opusFirstPass = new Set(POLICY.filter((p) => p.model === 'opus').map((p) => p.kind));
+  assert.deepEqual(opusFirstPass, FIRST_PASS_OPUS_KINDS,
+    'opus as a first-pass model must be exactly the declared exception set');
+});
+
+test('FIRST_PASS_OPUS_KINDS is the named exception it claims to be', () => {
+  // success: the current, owner-approved exception is exactly architect
+  assert.deepEqual(FIRST_PASS_OPUS_KINDS, new Set(['architect']));
+  // failure/edge: every member must resolve to a real kind that actually
+  // carries opus — a typo'd or stale entry would silently do nothing
+  for (const kind of FIRST_PASS_OPUS_KINDS) {
+    assert.ok(policyKinds().includes(kind), `${kind} is not a real policy kind`);
+    assert.equal(resolvePolicy(kind).model, 'opus', `${kind} is listed as a first-pass-opus exception but does not resolve to opus`);
+  }
 });
 
 test('resolvePolicy: lookup, escalation, overrides, and coded errors', () => {

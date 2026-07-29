@@ -40,8 +40,17 @@ export const POLICY = [
     why: 'compressing text is cheap-model territory' },
   { kind: 'plan',        agent: 'planner',   model: 'sonnet', effort: 'high',
     why: 'a wrong spec is the most expensive bug — spend reasoning here' },
-  { kind: 'architect',   agent: 'architect', model: 'sonnet', effort: 'high',
-    why: 'design decisions compound; effort up front is cheapest' },
+  // FIRST-PASS OPUS — a deliberate, named exception to "opus is escalation-only"
+  // (owner directive, 2026-07-29, after a live full-build run). A bad system
+  // design is the most expensive mistake in the whole graph: every downstream
+  // node — frontend, developer, test, review — inherits its errors, and the
+  // observed run needed two full architect<->critique rounds (3 architect
+  // visits, 2 timeouts) to converge on a design sonnet initially got 8 things
+  // wrong on. See FIRST_PASS_OPUS_KINDS below — any further exception must be
+  // added there too, so the list stays a visible, deliberate set rather than
+  // opus sprawl by accretion.
+  { kind: 'architect',   agent: 'architect', model: 'opus', effort: 'high',
+    why: 'a bad design compounds through every downstream node — pay for the strongest reasoning up front, not in retries' },
   // timeoutMs: 25 minutes, not the default 10. Measured, not guessed — `develop`
   // was cut off TWICE at ten minutes on a real build, the second pass having
   // produced 341,647 billable tokens, 99,373 of them output, across 15 files and
@@ -92,6 +101,12 @@ export const VERIFIED_KINDS = new Set(['develop', 'frontend', 'test', 'debug']);
 // The stage kinds that operate over existing workspace code, so the deterministic
 // project map (atlas) helps them. Plan/spec stages run before there is code to map.
 export const CODE_BEARING_KINDS = new Set(['develop', 'frontend', 'review', 'debug', 'test', 'security']);
+
+// Deliberate, tracked exceptions to "opus is escalation-only, never first
+// pass". Kept as an explicit set (not inferred from POLICY) so the alignment
+// test below catches any future kind moving to opus by accident — the set has
+// to be edited by hand, same weight as adding the POLICY entry itself.
+export const FIRST_PASS_OPUS_KINDS = new Set(['architect']);
 
 export function policyKinds() {
   return POLICY.map((p) => p.kind);

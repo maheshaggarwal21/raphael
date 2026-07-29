@@ -10,7 +10,7 @@ back into your agent's context at the right moment. Install it once. It runs its
 
 [![npm](https://img.shields.io/npm/v/raphael-brain?color=cb3837&label=npm)](https://www.npmjs.com/package/raphael-brain)
 [![CI](https://github.com/maheshaggarwal21/raphael/actions/workflows/ci.yml/badge.svg)](https://github.com/maheshaggarwal21/raphael/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-789%20passing-brightgreen)](test/)
+[![tests](https://img.shields.io/badge/tests-790%20passing-brightgreen)](test/)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-2-blue)](package.json)
 [![license](https://img.shields.io/badge/license-MIT-black)](LICENSE)
@@ -87,7 +87,7 @@ Proof, not vibes — every number below is measured by the code in this repo:
 | **≤ 1,200 tokens/session** | the hard cap on everything recall may inject in one session. Typical prompts cost **0** (injection requires a trigger hit). `raph why` itemizes every token. |
 | **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart before it has learned a single thing from you. And that brain is community-fed by design: contributed lessons, scrubbed and human-reviewed, ship to every install via a weekly hash-verified sync. |
 | **44 CLI verbs · 12 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
-| **789 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
+| **790 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
 | **2 runtime dependencies** | `ajv` and `js-yaml`. That's the whole supply chain. No frameworks, no daemons, no cloud. |
 | **100% local** | the brain lives in `~/.raphael`, in its own git repo that structurally blocks pushes. Nothing leaves your machine except by your own explicit action. |
 
@@ -826,7 +826,7 @@ Honesty is a feature. Raphael is **not**:
  verbs     src/commands/*.js    43 thin command wrappers over the same engine
  plugin    plugin/              hooks (SessionStart · UserPromptSubmit · PreToolUse · SessionEnd)
                                 + 10 agents + 4 /brain commands + 4 recipes + recall skill
- proof     test/ (789) · src/eval/ (6 scenarios + 6 canaries) · CI (Linux+Windows × Node 18/20/22)
+ proof     test/ (790) · src/eval/ (6 scenarios + 6 canaries) · CI (Linux+Windows × Node 18/20/22)
 ```
 
 **Docs worth your time:** [docs/manual.md](docs/manual.md) — every command, how and
@@ -876,7 +876,7 @@ the machine curator's gates. Prefer to approve every lesson yourself? `raph aris
 
 ```bash
 npm install
-npm test                  # 789 tests, plain node:test, no frameworks
+npm test                  # 790 tests, plain node:test, no frameworks
 node bin/raph.js help     # the full CLI surface (43 verbs)
 ```
 

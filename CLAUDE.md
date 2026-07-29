@@ -991,6 +991,28 @@ compaction (manual or automatic) can never lose progress.
   `npm view raphael-brain version` = 0.6.0, dist-tag latest = 0.6.0. End-user path
   live-verified from the PUBLIC registry into a clean prefix (npm install -g --prefix,
   not the dev tree): `raph version` reports 0.6.0. CHANGELOG.md dated 2026-07-28.
+- TALLYBOARD full-build resumed + escalated LIVE (session 18, 2026-07-29): rerunning
+  `raph academy drive` after the 1:10am limit reset picked up architect visit 2 exactly
+  where it stopped. Watched it in real time on disk: critique's SECOND review found a
+  genuinely NEW bug (duplicate player names bypass the round-key validator — not a repeat
+  of round-1 findings), proving the loop iterates rather than just resubmitting. Architect
+  visit 3 timed out twice (resumed both times, no work lost) then finished — and the
+  `architect->critique` edge, already at its declared maxTraversals:2, refused the third
+  hop and ESCALATED. FIRST LIVE PROOF of: `escalated` status, an `edge:*` bound tripping,
+  and the corrected `next_action` message (points at the node + reason + retry command,
+  not stale). Not a bad outcome — critique found real bugs both rounds and architect fixed
+  most of them; the bound existed for the case a human should look, which is exactly what
+  happened. Owner directive after reviewing: give `architect` a first-pass OPUS model
+  (deliberate, NAMED exception to "opus is escalation-only, never first-pass" — the
+  standing rule stays enforced by test for every OTHER kind). Shipped: POLICY + roster
+  model 'sonnet' -> 'opus' for architect; `FIRST_PASS_OPUS_KINDS = {'architect'}` exported
+  from policy.js as the visible exception list; the old blanket "opus never first-pass"
+  test replaced with set-equality both ways (POLICY's opus kinds === the declared set) +
+  a second test that the set's members actually resolve to opus — so a future kind
+  cannot slip onto opus by editing only POLICY, and the set cannot go stale/unused.
+  Regenerated plugin agents. 789 -> 790 tests. Tallyboard run itself is paused at the
+  escalation, unretried — owner has not yet said whether to retry/reset-loops/take it
+  manually from the design doc on disk.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.
