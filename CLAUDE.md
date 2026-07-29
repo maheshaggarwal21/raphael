@@ -987,6 +987,10 @@ compaction (manual or automatic) can never lose progress.
   symptom. 789 tests.
   PHASE 23 = 9 of 10 milestones shipped; 23.9 is the only partial, and it is partial for a
   usage-limit reason, not a correctness one.
+- v0.6.0 PUBLISHED (owner ran `npm publish`) — the graph layer release. Registry verified:
+  `npm view raphael-brain version` = 0.6.0, dist-tag latest = 0.6.0. End-user path
+  live-verified from the PUBLIC registry into a clean prefix (npm install -g --prefix,
+  not the dev tree): `raph version` reports 0.6.0. CHANGELOG.md dated 2026-07-28.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.
