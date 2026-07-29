@@ -1063,6 +1063,27 @@ compaction (manual or automatic) can never lose progress.
   added to an existing test, not new test() blocks). Tallyboard run itself is STILL BLOCKED
   on the owner re-authenticating `claude` — not a Raphael defect, nothing more to fix here
   until that happens.
+- REAL LIVE RUN: re-auth worked, tallyboard resumed. `plan` finished clean. `architect`
+  visit 1 hit a TRANSIENT DNS blip (ENOTFOUND, honest message thanks to the fix above),
+  network was verified healthy seconds later, retried clean. `critique` caught something
+  worth recording precisely: architect's own response OPENED by claiming
+  "ARCHITECTURE.md is complete on disk (447 lines...)" while the file was 44 lines.
+  ROOT-CAUSED with hard evidence (read the real Claude Code transcript .jsonl for that
+  session): architect genuinely wrote a full, well-structured 447-line file itself via a
+  SERIES of `cat >>` Bash calls (still has Bash), even VERIFIED its own work with
+  `grep -n "^## "` before reporting on it — then returned a condensed 44-line summary as
+  its chat response, and persistArtifact() OVERWROTE the verified richer file with that
+  summary. A real regression from this session's OWN artifact fix, caught by critique
+  doing exactly its job. FIXED: persistArtifact() now takes `sinceMs` (the visit's
+  startedAt); if the target already exists and was modified AT OR AFTER the visit began,
+  the agent wrote it itself this visit and the driver leaves it alone — the driver only
+  fills the gap (missing, or stale from an EARLIER visit), which is the original bug.
+  5 new tests incl. an end-to-end drive() case proving visit 2 still supersedes visit 1
+  correctly. 2 gates proven RED-WITHOUT. 799 -> 803 tests. CAVEAT RECORDED: the
+  currently-running background `drive` process loaded the pre-fix driver.js into memory
+  before the patch landed — Node does not hot-reload, so THIS run's remaining nodes may
+  still clobber an artifact once more; will hand-verify/correct after architect visit 2
+  finishes. Every run started fresh from here on gets the fix automatically.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.

@@ -28,7 +28,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { resolvePolicy, routeEffortWithLessons, VERIFIED_KINDS, CODE_BEARING_KINDS } from './policy.js';
 import { loadIndex } from './compile.js';
@@ -670,7 +670,16 @@ export async function drive(project, {
         // `file_exists` / `file_matches` check can actually see the deliverable
         // this node just produced. The driver writes it, not the agent — see
         // the `artifact` note in graph.js for why.
-        persistArtifact(node, output, ws, log);
+        //
+        // `sinceMs` matters: architect still HAS Bash, and observed live
+        // 2026-07-29 it used it to write a genuinely fuller ARCHITECTURE.md
+        // (verified its own work with grep before reporting on it), then
+        // returned a condensed summary as its final response — which this
+        // function then overwrote the verified file with, destroying real work.
+        // The fix respects anything the agent wrote ITSELF during this visit;
+        // the driver only fills the gap when nothing (or something stale from
+        // an EARLIER visit) is there — the original bug this exists to fix.
+        persistArtifact(node, output, ws, log, { sinceMs: Date.parse(action.visit?.startedAt ?? '') });
         const checked = evaluateCheck(node.check, {
           output,
           exists: (rel) => ws ? existsSync(path.join(ws, rel)) : false,
@@ -832,7 +841,16 @@ export function effectiveVerify(node) {
 // deliverable still travels to the next node in the response text either way,
 // and a node that genuinely REQUIRES the file can declare `check: {file_exists}`,
 // which then fails honestly on its own terms.
-export function persistArtifact(node, output, workspace, log = () => {}) {
+// `sinceMs` (optional): the visit's start time, epoch ms. If the target already
+// exists AND was modified at or after this visit started, the agent wrote it
+// ITSELF this visit (architect still has Bash) and that content is trusted —
+// the driver does not overwrite it. Observed live 2026-07-29: architect wrote a
+// genuinely fuller, self-verified ARCHITECTURE.md via `cat >>` across several
+// Bash calls, then returned a condensed summary as its final response; without
+// this check that summary silently clobbered the richer, already-checked file.
+// The driver still fills the gap — a missing artifact, or one stale from an
+// EARLIER visit — which is the original bug this function exists to fix.
+export function persistArtifact(node, output, workspace, log = () => {}, { sinceMs = NaN } = {}) {
   if (!node?.artifact || !workspace || typeof output !== 'string') return null;
   try {
     const target = path.join(workspace, node.artifact);
@@ -843,6 +861,13 @@ export function persistArtifact(node, output, workspace, log = () => {}) {
     if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(resolvedRoot + path.sep)) {
       log(`  artifact refused: "${node.artifact}" resolves outside the workspace`);
       return null;
+    }
+    if (Number.isFinite(sinceMs) && existsSync(resolvedTarget)) {
+      const mtimeMs = statSync(resolvedTarget).mtimeMs;
+      if (mtimeMs >= sinceMs) {
+        log(`  artifact ${node.artifact} already written this visit — leaving the agent's own version in place`);
+        return resolvedTarget;
+      }
     }
     // atomicWrite already creates the parent directory, so `reviews/critique.md`
     // needs no mkdir here. (A redundant mkdirSync was removed after the

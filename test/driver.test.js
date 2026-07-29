@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -1128,8 +1128,127 @@ test('persistArtifact creates nested directories and OVERWRITES a stale file', (
     assert.equal(readFileSync(path.join(dir, 'reviews', 'critique.md'), 'utf8'), 'ROUND 1\n');
 
     // A second visit supersedes the first — a stale artifact IS the bug.
+    // No sinceMs is passed here, which is itself a case: the check is skipped
+    // entirely and it always overwrites (the pre-sinceMs behavior).
     persistArtifact({ id: 'critique', artifact: 'reviews/critique.md' }, 'ROUND 2', dir);
     assert.equal(readFileSync(path.join(dir, 'reviews', 'critique.md'), 'utf8'), 'ROUND 2\n');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// Observed live 2026-07-29: architect still has Bash, wrote a genuinely fuller
+// ARCHITECTURE.md itself across several `cat >>` calls, verified it with its
+// own grep, then returned a condensed summary as its final response — which
+// persistArtifact then used to overwrite the richer, already-checked file.
+test('persistArtifact respects content the agent wrote itself THIS VISIT', () => {
+  const dir = sandbox();
+  try {
+    const node = { id: 'architect', artifact: 'ARCHITECTURE.md' };
+    const visitStart = Date.now();
+    // the agent writes a full document itself (as if via Bash), AFTER the visit started
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), 'FULL 447-LINE DOC, SELF-VERIFIED\n');
+
+    persistArtifact(node, 'condensed summary only', dir, () => {}, { sinceMs: visitStart });
+
+    assert.equal(
+      readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8'),
+      'FULL 447-LINE DOC, SELF-VERIFIED\n',
+      'the agent\'s own richer, already-written content must survive'
+    );
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persistArtifact STILL overwrites a file stale from an EARLIER visit — the original bug', () => {
+  const dir = sandbox();
+  try {
+    const node = { id: 'architect', artifact: 'ARCHITECTURE.md' };
+    // visit 1 wrote this and it predates visit 2 entirely
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), 'STALE v1 DESIGN\n');
+    const visit2Start = Date.now() + 5000; // visit 2 starts safely after the existing mtime
+
+    persistArtifact(node, 'CORRECTED v2 DESIGN', dir, () => {}, { sinceMs: visit2Start });
+
+    assert.equal(
+      readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8'),
+      'CORRECTED v2 DESIGN\n',
+      'a file from a PRIOR visit must still be superseded — this is the bug 23.4 originally fixed'
+    );
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persistArtifact edge: sinceMs against a NON-EXISTENT file just writes it', () => {
+  const dir = sandbox();
+  try {
+    persistArtifact({ id: 'plan', artifact: 'SPEC.md' }, 'THE SPEC', dir, () => {}, { sinceMs: Date.now() });
+    assert.equal(readFileSync(path.join(dir, 'SPEC.md'), 'utf8'), 'THE SPEC\n');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a SECOND visit still supersedes a stale artifact end to end, sinceMs wired through drive()', async () => {
+  // The regression case, through the real loop: architect writes its own file
+  // mid-visit-1, that file must survive visit 1's own persist call, and then a
+  // GENUINELY later visit (visit 2, sent back by critique) must still be able
+  // to supersede it.
+  const dir = sandbox();
+  try {
+    startProject('art2', { title: 'Art2', workspace: dir });
+    const st = readState('art2');
+    initDriver(st, {
+      brief: 'Design it.',
+      graph: {
+        entry: 'architect',
+        nodes: [
+          { id: 'architect', kind: 'architect', artifact: 'ARCHITECTURE.md', check: { requires_section: '## DECISIONS' } },
+          { id: 'critique', kind: 'critique', emit: 'verdict', check: { requires_section: '## DECISIONS' } }
+        ],
+        edges: [
+          { from: 'architect', to: 'critique', when: 'always', maxTraversals: 4 },
+          { from: 'critique', to: '@done', when: 'pass' },
+          { from: 'critique', to: 'architect', when: 'changes', maxTraversals: 4 }
+        ]
+      }
+    });
+    writeState('art2', st);
+
+    let n = 0;
+    const realRunner = async (opts) => {
+      n += 1;
+      let r;
+      if (n === 1) {
+        // simulate the agent writing its OWN file via Bash mid-visit, then
+        // returning only a summary as its final response
+        writeFileSync(path.join(dir, 'ARCHITECTURE.md'), 'AGENT-WRITTEN FULL DOC (visit 1)\n');
+        r = { ok: true, output: 'condensed summary\n\n## DECISIONS\n- none', tokens: 1, decisions: [] };
+      } else if (n === 2) {
+        r = { ok: true, output: 'REVIEW\n\n## DECISIONS\n- none\n\n## VERDICT\nCHANGES REQUESTED', verdict: 'CHANGES REQUESTED', tokens: 1, decisions: [] };
+      } else if (n === 3) {
+        // visit 2 does NOT touch the file itself this time — relies on the driver
+        r = { ok: true, output: 'DRIVER-PERSISTED v2 DESIGN\n\n## DECISIONS\n- none', tokens: 1, decisions: [] };
+      } else {
+        r = { ok: true, output: 'REVIEW\n\n## DECISIONS\n- none\n\n## VERDICT\nAPPROVED', verdict: 'APPROVED', tokens: 1, decisions: [] };
+      }
+      if (r.ok && opts.gate) opts.gate(r.output);
+      return r;
+    };
+
+    await drive('art2', { runner: realRunner, log: () => {}, workspace: dir });
+
+    const onDisk = readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8');
+    // visit 1's own agent-written file must have survived visit 1's persist call...
+    // ...but visit 2's driver-persisted version must have superseded it afterward.
+    assert.match(onDisk, /DRIVER-PERSISTED v2 DESIGN/, 'visit 2 must supersede visit 1, agent-written or not');
+    assert.equal(/AGENT-WRITTEN FULL DOC/.test(onDisk), false);
   } finally {
     delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });
