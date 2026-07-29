@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -17,6 +17,7 @@ import {
   renderPlan,
   lessonsBlock,
   renderRecovery,
+  persistArtifact,
   CODE_BEARING_KINDS,
   VERIFIED_KINDS,
   runVerify,
@@ -1048,6 +1049,122 @@ test('an escalated run updates NEXT, instead of pointing at the node it gave up 
     assert.match(final.current.next_action, /raph academy retry esc/);
     assert.equal(/^run node:/.test(final.current.next_action), false, 'it must not still be telling a human to run the node');
     assert.match(final.log.at(-1).note, /ESCALATED/);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- artifacts: the pipeline owns the deliverable file ----------------------
+// Observed live 2026-07-29: `architect` created ARCHITECTURE.md on visit 1 via
+// shell redirection, then on visit 2 needed to EDIT it, reached for the Edit
+// tool its roster does not grant, and gave up — leaving a STALE v1 design on
+// disk while the corrected one existed only in the response text. `planner` is
+// worse: no Bash and no Write at all, so it could never write a file.
+//
+// Granting those agents Write would re-open what 23.2 closed (a reviewer that
+// can edit what it reviews), so the DRIVER writes the artifact instead.
+
+test('persistArtifact writes a declared artifact, and skips a node without one', () => {
+  const dir = sandbox();
+  try {
+    const wrote = persistArtifact({ id: 'architect', artifact: 'ARCHITECTURE.md' }, 'THE DESIGN', dir);
+    assert.ok(wrote);
+    assert.equal(readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8'), 'THE DESIGN\n');
+
+    // no artifact declared = nothing written, and no error
+    assert.equal(persistArtifact({ id: 'x' }, 'text', dir), null);
+    // no workspace, or a non-string deliverable, are both no-ops rather than throws
+    assert.equal(persistArtifact({ id: 'x', artifact: 'a.md' }, 'text', null), null);
+    assert.equal(persistArtifact({ id: 'x', artifact: 'a.md' }, null, dir), null);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persistArtifact creates nested directories and OVERWRITES a stale file', () => {
+  const dir = sandbox();
+  try {
+    persistArtifact({ id: 'critique', artifact: 'reviews/critique.md' }, 'ROUND 1', dir);
+    assert.equal(readFileSync(path.join(dir, 'reviews', 'critique.md'), 'utf8'), 'ROUND 1\n');
+
+    // A second visit supersedes the first — a stale artifact IS the bug.
+    persistArtifact({ id: 'critique', artifact: 'reviews/critique.md' }, 'ROUND 2', dir);
+    assert.equal(readFileSync(path.join(dir, 'reviews', 'critique.md'), 'utf8'), 'ROUND 2\n');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persistArtifact refuses a path that escapes the workspace, and never throws', () => {
+  // The workspace is a SUBDIRECTORY of an outer temp dir the test owns, so the
+  // escape target lands somewhere this test can assert on and clean up. An
+  // earlier version pointed the escape at the shared system temp root — when
+  // the guard was disabled to prove this test could fail, it really did write
+  // there, and the stray file then broke the test on every later run.
+  const outer = mkdtempSync(path.join(os.tmpdir(), 'raph-escape-'));
+  const dir = path.join(outer, 'workspace');
+  mkdirSync(dir, { recursive: true });
+  try {
+    const logs = [];
+    // validateGraph already rejects these at build time; this is defence in depth
+    // for a hand-edited state.json carrying a locked graph.
+    assert.equal(persistArtifact({ id: 'x', artifact: '../escaped.md' }, 'data', dir, (m) => logs.push(m)), null);
+    assert.equal(existsSync(path.join(outer, 'escaped.md')), false, 'nothing may be written outside the workspace');
+    assert.ok(logs.some((l) => /outside the workspace/.test(l)), 'and it says so rather than failing silently');
+  } finally {
+    rmSync(outer, { recursive: true, force: true });
+  }
+});
+
+test('a SECOND visit rewrites its artifact end to end — the live failure, reproduced', async () => {
+  // Asserted through drive(), not the pure helper: the wiring is what was
+  // missing in the real run, and a helper-only test would pass with it deleted.
+  const dir = sandbox();
+  try {
+    startProject('art', { title: 'Art', workspace: dir });
+    const st = readState('art');
+    // build -> review loop, where the builder declares an artifact
+    initDriver(st, {
+      brief: 'Design it.',
+      graph: {
+        entry: 'architect',
+        nodes: [
+          { id: 'architect', kind: 'architect', artifact: 'ARCHITECTURE.md', check: { requires_section: '## DECISIONS' } },
+          { id: 'critique', kind: 'critique', emit: 'verdict', artifact: 'reviews/critique.md', check: { requires_section: '## DECISIONS' } }
+        ],
+        edges: [
+          { from: 'architect', to: 'critique', when: 'always', maxTraversals: 4 },
+          { from: 'critique', to: '@done', when: 'pass' },
+          { from: 'critique', to: 'architect', when: 'changes', maxTraversals: 4 }
+        ]
+      }
+    });
+    writeState('art', st);
+
+    let n = 0;
+    const runner = async ({ gate }) => {
+      n += 1;
+      if (n === 1) return { ok: true, output: 'DESIGN v1\n\n## DECISIONS\n- none', tokens: 1, decisions: [], ...(gate ? {} : {}) };
+      if (n === 2) return { ok: true, output: 'REVIEW\n\n## DECISIONS\n- none\n\n## VERDICT\nCHANGES REQUESTED', verdict: 'CHANGES REQUESTED', tokens: 1, decisions: [] };
+      if (n === 3) return { ok: true, output: 'DESIGN v2 CORRECTED\n\n## DECISIONS\n- none', tokens: 1, decisions: [] };
+      return { ok: true, output: 'REVIEW\n\n## DECISIONS\n- none\n\n## VERDICT\nAPPROVED', verdict: 'APPROVED', tokens: 1, decisions: [] };
+    };
+    // the real gate is built by drive(), which is what persists the artifact
+    const realRunner = async (opts) => {
+      const r = await runner(opts);
+      if (r.ok && opts.gate) opts.gate(r.output);
+      return r;
+    };
+
+    await drive('art', { runner: realRunner, log: () => {}, workspace: dir });
+
+    const onDisk = readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8');
+    assert.match(onDisk, /DESIGN v2 CORRECTED/, 'the second visit must supersede the first on disk');
+    assert.equal(/DESIGN v1/.test(onDisk), false, 'the stale v1 must be gone — that was the observed bug');
+    assert.match(readFileSync(path.join(dir, 'reviews', 'critique.md'), 'utf8'), /REVIEW/, 'a read-only reviewer still gets its findings persisted');
   } finally {
     delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });

@@ -678,3 +678,32 @@ test('renderGraph edge: a lifted linear graph renders without any traversal boun
   assert.ok(!text.includes('traversals'), 'a linear graph has no loop to bound');
   assert.match(text, /deploy-prep --always--> @done/);
 });
+
+// ---- artifact paths (2026-07-29) --------------------------------------------
+
+test('an artifact path is validated with the same safety rules as a check path', () => {
+  // The artifact is written by the DRIVER into the workspace, so a path that
+  // escapes it would be a write-anywhere primitive reachable from a shipped
+  // template or an owner --graph-file.
+  const ok = linear();
+  ok.nodes[0].artifact = 'docs/SPEC.md';
+  assert.equal(validateGraph(ok).nodes[0].artifact, 'docs/SPEC.md');
+
+  for (const [bad, fragment] of [
+    ['/etc/passwd', /must be relative to the workspace/],
+    ['C:\\Windows\\evil.md', /must be relative to the workspace/],
+    ['../escaped.md', /must not escape the workspace/],
+    ['docs/../../escaped.md', /must not escape the workspace/],
+    ['', /must be a non-empty string/],
+    [42, /must be a non-empty string/]
+  ]) {
+    const g = linear();
+    g.nodes[0].artifact = bad;
+    rejects(g, fragment);
+  }
+});
+
+test('artifact edge: a node without one is legal, and the field is optional', () => {
+  const g = validateGraph(linear());
+  assert.equal(g.nodes[0].artifact, undefined, 'not every node produces a file');
+});

@@ -354,6 +354,25 @@ export function validateGraph(graph, { brief = '', name = null, scanBoundary = t
       throw bad(`${where}: a graph cannot switch off the owner's verifier (kind "${kind}" is always verified)`);
     }
 
+    // ARTIFACT — where this node's deliverable is PERSISTED, written by the
+    // driver rather than by the agent.
+    //
+    // Observed live 2026-07-29: `architect` created ARCHITECTURE.md on visit 1
+    // via shell redirection, then on visit 2 needed to EDIT it, reached for the
+    // Edit tool it does not have, and gave up — leaving a stale v1 file on disk
+    // while the corrected design existed only in the response text. The same
+    // hole is worse for `planner`, which has neither Bash nor Write and so can
+    // never produce a file at all.
+    //
+    // Fixing it by granting Write to those agents would re-open exactly what
+    // 23.2 closed: a reviewer that can edit the thing it reviews. So the
+    // PIPELINE owns the artifact. It needs no tool grant, works for every agent
+    // regardless of its tools, cannot go stale (each visit overwrites), and
+    // makes a `file_exists` check meaningful instead of a hope.
+    if (node.artifact !== undefined) {
+      assertWorkspacePath(node.artifact, `${where}: artifact`);
+    }
+
     const inputs = node.inputs ?? [];
     if (!Array.isArray(inputs)) throw bad(`${where}: inputs must be an array of node ids`);
     for (const src of inputs) {
@@ -371,6 +390,7 @@ export function validateGraph(graph, { brief = '', name = null, scanBoundary = t
       // Cloned, not referenced: the returned graph is deep-frozen, and freezing
       // a sub-object of the caller's input would be a mutation of it.
       check: JSON.parse(JSON.stringify(node.check)),
+      ...(node.artifact !== undefined ? { artifact: node.artifact } : {}),
       escalatable: canEscalate(kind),
       effectiveVerify: VERIFIED_KINDS.has(kind) || node.verify === true
     };

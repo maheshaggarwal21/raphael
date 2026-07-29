@@ -23,13 +23,13 @@ const linear = {
   name: 'linear',
   entry: 'plan',
   nodes: [
-    { id: 'plan', kind: 'plan', title: 'Finalise the spec', check: { ...DECISIONS } },
-    { id: 'architect', kind: 'architect', title: 'Design the system', inputs: ['plan'], check: { ...DECISIONS } },
+    { id: 'plan', kind: 'plan', title: 'Finalise the spec', artifact: 'SPEC.md', check: { ...DECISIONS } },
+    { id: 'architect', kind: 'architect', title: 'Design the system', inputs: ['plan'], artifact: 'ARCHITECTURE.md', check: { ...DECISIONS } },
     { id: 'develop', kind: 'develop', title: 'Build it', inputs: ['architect'], check: { ...DECISIONS } },
     { id: 'test', kind: 'test', title: 'Make the suite real and green', inputs: ['develop'], check: { ...DECISIONS } },
-    { id: 'review', kind: 'review', title: 'Review the diff', inputs: ['test'], check: { ...DECISIONS } },
-    { id: 'security', kind: 'security', title: 'Security audit', inputs: ['review'], check: { ...DECISIONS } },
-    { id: 'deploy-prep', kind: 'deploy-prep', title: 'Pre-ship checklist', inputs: ['security'], check: { ...DECISIONS } }
+    { id: 'review', kind: 'review', title: 'Review the diff', inputs: ['test'], artifact: 'reviews/code-review.md', check: { ...DECISIONS } },
+    { id: 'security', kind: 'security', title: 'Security audit', inputs: ['review'], artifact: 'reviews/security-audit.md', check: { ...DECISIONS } },
+    { id: 'deploy-prep', kind: 'deploy-prep', title: 'Pre-ship checklist', inputs: ['security'], artifact: 'DEPLOY-CHECKLIST.md', check: { ...DECISIONS } }
   ],
   edges: [
     { from: 'plan', to: 'architect', when: 'always' },
@@ -59,12 +59,12 @@ const fix = {
       criteria: 'The regression test must FAIL without the fix and PASS with it. A test that passes either way proves nothing.',
       check: { ...DECISIONS }
     },
-    { id: 'review', kind: 'review', title: 'Review the fix', inputs: ['test'], check: { ...DECISIONS } }
+    { id: 'review', kind: 'review', title: 'Review the fix', inputs: ['test'], artifact: 'reviews/code-review.md', check: { ...DECISIONS } }
   ],
   edges: [
-    { from: 'debug', to: 'test', when: 'always', maxTraversals: 3 },
+    { from: 'debug', to: 'test', when: 'always', maxTraversals: 4 },
     { from: 'test', to: 'review', when: 'pass' },
-    { from: 'test', to: 'debug', when: 'changes', maxTraversals: 3 },
+    { from: 'test', to: 'debug', when: 'changes', maxTraversals: 4 },
     { from: 'review', to: TERMINAL_DONE, when: 'always' }
   ]
 };
@@ -84,8 +84,8 @@ const fullBuild = {
   name: 'full-build',
   entry: 'plan',
   nodes: [
-    { id: 'plan', kind: 'plan', title: 'Finalise the spec', check: { ...DECISIONS } },
-    { id: 'architect', kind: 'architect', title: 'Design the system', inputs: ['plan'], check: { ...DECISIONS } },
+    { id: 'plan', kind: 'plan', title: 'Finalise the spec', artifact: 'SPEC.md', check: { ...DECISIONS } },
+    { id: 'architect', kind: 'architect', title: 'Design the system', inputs: ['plan'], artifact: 'ARCHITECTURE.md', check: { ...DECISIONS } },
     {
       id: 'critique',
       kind: 'critique',
@@ -93,6 +93,7 @@ const fullBuild = {
       inputs: ['architect'],
       emit: 'verdict',
       criteria: 'Attack the design, do not admire it. Name what breaks, and quote the line you are objecting to.',
+      artifact: 'reviews/critique.md',
       check: { ...DECISIONS }
     },
     { id: 'frontend', kind: 'frontend', title: 'Build the UI', inputs: ['plan', 'architect'], check: { ...DECISIONS } },
@@ -103,11 +104,12 @@ const fullBuild = {
       inputs: ['frontend'],
       emit: 'verdict',
       criteria: 'Check the mechanical floor first (contrast, visible focus, reduced motion, tokens not raw hex), then taste. Record the palette and type decisions so the next visit inherits them.',
+      artifact: 'reviews/design-review.md',
       check: { ...DECISIONS }
     },
     { id: 'developer', kind: 'develop', title: 'Build the rest', inputs: ['architect', 'frontend'], check: { ...DECISIONS } },
     { id: 'test', kind: 'test', title: 'Make the suite real and green', inputs: ['developer'], check: { ...DECISIONS } },
-    { id: 'review', kind: 'review', title: 'Review the diff', inputs: ['test'], emit: 'verdict', check: { ...DECISIONS } },
+    { id: 'review', kind: 'review', title: 'Review the diff', inputs: ['test'], emit: 'verdict', artifact: 'reviews/code-review.md', check: { ...DECISIONS } },
     { id: 'debug', kind: 'debug', title: 'Fix what the review found', inputs: ['review'], check: { ...DECISIONS } },
     {
       id: 'security',
@@ -116,26 +118,27 @@ const fullBuild = {
       inputs: ['review'],
       emit: 'verdict',
       criteria: 'Findings are advisory to a human. Report them; never apply a security change yourself.',
+      artifact: 'reviews/security-audit.md',
       check: { ...DECISIONS }
     },
-    { id: 'deploy-prep', kind: 'deploy-prep', title: 'Pre-ship checklist', inputs: ['security'], check: { ...DECISIONS } }
+    { id: 'deploy-prep', kind: 'deploy-prep', title: 'Pre-ship checklist', inputs: ['security'], artifact: 'DEPLOY-CHECKLIST.md', check: { ...DECISIONS } }
   ],
   edges: [
     { from: 'plan', to: 'architect', when: 'always' },
     // architect <-> critique
-    { from: 'architect', to: 'critique', when: 'always', maxTraversals: 2 },
+    { from: 'architect', to: 'critique', when: 'always', maxTraversals: 5 },
     { from: 'critique', to: 'frontend', when: 'pass' },
-    { from: 'critique', to: 'architect', when: 'changes', maxTraversals: 2 },
+    { from: 'critique', to: 'architect', when: 'changes', maxTraversals: 5 },
     // frontend <-> design-review — the loop this phase exists for
-    { from: 'frontend', to: 'design-review', when: 'always', maxTraversals: 3 },
+    { from: 'frontend', to: 'design-review', when: 'always', maxTraversals: 4 },
     { from: 'design-review', to: 'developer', when: 'pass' },
-    { from: 'design-review', to: 'frontend', when: 'changes', maxTraversals: 3 },
+    { from: 'design-review', to: 'frontend', when: 'changes', maxTraversals: 4 },
     { from: 'developer', to: 'test', when: 'always' },
     // test -> review -> debug -> test
-    { from: 'test', to: 'review', when: 'always', maxTraversals: 3 },
+    { from: 'test', to: 'review', when: 'always', maxTraversals: 4 },
     { from: 'review', to: 'security', when: 'pass' },
-    { from: 'review', to: 'debug', when: 'changes', maxTraversals: 3 },
-    { from: 'debug', to: 'test', when: 'always', maxTraversals: 3 },
+    { from: 'review', to: 'debug', when: 'changes', maxTraversals: 4 },
+    { from: 'debug', to: 'test', when: 'always', maxTraversals: 4 },
     // security is advisory: it never routes into an auto-fix
     { from: 'security', to: 'deploy-prep', when: 'pass' },
     { from: 'security', to: TERMINAL_OWNER, when: 'changes', reason: 'security findings are advisory to a human, never auto-applied' },

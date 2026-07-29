@@ -259,3 +259,54 @@ test('edge: an unreadable --graph-file is reported, not swallowed', async () => 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---- loop bounds and artifacts (2026-07-29, from two live escalations) -------
+
+test('every shipped loop bound is at least 4, and the architect loop is 5', () => {
+  // Both live full-build runs — sonnet AND opus — escalated on the
+  // architect<->critique bound at 2, and in both cases critique was still
+  // finding real defects (a leader() logic bug on the second opus round), not
+  // nitpicking. Two rounds was simply too tight for a genuinely iterative
+  // design review, so the floor moved.
+  const MIN = 4;
+  for (const name of graphNames()) {
+    const g = validateGraph(getGraphTemplate(name), { name });
+    for (const e of g.edges) {
+      if (e.maxTraversals === undefined) continue;
+      assert.ok(e.maxTraversals >= MIN, `${name}: ${e.from}->${e.to} is bounded at ${e.maxTraversals}, below the floor of ${MIN}`);
+    }
+  }
+  const fb = validateGraph(getGraphTemplate('full-build'));
+  for (const pair of [['architect', 'critique'], ['critique', 'architect']]) {
+    const edge = fb.edges.find((e) => e.from === pair[0] && e.to === pair[1]);
+    assert.equal(edge.maxTraversals, 5, `${pair[0]}->${pair[1]} should carry the widened design-loop bound`);
+  }
+});
+
+test('every node whose agent cannot write declares an artifact path', () => {
+  // THE fix for the observed failure: `architect` created ARCHITECTURE.md on
+  // visit 1 by shell redirection, then on visit 2 needed to EDIT it, reached
+  // for a tool it does not have, and gave up — leaving a stale v1 design on
+  // disk while the corrected one lived only in the response text. `planner` is
+  // worse off still: no Bash and no Write, so it can never write a file at all.
+  const CANNOT_EDIT = new Set(['plan', 'architect', 'deploy-prep', 'critique', 'design', 'review', 'security']);
+  // EVERY shipped graph, not just full-build — `linear` has the same plan and
+  // architect nodes and the same problem.
+  for (const name of graphNames()) {
+    const g = validateGraph(getGraphTemplate(name), { name });
+    for (const node of g.nodes) {
+      if (!CANNOT_EDIT.has(node.kind)) continue;
+      assert.ok(node.artifact, `${name}:${node.id} (${node.kind}) produces a document but declares no artifact path`);
+      assert.equal(path.isAbsolute(node.artifact), false, `${name}:${node.id}: artifact must be workspace-relative`);
+      assert.equal(node.artifact.includes('..'), false, `${name}:${node.id}: artifact must not escape the workspace`);
+    }
+  }
+});
+
+test('the artifact paths are distinct, so one node cannot clobber another', () => {
+  for (const name of graphNames()) {
+    const g = validateGraph(getGraphTemplate(name), { name });
+    const arts = g.nodes.map((n) => n.artifact).filter(Boolean);
+    assert.equal(new Set(arts).size, arts.length, `${name} has two nodes writing the same artifact path`);
+  }
+});

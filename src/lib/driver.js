@@ -48,6 +48,7 @@ import { makeStageRunner, buildStageArgs } from './stage-runner.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
 import { scanProject, buildAtlas, renderDigest } from './atlas.js';
 import { logEvent } from './events.js';
+import { atomicWrite } from './files.js';
 import { scrubSecrets } from './scrub.js';
 import { p } from './paths.js';
 
@@ -665,6 +666,11 @@ export async function drive(project, {
       // checks can be evaluated after the node has run. The runner calls this
       // and holds no opinion about what passing means.
       const gate = (output) => {
+        // Persist the declared artifact BEFORE evaluating the check, so a
+        // `file_exists` / `file_matches` check can actually see the deliverable
+        // this node just produced. The driver writes it, not the agent — see
+        // the `artifact` note in graph.js for why.
+        persistArtifact(node, output, ws, log);
         const checked = evaluateCheck(node.check, {
           output,
           exists: (rel) => ws ? existsSync(path.join(ws, rel)) : false,
@@ -808,6 +814,46 @@ function logGraphEscalation(project, d, nodeId) {
 // never SUBTRACT one — `verify: false` on a VERIFIED_KINDS node is E-GRAPH.
 export function effectiveVerify(node) {
   return node.effectiveVerify === true || VERIFIED_KINDS.has(node.kind);
+}
+
+// Write a node's deliverable to its declared artifact path.
+//
+// THE PIPELINE OWNS THE ARTIFACT. Agents differ wildly in what they can write —
+// `planner` has no shell and no Write tool at all, `architect` and `deployer`
+// have Bash (so they can CREATE a file by redirection) but no Edit (so a second
+// visit revising its own document is blocked), and reviewers must not write
+// anything. Leaving it to the agent produced exactly that failure live: a stale
+// v1 design on disk while the corrected one existed only in the response text.
+//
+// Overwrites on every visit ON PURPOSE — a later visit supersedes an earlier
+// one, and a stale artifact is the bug being fixed.
+//
+// Fails OPEN: a run must not die because a document could not be saved. The
+// deliverable still travels to the next node in the response text either way,
+// and a node that genuinely REQUIRES the file can declare `check: {file_exists}`,
+// which then fails honestly on its own terms.
+export function persistArtifact(node, output, workspace, log = () => {}) {
+  if (!node?.artifact || !workspace || typeof output !== 'string') return null;
+  try {
+    const target = path.join(workspace, node.artifact);
+    // Defence in depth: the path was validated at graph-build time, but a
+    // resolved path escaping the workspace must never be written regardless.
+    const resolvedRoot = path.resolve(workspace);
+    const resolvedTarget = path.resolve(target);
+    if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(resolvedRoot + path.sep)) {
+      log(`  artifact refused: "${node.artifact}" resolves outside the workspace`);
+      return null;
+    }
+    // atomicWrite already creates the parent directory, so `reviews/critique.md`
+    // needs no mkdir here. (A redundant mkdirSync was removed after the
+    // anti-vacuity harness showed disabling it changed nothing.)
+    atomicWrite(resolvedTarget, output.endsWith('\n') ? output : `${output}\n`);
+    log(`  wrote ${node.artifact} (${output.length} chars)`);
+    return resolvedTarget;
+  } catch (err) {
+    log(`  artifact write failed for "${node.artifact}": ${err.message}`);
+    return null;
+  }
 }
 
 // ---- rendering ---------------------------------------------------------------

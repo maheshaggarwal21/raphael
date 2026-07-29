@@ -1010,9 +1010,38 @@ compaction (manual or automatic) can never lose progress.
   test replaced with set-equality both ways (POLICY's opus kinds === the declared set) +
   a second test that the set's members actually resolve to opus — so a future kind
   cannot slip onto opus by editing only POLICY, and the set cannot go stale/unused.
-  Regenerated plugin agents. 789 -> 790 tests. Tallyboard run itself is paused at the
-  escalation, unretried — owner has not yet said whether to retry/reset-loops/take it
-  manually from the design doc on disk.
+  Regenerated plugin agents. 789 -> 790 tests.
+- RESET RUN + ARTIFACT FIX (session 18, 2026-07-29, owner directives). Reset the tallyboard
+  workspace + checkpoint and reran full-build from `plan` with architect on opus. Result:
+  architect had ZERO timeouts across all 3 visits (sonnet had 2 on visit 3 alone), but the
+  run STILL escalated on the same `architect->critique` bound at 2 — and critique was still
+  finding real defects on round 2 (a `leader()` logic bug where a single player at 0 points
+  would wrongly return null). So the bound, not the model, was the limiting factor.
+  Owner directives, both shipped:
+  (1) LOOP BOUNDS RAISED: architect<->critique -> 5 (both directions), every other shipped
+  bound -> floor of 4. Test asserts the floor across ALL templates so a future edge cannot
+  ship below it.
+  (2) THE ARTIFACT FIX — root-caused first, not guessed. `architect` has Read/Grep/Glob/Bash
+  but NO Write/Edit: it CREATED ARCHITECTURE.md on visit 1 by shell redirection, then on
+  visit 2 needed to EDIT it, reached for a tool it does not have, and gave up — leaving a
+  STALE v1 design on disk while the corrected one lived only in the response text. Same class,
+  worse, for `planner` (no Bash AND no Write — could never write a file at all), and for
+  `deployer`/`reviewer`/`security`/`critique`/`design`. Fixing it by granting Write would
+  re-open exactly what 23.2 closed (a reviewer that can edit what it reviews), so THE PIPELINE
+  OWNS THE ARTIFACT: an optional `artifact` node field, written by the DRIVER via
+  persistArtifact() (atomic, overwrites each visit so it cannot go stale, path-validated at
+  graph-build time AND re-checked at write time, fails OPEN so a run never dies over a doc).
+  Ordered BEFORE the check evaluation so a `file_exists` check can see it. Shipped graphs now
+  emit SPEC.md / ARCHITECTURE.md / DEPLOY-CHECKLIST.md / reviews/*.md — which also fixes the
+  real pain point from the escalation: review findings previously existed ONLY inside
+  state.json and had to be dug out with node scripts.
+  7 gates proven RED-WITHOUT. The harness caught 3 vacuous tests + 2 real gaps of mine: a
+  redundant mkdirSync (atomicWrite already creates dirs — deleted rather than left as dead
+  code), a test that only checked full-build and so missed `linear`'s review/security nodes,
+  and — worst — a test whose escape-path assertion wrote a stray file into the SHARED system
+  temp root when the guard was disabled, then failed on every later run. Now nested in a
+  temp dir it owns. 790 -> 799 tests. Live-verified end to end: a real linear run wrote all
+  5 artifacts incl. nested reviews/ paths.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.
