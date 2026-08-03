@@ -1,10 +1,10 @@
-// Self-update (owner decision 2026-07-18): keep the npm-installed CLI current
-// without the user ever running an npm command. Invariant #5(d): the ONLY
-// network here is a bounded https GET of the npm registry's version document
-// for THIS package, and the upgrade itself is `npm install -g raphael-brain@
-// latest` — the exact command the user ran to install, with npm's own sha512
-// integrity check as the supply-chain gate. Autopilot-gated, daily-throttled,
-// fail-open: a broken check can never break the brain or the session.
+// Self-update: keep the npm-installed CLI current without the user ever
+// running an npm command. Invariant #5(d): the only network call here is a
+// bounded https GET of the npm registry's version document for this package,
+// and the upgrade itself is `npm install -g raphael-brain@latest` — the exact
+// command the user ran to install, with npm's own sha512 integrity check as
+// the supply-chain gate. Autopilot-gated, daily-throttled, fail-open: a
+// broken check can never break the brain or the session.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -62,7 +62,7 @@ export async function checkForUpdate({ fetch = fetchUrl, current = currentVersio
   // to 3 redirects, so without this the version that DECIDES whether to run a
   // global install could come from a redirected host. npm's sha512 integrity
   // check is still the real gate on what gets installed — this closes the
-  // trigger (audit 2026-07-26).
+  // trigger.
   if (info?.name && info.name !== PACKAGE_NAME) {
     return { checked: true, error: `E-UPDATE: registry returned "${info.name}", expected ${PACKAGE_NAME}` };
   }

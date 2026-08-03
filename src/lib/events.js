@@ -6,10 +6,10 @@ import { p } from './paths.js';
 //
 // The WRITE model is deliberate and stays: crash-safe, lock-free, auditable.
 // What was missing was a READ story — no rotation existed anywhere, and 17 call
-// sites (including the session-start injection path) parsed the ENTIRE file
-// every time. At ~700 bytes per injection event that grows without bound, so the
-// cost of a hook fire grew with how much the product had been used (audit
-// 2026-07-26). Rotation + a windowed read fix that without changing the model.
+// sites (including the session-start injection path) parsed the entire file
+// every time. At ~700 bytes per injection event that grows without bound, so
+// the cost of a hook fire grew with how much the product had been used.
+// Rotation plus a windowed read fixes that without changing the model.
 
 export const ROTATE_BYTES = 5 * 1024 * 1024; // rotate past 5MB
 export const KEEP_SEGMENTS = 4;              // ~20MB of history, then the oldest goes

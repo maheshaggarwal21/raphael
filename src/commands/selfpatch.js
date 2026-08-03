@@ -1,4 +1,4 @@
-// `raph selfpatch` — run the self-patch gate (Phase 13b) on the current working
+// `raph selfpatch` — run the self-patch gate on the current working
 // state: the files changed vs the default branch, plus the self-upgrade gate
 // (branch + tests + eval). Reports CLEAR TO PRESENT or BLOCKED and exits non-zero
 // when blocked. It NEVER applies or merges anything (§11.11) — it green-lights a

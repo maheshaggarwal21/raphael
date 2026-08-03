@@ -19,7 +19,7 @@ const RULES = [
   // a hyphenated English phrase never does. Without that requirement this rule
   // flagged ordinary security PROSE ("the Bearer authorization-header must be
   // validated") and E-SECRET then hard-rejected the lesson — in the security
-  // category, which is the flagship pack (audit 2026-07-26).
+  // category, which is the flagship pack.
   ['bearer', /\bBearer\s+(?=[A-Za-z0-9._~+/-]*[0-9._~+/=])[A-Za-z0-9._~+/-]{16,}=*/g],
   // Underscore-aware boundaries: `\b` treats `_` as a word char, so a `\b`-walled
   // keyword would MISS the archetypal env-var leak `DB_PASSWORD=...` /
@@ -31,10 +31,10 @@ const RULES = [
   // Without that, the archetypal compound names escaped entirely — 'secret' in
   // DJANGO_SECRET_KEY= is followed by '_KEY', which failed the separator test, so
   // DJANGO_SECRET_KEY / SECRET_KEY_BASE / AWS_SECRET_ACCESS_KEY were all missed by
-  // the named rule, and the entropy net only catches values with BOTH digits and
-  // letters, so a letters-only passphrase in one of them passed the whole scrubber
-  // (audit 2026-07-26; measured, not assumed). A separator plus an 8+ char value
-  // is still required, so prose like "a secret_key is needed" stays clean.
+  // the named rule, and the entropy net only catches values with both digits
+  // and letters, so a letters-only passphrase in one of them passed the whole
+  // scrubber. A separator plus an 8+ char value is still required, so prose
+  // like "a secret_key is needed" stays clean.
   ['kv-secret', /(?<![a-z0-9<])(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|auth)(?:[_-][a-z0-9]+){0,3}(?![a-z0-9])\s*[:=]\s*(?:'[^'\n]{8,}'|"[^"\n]{8,}"|[^\s'"]{8,})/gi]
 ];
 

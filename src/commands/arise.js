@@ -1,13 +1,13 @@
-// `raph arise` — the one-command first-run (Phase 11 + 17.5). A new user should
+// `raph arise` — the one-command first-run. A new user should
 // not need to know the setup order; this runs it. Two shapes:
 //
 //   raph arise --autopilot [--no-contribute] [--guard]
 //       The zero-touch setup (§2.2's three permissions, answered): global
 //       consent to learn from this machine's projects, the contribution grant
-//       (ON by default — owner decision 2026-07-18; --no-contribute opts out,
-//       `raph contribute off` any time later; bundles only ever STAGE locally,
-//       sending is always the user's click), mode autopilot + dial full. From
-//       here Raphael runs itself (pulse after each session) and speaks weekly.
+//       (ON by default; --no-contribute opts out, `raph contribute off` any
+//       time later; bundles only ever stage locally, sending is always the
+//       user's click), mode autopilot + dial full. From here Raphael runs
+//       itself (pulse after each session) and speaks weekly.
 //
 //   raph arise [--pack] [--guard]
 //       The manual (curator) setup — everything waits for human review.
@@ -34,10 +34,10 @@ export default async function arise(args = []) {
   if (autopilot) {
     // 2. the three permissions, recorded (§2.2)
     setConsentScope('all');                    // permission 1: learn from my work
-    // permission 2: contribution — ON by default at autopilot setup (owner
-    // decision 2026-07-18); --no-contribute opts out; changeable any time with
-    // `raph contribute on|off`. Grant = bundles STAGE locally only; sending is
-    // always the user's own click (invariant #6).
+    // permission 2: contribution — ON by default at autopilot setup;
+    // --no-contribute opts out; changeable any time with `raph contribute
+    // on|off`. Grant = bundles stage locally only; sending is always the
+    // user's own click (invariant #6).
     const contribute = !args.includes('--no-contribute');
     setContribution(contribute);
     setMode('autopilot');                      // permission 3: autopilot
@@ -77,7 +77,7 @@ Prefer to review lessons yourself? raph auto manual`);
     return 0;
   }
 
-  // manual (curator) path — unchanged Phase 11 behavior
+  // manual (curator) path — unchanged behavior
   if (args.includes('--pack')) {
     console.log('');
     const packCode = await pack(['add', 'security']);

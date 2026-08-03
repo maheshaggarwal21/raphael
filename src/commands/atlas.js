@@ -1,5 +1,5 @@
 // `raph atlas` — build and query the deterministic project knowledge graph
-// (Phase 16, docs/atlas-upgrade-plan.md). Zero model tokens in every path.
+// (docs/atlas-upgrade-plan.md). Zero model tokens in every path.
 //
 //   raph atlas [--project <path>] [--refresh] [--json]     build/refresh + summary
 //   raph atlas where "<error|question>" [--json]           where do I look?

@@ -1,4 +1,4 @@
-// Model policy table (Phase 12/14). ONE place that answers "which model, at which
+// Model policy table. One place that answers "which model, at which
 // effort, runs this kind of task" — the autopilot driver, the academy build loop,
 // and any future spawn site consult this instead of hard-coding model names.
 //
@@ -40,13 +40,11 @@ export const POLICY = [
     why: 'compressing text is cheap-model territory' },
   { kind: 'plan',        agent: 'planner',   model: 'sonnet', effort: 'high',
     why: 'a wrong spec is the most expensive bug — spend reasoning here' },
-  // FIRST-PASS OPUS — a deliberate, named exception to "opus is escalation-only"
-  // (owner directive, 2026-07-29, after a live full-build run). A bad system
-  // design is the most expensive mistake in the whole graph: every downstream
-  // node — frontend, developer, test, review — inherits its errors, and the
-  // observed run needed two full architect<->critique rounds (3 architect
-  // visits, 2 timeouts) to converge on a design sonnet initially got 8 things
-  // wrong on. See FIRST_PASS_OPUS_KINDS below — any further exception must be
+  // FIRST-PASS OPUS — a deliberate, named exception to "opus is
+  // escalation-only". A bad system design is the most expensive mistake in
+  // the whole graph: every downstream node — frontend, developer, test,
+  // review — inherits its errors. See FIRST_PASS_OPUS_KINDS below — any
+  // further exception must be
   // added there too, so the list stays a visible, deliberate set rather than
   // opus sprawl by accretion.
   { kind: 'architect',   agent: 'architect', model: 'opus', effort: 'high',
@@ -154,10 +152,10 @@ export function resolvePolicy(kind, { escalated = false, overrides = {} } = {}) 
 // kind maps to an agent, so the two cannot drift and a driver stage can never
 // exceed the tool set its agent was reviewed with.
 //
-// This closes a real hole (verified 2026-07-28): buildStageArgs emitted
-// `--permission-mode acceptEdits` and NO --tools, so `design`, `critique` and
-// `planner` — read-only in the roster — were handed Edit/Write/Bash inside the
-// driver. A design agent that can silently fix the code it is reviewing makes a
+// This closes a real hole: buildStageArgs used to emit `--permission-mode
+// acceptEdits` and no --tools, so `design`, `critique` and `planner` —
+// read-only in the roster — were handed Edit/Write/Bash inside the driver. A
+// design agent that can silently fix the code it is reviewing makes a
 // design-reviews-frontend loop meaningless.
 //
 // An empty list is meaningful, not missing: it maps to `--tools ""` (every

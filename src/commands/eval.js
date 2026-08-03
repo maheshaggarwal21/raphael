@@ -85,7 +85,7 @@ function seedCanary(canary) {
 // What would fire on this prompt. This calls the REAL selector out of inject.js
 // rather than re-implementing it: the old copy pinned its own threshold and pick
 // count, so the recall dial (18.3) changed what users get without changing what
-// the eval measured — an eval of a configuration nobody runs (audit 2026-07-26).
+// the eval measured — an eval of a configuration nobody runs.
 function injectFor(prompt) {
   const { lessons } = loadIndex();
   const ctx = { text: prompt, paths: extractPaths(prompt), stacks: [], project: undefined, injected: new Set() };
@@ -113,10 +113,10 @@ export default async function evalCmd(args) {
   const tIdx = args.indexOf('--trials');
   const mIdx = args.indexOf('--model');
   const scenarioId = sIdx >= 0 ? args[sIdx + 1] : null;
-  // PIN THE MODEL. Passing nothing let the child inherit whatever the CLI
-  // happened to default to — i.e. whatever the user last chose interactively in
-  // an unrelated session. Two problems, one of which bit us on 2026-07-26:
-  //   1. correctness: an ON/OFF comparison is only meaningful at a FIXED model.
+  // Pin the model. Passing nothing lets the child inherit whatever the CLI
+  // defaults to — whatever the user last chose interactively in an unrelated
+  // session. Two problems:
+  //   1. correctness: an ON/OFF comparison is only meaningful at a fixed model.
   //      assertSameModel exists to refuse cross-model comparisons, and an
   //      unpinned default is exactly how one sneaks in.
   //   2. availability: the inherited default was a model the subscription does

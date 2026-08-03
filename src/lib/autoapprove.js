@@ -194,7 +194,7 @@ export function autoApproveStaged(staged, { origin, config = {}, project = null,
     // added to approveRefs (human) and curateStaged (autopilot+full) after a
     // re-worded duplicate reached the active brain, but not here — and this is
     // the path behind the arise-default 'standard' dial, which activates with no
-    // human AND no model review (audit 2026-07-26). Held, never dropped: it stays
+    // human AND no model review. Held, never dropped: it stays
     // a candidate for a person to compare. Corpus grows as we activate, so two
     // duplicates in one run are caught too.
     const dups = nearDuplicates(`${data.title}\n${data.lesson}`, corpus);

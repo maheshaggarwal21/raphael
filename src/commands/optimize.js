@@ -1,4 +1,4 @@
-// `raph optimize` — the optimizer loop's report (Phase 14 meta layer). Aggregates
+// `raph optimize` — the optimizer loop's report. Aggregates
 // the health engines into one actionable pruning + coverage screen. Read-only.
 
 import { buildOptimization, renderOptimization } from '../lib/optimizer.js';

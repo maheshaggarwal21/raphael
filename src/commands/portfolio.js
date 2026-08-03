@@ -1,4 +1,4 @@
-// `raph portfolio` — the company's project table (Phase 14). Thin printer over
+// `raph portfolio` — the company's project table. Thin printer over
 // lib/portfolio.js; the console's Company tab calls the same functions.
 
 import { readPortfolio, renderPortfolio } from '../lib/portfolio.js';

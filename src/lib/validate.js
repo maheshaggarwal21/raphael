@@ -14,8 +14,7 @@ const schemaPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..',
 // LAZY schema compilation. ajv's import + compile is ~120ms, and it used to run
 // at module load — which the hooks pay on EVERY prompt via inject -> compile ->
 // validate, even when the index is fresh and validateLesson is never called. That
-// was ~80% of the hook's module-load cost for zero benefit (audit 2026-07-26,
-// finding 3.9). Compiled once, on first real use; the chokepoint is unchanged.
+// was ~80% of the hook's module-load cost for zero benefit. Compiled once, on first real use; the chokepoint is unchanged.
 let validateSchema = null;
 function schemaValidator() {
   if (validateSchema) return validateSchema;
@@ -83,9 +82,9 @@ export function validateLesson(content) {
   // accident: it depended on js-yaml choosing to emit invisible characters
   // literally on dump. A hand-authored file that writes them as YAML ESCAPES
   // ("a zero​width space") passed every gate while compile.js indexed the
-  // DECODED value and rendered it into agent context — verified, not theorised
-  // (audit 2026-07-26). Scanning the parsed projection too closes the whole
-  // escape-sequence class and stops a core security control from depending on a
+  // decoded value and rendered it into agent context. Scanning the parsed
+  // projection too closes the whole escape-sequence class and stops a core
+  // security control from depending on a
   // third party's serialization choices.
   const scanned = data ? `${content}\n${JSON.stringify(data)}` : content;
 

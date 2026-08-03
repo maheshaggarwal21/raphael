@@ -70,12 +70,12 @@ export default async function doctor() {
   } catch { /* not present or unreadable */ }
   add('claude session transcripts readable', transcriptsOk, `expected at ${transcripts} — mining will have nothing to read`, true);
 
-  // Can Raphael's headless work ACTUALLY run? Having the CLI installed is not
-  // the same as being able to call a model with it: on 2026-07-26 every eval arm
-  // came back HTTP 429 "Usage credits are required for this model", because the
-  // child inherited whatever model the user had last chosen interactively and
-  // the subscription does not cover that one headlessly. `raph doctor` said
-  // "healthy" throughout. One cheap probe turns a baffling failure into a
+  // Can Raphael's headless work actually run? Having the CLI installed is not
+  // the same as being able to call a model with it — a spawned child inherits
+  // whatever model the user last chose interactively, and the subscription
+  // may not cover that one headlessly, returning HTTP 429 with `raph doctor`
+  // reporting "healthy" throughout. One cheap probe turns a baffling failure
+  // into a
   // sentence. Opt out with RAPHAEL_SKIP_MODEL_PROBE=1 (it costs a few tokens).
   if (!probeSkipped()) {
     const probe = probeHeadlessModel();
@@ -87,7 +87,7 @@ export default async function doctor() {
     );
   }
 
-  // --- plugin / injection health (Phase 9) ---
+  // --- plugin / injection health ---
   if (initialized) {
     let injectionOn = true;
     try {
@@ -107,7 +107,7 @@ export default async function doctor() {
   const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
   const pluginDir = path.join(repoRoot, 'plugin');
   if (existsSync(pluginDir)) {
-    add('plugin manifest present', existsSync(path.join(pluginDir, '.claude-plugin', 'plugin.json')), 'Phase 9 packaging: add plugin/.claude-plugin/plugin.json', true);
+    add('plugin manifest present', existsSync(path.join(pluginDir, '.claude-plugin', 'plugin.json')), 'add plugin/.claude-plugin/plugin.json', true);
     add('plugin hooks.json present', existsSync(path.join(pluginDir, 'hooks', 'hooks.json')), 'add plugin/hooks/hooks.json so SessionStart/UserPromptSubmit auto-inject', true);
   }
 

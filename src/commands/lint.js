@@ -1,5 +1,5 @@
 // `raph lint` — read-only freshness + staleness + contradiction pass over the
-// brain's active lessons (Phase 16.6a). Advisory only: it never changes a lesson.
+// brain's active lessons. Advisory only: it never changes a lesson.
 // Staleness is atlas-provable, so it uses the atlas for --project (default cwd)
 // when one is built; otherwise that check is honestly skipped.
 

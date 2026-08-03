@@ -56,7 +56,7 @@ export function getProjectConsent(cfg, projectPath) {
   return undefined;
 }
 
-// ---------- Phase 17: mode + global consent ----------
+// ---------- mode + global consent ----------
 
 export const MODES = ['curator', 'autopilot'];
 

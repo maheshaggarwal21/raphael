@@ -94,8 +94,8 @@ export function readJsonBody(req) {
         // Over the cap: stop BUFFERING but keep draining, then answer at 'end'.
         // Destroying the socket here meant the client got a connection reset
         // instead of the coded message this code carefully constructs — the
-        // documented 'refused with a coded error' contract was unreachable
-        // (audit 2026-07-26). Memory stays bounded because nothing is kept.
+        // documented 'refused with a coded error' contract was unreachable.
+        // Memory stays bounded because nothing is kept.
         tooLarge = true;
         chunks.length = 0;
         return;
@@ -124,7 +124,7 @@ export function readJsonBody(req) {
 
 // Category totals for the dashboard. The AUTO/MACHINE tier count is delegated to
 // autoapprove.countAutoTier so the console and the CLI can never disagree about
-// how many lessons a machine activated (audit 2026-07-26).
+// how many lessons a machine activated.
 function countActiveLessons() {
   let total = 0;
   const byCategory = {};
@@ -208,7 +208,7 @@ export function queueItem(ref) {
   };
 }
 
-// The self-use report, same computation as `raph stats` (Phase 10).
+// The self-use report, same computation as `raph stats`.
 export function statsSummary() {
   const { lessons } = loadIndex();
   return computeStats(readEvents(), lessons);
@@ -350,7 +350,7 @@ export async function runAdopt({ src, dryRun = false, skill = false }) {
   // makes (src/commands/adopt.js). It used to call the plain dial directly, so
   // the same externally-sourced material got strictly WEAKER governance from the
   // console — no reviewer screen, no canary gate, no near-duplicate hold, tier
-  // 'auto' instead of 'machine' (audit 2026-07-26). curateStaged IS the plain
+  // 'auto' instead of 'machine'. curateStaged IS the plain
   // dial below autopilot+full, so nothing is lost below that.
   let autoActivated = 0;
   let curatorLimit = null;
@@ -1051,7 +1051,7 @@ const BASE_HEADERS = {
 // concatenation, and the session token is a JS global — so ONE missed escape
 // would be full token-stealing XSS. `script-src 'unsafe-inline'` meant the CSP
 // could not backstop that at all, while the file's own header called it a
-// "strict CSP" (audit 2026-07-26). A per-response nonce costs four lines and
+// "strict CSP". A per-response nonce costs four lines and
 // makes injected markup inert even if an escape is ever missed: injected script
 // has no nonce, so it does not run. style-src stays inline (a stylesheet cannot
 // exfiltrate a token, and the page is one document).
@@ -1177,8 +1177,8 @@ async function handle(req, res, token) {
       if (typeof body.src !== 'string' || !body.src.trim()) return sendJson(res, 400, { error: 'E-WEB: body.src must be a URL or path' });
       // The only defense against concurrent adopt runs was a `var busy` in the
       // PAGE, so a second tab, a reload mid-run, or a raw curl could start
-      // overlapping runs — double model spend and duplicate ledger entries
-      // (audit 2026-07-26). The lock belongs on the server, where the spending is.
+      // overlapping runs — double model spend and duplicate ledger entries.
+      // The lock belongs on the server, where the spending is.
       if (adoptInFlight) {
         return sendJson(res, 409, { error: 'E-WEB-BUSY: an adopt run is already in progress — wait for it to finish' });
       }

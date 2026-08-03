@@ -1,4 +1,4 @@
-// `raph decide` — record and list durable decisions (Phase 16.8b).
+// `raph decide` — record and list durable decisions.
 //   raph decide "<what was decided>" [--why "<rationale>"] [--supersedes dec_x] [--tag a,b]
 //   raph decide list [--json]
 // Decisions are surfaced at session start so settled calls are not re-litigated.

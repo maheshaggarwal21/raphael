@@ -1,4 +1,4 @@
-// The board report (Phase 14, docs/company-vision.md Part 6 item 3): what the
+// The board report (docs/company-vision.md Part 6 item 3): what the
 // company did in the last N days, in one screen — build activity, brain
 // changes, recall cost, retrieval misses, adoptions, and what needs the owner.
 // Pure computation over data that already exists (academy states, the audit

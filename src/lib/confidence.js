@@ -1,9 +1,8 @@
-// Computed confidence (Phase 16.8a, from the gstack audit — docs/atlas-upgrade-plan.md
-// addendum). A deterministic 0-10 score per lesson, derived from its evidence and
-// decayed by age. gstack lets the model set a 1-10 confidence by hand; Raphael
-// computes it from what it can actually measure, so it can't be gamed and is the
-// same for everyone. Kept SEPARATE from the rank() scorer (which has its own bounded
-// prior) — this is a health/retirement signal, not a retrieval weight. Zero tokens.
+// Computed confidence: a deterministic 0-10 score per lesson, derived from
+// its evidence and decayed by age — never set by a model, so it can't be
+// gamed and is the same for everyone. Kept separate from the rank() scorer
+// (its own bounded prior) — this is a health/retirement signal, not a
+// retrieval weight. Zero tokens.
 //
 // Shape of the score (0-10):
 //   evidence  = breadth (distinct projects) counts for more than raw repetition,
@@ -40,12 +39,11 @@ export function computeConfidence(lesson, { now = new Date() } = {}) {
   if (tier === 'curated') c = Math.max(c, 6);              // expert floor, resists age
   else if (tier === 'auto' || tier === 'machine') c *= 0.9; // machine-derived discount (probation)
 
-  // 18.2 DECAY POLICY for stated preferences. A preference ("this developer wants
-  // money as integer cents") does not become false by getting old the way an
-  // observation about a fast-moving library does — it becomes false when it is
-  // REVERSED. So age must not quietly retire it; the contradiction lint (16.6) and
-  // an explicit `raph retire` are the correct ways for it to die. Same reasoning as
-  // the curated floor for design lessons: a convention is not evidence.
+  // A stated preference ("this developer wants money as integer cents") does
+  // not become false by getting old the way an observation about a
+  // fast-moving library does — it becomes false when it is reversed. So age
+  // must not quietly retire it; the contradiction lint and an explicit
+  // `raph retire` are the correct ways for it to die.
   if (lesson.category === 'preference') c = Math.max(c, 5);
 
   return Math.max(0, Math.min(10, Number(c.toFixed(1))));

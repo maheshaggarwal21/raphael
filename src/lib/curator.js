@@ -1,4 +1,4 @@
-// The MACHINE CURATOR (Phase 17.2, ARCHITECTURE §11.13) — the autopilot
+// The machine curator (ARCHITECTURE §11.13) — the autopilot
 // activation engine that replaces the human review queue when mode=autopilot
 // and the dial is at 'full'. It does not delete curation, it automates it:
 //
@@ -87,7 +87,7 @@ export async function reviewLesson({ data, body }, { callModel, model }) {
         // it threw a TypeError inside the try, which the fail-closed catch turned
         // into "reviewer call failed" — so autopilot could never machine-activate
         // ANY candidate carrying the boundary field the extraction prompt asks
-        // for, and blamed a transport error for it (audit 2026-07-26).
+        // for, and blamed a transport error for it.
         (counterIndicationsLine(data.counter_indications)) +
         (body?.trim() ? `body: ${envSafe(body.trim())}\n` : '') +
         `</candidate-lesson>`,

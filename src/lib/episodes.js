@@ -84,7 +84,7 @@ function toolResultText(item) {
 // raw, so a key straddling any of those cuts arrived pre-split: 'AKIA' plus 10 of
 // its 16 chars matches neither the named rule (which needs all 16) nor the
 // entropy net (which needs 20 chars), and then went to the model and into the
-// evidence record, against invariant #2 (audit 2026-07-26).
+// evidence record, against invariant #2.
 // Scrubbing here is cheap local regex work and idempotent — placeholders contain
 // no secret bytes, so finalizeExcerpt's second pass is harmless.
 function safeCut(s, n, { collapse = false } = {}) {

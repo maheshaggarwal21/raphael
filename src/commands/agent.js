@@ -1,4 +1,4 @@
-// `raph agent` — the agent-maker (Phase 14 meta layer).
+// `raph agent` — the agent-maker.
 //   raph agent demand                          where a new specialist might be warranted
 //   raph agent propose <slug> --role … --mission … --output … [--model m] [--tools a,b] [--name "…"]
 //   raph agent list                            staged proposals

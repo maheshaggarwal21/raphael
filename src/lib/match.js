@@ -12,12 +12,12 @@ const W_PATH = 2.0;
 const W_ALREADY = -10.0;
 const HIT_CAP = 3; // keyword-stuffed lessons can't dominate the ranking
 
-// Severity is part of the SCORE, not just the tie-break (observation 2026-07-27,
-// finding F5). Sorting consulted severity only when two scores were equal, and
-// `prior` gives +0.1 per observation — so a lesson mined ONCE scored 1.60 while
-// every curated CRITICAL security lesson capped at 1.50 (no mined observations,
-// by definition) and lost every session by a tenth of a point. Measured on the
-// real 74-lesson brain: "inline single-call-site abstractions" permanently
+// Severity is part of the score, not just the tie-break. Sorting consulted
+// severity only when two scores were equal, and `prior` gives +0.1 per
+// observation — so a lesson mined once scored 1.60 while every curated
+// critical security lesson capped at 1.50 (no mined observations, by
+// definition) and lost every session by a tenth of a point. Measured on the
+// real brain: "inline single-call-site abstractions" permanently
 // outranked "check ownership to stop IDOR", "enforce authorization on the
 // server", "hash passwords with a slow KDF" and "use parameterized queries".
 // The severity ladder was decorative. These weights are deliberately smaller
@@ -39,10 +39,9 @@ function hasRelevanceSignal(reasons) {
 // Did anything in the QUERY (or prompt) actually match? `any-stack` and `stack:`
 // come from the working directory, and `prior` only says a lesson is well
 // attested — none of them mean the user's words hit anything. The per-prompt
-// injection gate (21.2) already required this; `raph search` did not, so a query
-// the brain knows nothing about returned the highest-prior lessons numbered
-// 1, 2, 3 like ranked answers (observation 2026-07-27, F15). One definition,
-// used by both, so the two can never drift apart again.
+// injection gate already required this; `raph search` did not, so a query the
+// brain knows nothing about returned the highest-prior lessons numbered 1, 2,
+// 3 like ranked answers. One definition, used by both.
 export function hasQueryHit(reasons) {
   return (reasons ?? []).some((r) => r.startsWith('keyword:') || r.startsWith('path:'));
 }
@@ -58,10 +57,10 @@ const NEGATORS = new Set([
 const NEGATION_WINDOW = 32; // characters of context to look back over
 const NEGATION_LOOKBACK_WORDS = 4;
 
-// Is the occurrence at `index` inside a negated phrase? Observation 2026-07-27
-// (F6): the Gatepost brief says "Persistence is local files. No database." and
-// `text.includes('database')` scored a database-hardening lesson at 5.50 — the
-// matcher fired on the very sentence saying the thing does not exist.
+// Is the occurrence at `index` inside a negated phrase? A brief saying
+// "Persistence is local files. No database." would otherwise have
+// `text.includes('database')` score a database-hardening lesson highly — the
+// matcher firing on the very sentence saying the thing does not exist.
 export function isNegatedAt(text, index) {
   let before = String(text).slice(Math.max(0, index - NEGATION_WINDOW), index);
   // Negation does not cross a clause boundary. Without this, "never use eval;

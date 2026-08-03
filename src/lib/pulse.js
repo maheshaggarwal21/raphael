@@ -1,4 +1,4 @@
-// The autopilot heartbeat (Phase 17.3, docs/autopilot-vision.md §4.1).
+// The autopilot heartbeat (docs/autopilot-vision.md §4.1).
 // `raph pulse` runs the whole background lifecycle once, at session end:
 //
 //   mine (zero tokens, ledger-incremental)
@@ -252,10 +252,10 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
       }
     }
 
-    // 6c. guard auto-install (owner ask 2026-07-18): a consented project that
-    // is a git repo gets the pre-commit secret hook automatically — zero
-    // clicks, zero tokens. Foreign hooks are NEVER clobbered; a non-repo dir
-    // is a no-op. Opt out: autopilot.auto_guard: false in config.yaml.
+    // 6c. guard auto-install: a consented project that is a git repo gets the
+    // pre-commit secret hook automatically — zero clicks, zero tokens.
+    // Foreign hooks are never clobbered; a non-repo dir is a no-op. Opt out:
+    // autopilot.auto_guard: false in config.yaml.
     if (project && cfg.autopilot?.auto_guard !== false) {
       try {
         const guard = (deps.ensureGuard ?? ensureGuard)(project);
@@ -270,7 +270,7 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
     // 6d. event-log rotation. The append-only trail is the audit record and
     // stays append-only, but it had no read story: every stats/why/report/digest
     // call parsed the WHOLE file, so the cost grew with how much the product had
-    // been used (audit 2026-07-26). Rolling it here keeps the hot file small.
+    // been used. Rolling it here keeps the hot file small.
     try {
       const rot = rotateEventsIfLarge();
       if (rot.rotated) log('  [events] rotated the event log (older history kept in .1-.4)');
@@ -281,11 +281,11 @@ export async function runPulse({ project, log = () => {}, deps = {} } = {}) {
     // 7. index freshness
     try { buildIndex(); } catch (err) { summary.errors.push(`index: ${err.message}`); }
 
-    // 8. self-update (owner decision 2026-07-18, invariant #5d) — LAST on
-    // purpose: if npm swaps the package files mid-upgrade, every other step of
-    // this pulse has already finished. Daily-throttled bounded GET of the npm
-    // registry; the upgrade is the user's own install command re-run (npm's
-    // sha512 integrity check is the gate). Opt out: autopilot.auto_update:false.
+    // 8. self-update (invariant #5d) — last on purpose: if npm swaps the
+    // package files mid-upgrade, every other step of this pulse has already
+    // finished. Daily-throttled bounded GET of the npm registry; the upgrade
+    // is the user's own install command re-run (npm's sha512 integrity check
+    // is the gate). Opt out: autopilot.auto_update:false.
     if (cfg.autopilot?.auto_update !== false) {
       try {
         const up = await (deps.selfUpdate ?? maybeSelfUpdate)({ log });

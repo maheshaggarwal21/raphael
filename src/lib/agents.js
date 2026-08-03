@@ -126,8 +126,8 @@ creep starts. Output a crisp spec, not code.`,
   {
     slug: 'architect',
     name: 'Architect',
-    // First-pass opus — a deliberate, named exception (owner directive,
-    // 2026-07-29). See FIRST_PASS_OPUS_KINDS in policy.js for why.
+    // First-pass opus — a deliberate, named exception. See
+    // FIRST_PASS_OPUS_KINDS in policy.js for why.
     model: 'opus',
     tools: ['Read', 'Grep', 'Glob', 'Bash'],
     role: 'the senior systems architect who designs a premium, scalable architecture from the spec',

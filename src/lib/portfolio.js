@@ -1,4 +1,4 @@
-// Portfolio registry (Phase 14, docs/company-vision.md Part 6 item 6): the
+// Portfolio registry (docs/company-vision.md Part 6 item 6): the
 // company's project table. One row per Academy build — status, milestone
 // progress, recorded green-test count, lessons written back to the brain, and
 // what recall spent inside that project. Pure aggregation over data that

@@ -1132,6 +1132,34 @@ compaction (manual or automatic) can never lose progress.
       ...message with `backticks` intact...
       ENDOFMSG
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
+- STARTUP LAUNCHER REMOVED (session 2026-08-03): the Windows Startup-folder
+  auto-resume `.cmd` was deleted at the owner's request (it popped a visible
+  `claude` terminal at every login, even though it was almost always a no-op).
+  `resume.ps1` itself is untouched in the repo; nothing invokes it anymore.
+  `.claude/TASKS.md` corrected to stop describing it as active.
+- DOCS + COMMENT AUDIT (session 2026-08-03, owner: "check the current repo
+  state and update all the docs, plus clean the code... comments should be
+  concise and professional not descriptive"). Verified real state first (812
+  tests, doctor healthy, v0.6.0, 91 active lessons) rather than trusting any
+  prior summary. Docs: TASKS.md 23.3 had shipped inside the 23.4 commit but
+  was never ticked — fixed; three Phase-12 items Academy has since satisfied
+  through practice corrected rather than left stale. docs/HANDOVER.md fully
+  rewritten (the old one predated Phase 23 entirely). docs/graph-engineering-
+  plan.md's status flipped from "not yet built" to SHIPPED with an addendum.
+  README/ARCHITECTURE/manual fixed real drift: 44→43 verbs (verified against
+  cli.js), 10→12 agents, 4→7 recipes. ARCHITECTURE.md gained §15 (the graph
+  layer had ZERO architecture-level documentation despite being the largest
+  subsystem shipped this cycle) and caught up §8's agent table (missing
+  Frontend + Red Team, five rules instead of six). Code: read and hand-edited
+  the graph/driver cluster in full (driver.js alone had 275 comment lines /
+  968 total) — kept every non-obvious WHY, cut the session-narration style
+  (dated citations, F-number jargon, "the draft claimed" framing). Then a
+  pattern sweep across the rest of src/ for the same markers: ~34 mechanical
+  "(audit 2026-07-26)" citation removals (caught and fixed 7 cases where it
+  left a broken `//.` line — grepped to confirm clean, never assumed), plus
+  ~60 hand-fixed finding-ID and "Phase N.M" header tags across ~30 files.
+  812/812 green throughout — comments only, no logic changed. Log:
+  .claude/logs/2026-08-03-01.md.
 
 ## Conventions
 - Node.js ESM, Node ≥18. Dependencies: js-yaml and ajv ONLY — do not add more without a strong reason.

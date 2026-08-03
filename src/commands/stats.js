@@ -1,4 +1,4 @@
-// `raph stats` — the self-use report (Phase 10). Reads the append-only audit
+// `raph stats` — the self-use report. Reads the append-only audit
 // log + the compiled index and prints token-cost, retrieval-miss (never-fired
 // lessons), and a false-fire proxy. Zero network, read-only.
 

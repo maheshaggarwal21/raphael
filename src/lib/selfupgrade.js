@@ -1,4 +1,4 @@
-// Self-upgrade rule (Phase 14 meta layer, docs/company-vision.md + ARCHITECTURE
+// Self-upgrade rule (docs/company-vision.md + ARCHITECTURE
 // §14.self-patches). Raphael may draft changes to its OWN code/agents (agent-maker,
 // skills factory, 13b patches), but "no measurement, no mutation": such a change
 // only merges after branch + tests + eval. This is the deterministic GATE that

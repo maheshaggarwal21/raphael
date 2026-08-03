@@ -1,4 +1,4 @@
-// Agent-maker (Phase 14 meta layer, docs/company-vision.md). A meta-agent that
+// Agent-maker (docs/company-vision.md). A meta-agent that
 // DRAFTS new roster entries — it never adds them. The roster in agents.js is one
 // source of truth that regenerates plugin/agents/*.md; changing it is a
 // self-upgrade to Raphael's own code, so it goes through a human: branch + tests +

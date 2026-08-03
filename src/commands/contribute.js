@@ -1,4 +1,4 @@
-// `raph contribute` — opt-in lesson sharing (Phase 11). Exports chosen ACTIVE
+// `raph contribute` — opt-in lesson sharing. Exports chosen ACTIVE
 // lessons as shareable .md files: local traces stripped, full body re-scrubbed,
 // re-validated through the chokepoint. Never bulk by default; you name each one.
 //   raph contribute <id|slug...> [--out <dir>]

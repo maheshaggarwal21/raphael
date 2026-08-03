@@ -1,4 +1,4 @@
-// `raph policy [<kind>] [--escalated] [--json]` — the model policy table (Phase 14).
+// `raph policy [<kind>] [--escalated] [--json]` — the model policy table.
 // Thin printer over lib/policy.js; the autopilot driver resolves the same table.
 
 import { POLICY, resolvePolicy, renderPolicy } from '../lib/policy.js';

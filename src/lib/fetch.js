@@ -1,7 +1,6 @@
-// The bounded fetcher for `raph adopt` — the ONLY general network surface in
-// Raphael, allowed by the 2026-07-16 amendment of principle §0.6 / invariant #5
-// (ARCHITECTURE §13). Every property of that amendment is enforced HERE, in one
-// place:
+// The bounded fetcher for `raph adopt` — the only general network surface in
+// Raphael, allowed by the §0.6 / invariant #5 amendment (ARCHITECTURE §13).
+// Every property of that amendment is enforced here, in one place:
 //
 //   - user-initiated only: this module exposes a function; nothing schedules it
 //   - read-only: GET, nothing else
@@ -46,7 +45,7 @@ function isLoopback(hostname) {
 // including private and link-local literals, and every redirect hop re-ran the
 // same permissive check, so a benign public page could 302 an adopt fetch into
 // http://127.0.0.1:9200/ or https://169.254.169.254/latest/meta-data/ and reflect
-// an internal service's response back to be scanned (audit 2026-07-26, 3.5).
+// an internal service's response back to be scanned.
 //
 // Two layers, because they catch different things:
 //   1. checkUrl rejects non-public IP LITERALS (no DNS involved).

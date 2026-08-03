@@ -1,4 +1,4 @@
-// The GLOBAL BRAIN pipe (Phase 17.6, §2.1 two-brain model).
+// The global brain pipe (§2.1 two-brain model).
 //
 //   GLOBAL (github.com/maheshaggarwal21/raphael, global-brain/, owner-curated)
 //     -> seed at install (from the copy SHIPPED IN THE PACKAGE, zero network)

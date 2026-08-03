@@ -232,7 +232,7 @@ export const PACK_SPECS = [
       'New code is new attack surface, and logic flaws — negative payments, stacked discounts, restarted free trials, self-referral, infinite promo codes — are invisible to unit tests because each step is individually valid. A deliberate attacker-perspective pass after major features catches abuse paths that normal testing misses.',
     headline: 'New features add attack surface — re-run an attacker-perspective pass to catch abuse.'
   },
-  // ---- coverage gaps closed 2026-07-14 (full pass over all five checklists) ----
+  // ---- coverage gaps from a full pass over all five checklists ----
   {
     slug: 'encode-output-to-stop-xss',
     title: 'Escape user input on output to stop cross-site scripting',

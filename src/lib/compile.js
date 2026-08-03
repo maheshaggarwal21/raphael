@@ -103,13 +103,13 @@ export function buildIndex() {
 // same content hashes — for EVERY file seen at build time, including ones that
 // were skipped as invalid (so fixing one by hand is detected too). Anything
 // else — edited, added, deleted, tampered — is stale.
-// A stat fast-path keeps this honest AND cheap. Full content hashing on every
+// A stat fast-path keeps this honest and cheap. Full content hashing on every
 // load meant a read + SHA-256 of every lesson file on every prompt (linear in
-// brain size, on a Windows hook path where small-file opens are not free —
-// audit 2026-07-26). Now: if size AND mtime both match what the build recorded,
-// the file is unchanged and hashing is skipped; anything that differs — or has no
-// recorded stat, i.e. an index built before this change — falls back to the full
-// hash. So the integrity property is identical, the cost is not.
+// brain size, on a Windows hook path where small-file opens are not free). If
+// size and mtime both match what the build recorded, the file is unchanged
+// and hashing is skipped; anything that differs — or has no recorded stat, an
+// index built before this change — falls back to the full hash. The integrity
+// property is identical; the cost is not.
 export function verifyIndex(index) {
   if (!index || index.schema !== 'raphael/index/v1' || !Array.isArray(index.lessons)) return false;
   if (!Array.isArray(index.built_files)) return false;

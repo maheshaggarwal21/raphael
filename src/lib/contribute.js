@@ -1,4 +1,4 @@
-// Contribute (Phase 11): turn an ACTIVE lesson into a SHAREABLE file — opt-in,
+// Contribute: turn an active lesson into a shareable file — opt-in,
 // one lesson at a time, never a bulk default. Sharing is invariant #6's opt-in
 // made concrete: the export strips everything that ties a lesson to this machine
 // or its projects, re-runs the secret scrubber over the FULL body (belt and

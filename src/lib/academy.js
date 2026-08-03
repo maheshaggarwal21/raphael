@@ -32,8 +32,8 @@ function statePath(project) {
 // both, and startProject treats null as "nothing here" — so a truncated state
 // file (interrupted write, full disk, bad sector) was silently OVERWRITTEN with
 // a blank project, destroying the milestones, the log, the `tried` dead-ends and
-// the whole driver record: exactly the data the resume design exists to protect
-// (audit 2026-07-26, finding 3.8). A corrupt file is now quarantined and thrown.
+// the whole driver record — exactly the data the resume design exists to
+// protect. A corrupt file is now quarantined and thrown.
 export function readState(project, { onCorrupt = 'throw' } = {}) {
   const fp = statePath(project);
   if (!existsSync(fp)) return null;

@@ -1,4 +1,4 @@
-// `raph skills` — the skills factory (Phase 14 meta layer).
+// `raph skills` — the skills factory.
 //   raph skills suggest [--json]   lessons that fire broadly enough to package
 //   raph skills draft <id|slug>    write a staged SKILL.md draft (NOT installed)
 //   raph skills list               staged drafts on disk
@@ -68,7 +68,7 @@ export default async function skills(args) {
     console.log(`raph: staged skill draft "${slug}" -> ${file}`);
 
     // 18.7's lint, finally wired to something a user can reach. It shipped with
-    // tests and no production caller at all (audit 2026-07-26), so no drafted
+    // tests and no production caller at all, so no drafted
     // skill was ever linted. The description IS the router — a skill the host
     // cannot match on never fires, however good its body is.
     const issues = lintSkillDescription(lesson.injection?.headline || lesson.title || slug, { name: slug });

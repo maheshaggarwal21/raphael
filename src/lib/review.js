@@ -185,7 +185,7 @@ export function approveRefs(refs, { confirmed = false, dupOk = false } = {}) {
   return { results, approved, failed };
 }
 
-// Retire a set of ACTIVE lessons by id or slug (Phase 16.6b) — the "this lesson
+// Retire a set of ACTIVE lessons by id or slug — the "this lesson
 // no longer holds" path, distinct from rejecting a candidate. Because it removes
 // something the human already approved, it is a heavyweight action: it needs an
 // explicit confirmation (mirrors the security-approve gate). Retiring tombstones

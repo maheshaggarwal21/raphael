@@ -1,4 +1,4 @@
-// Self-use analytics (Phase 10). Turns the append-only audit log
+// Self-use analytics. Turns the append-only audit log
 // (state/events.jsonl) + the compiled index into the three signals the
 // self-use period is meant to surface:
 //   - token cost      : what recall actually costs per injection / per session
@@ -197,10 +197,9 @@ export function renderStats(s, { topN = 8, listN = 12 } = {}) {
     const win = s.window.from ? `${s.window.from.slice(0, 10)} -> ${s.window.to.slice(0, 10)}` : 'n/a';
     L.push(`  injections : ${s.injections.total}  (${s.injections.sessionStart} session-start, ${s.injections.userPrompt} user-prompt)`);
     L.push(`  tokens     : ${s.injections.tokensTotal.toLocaleString()} total  ~${s.injections.tokensAvg}/injection`);
-    // capHits counts INJECTION EVENTS that ran with the cap already reached, not
-    // sessions — printing it on the sessions line read as "39 sessions hit the
-    // cap" when the real figure was 4. Say which unit it is (found while reading
-    // this report against the raw event log, 2026-07-26).
+    // capHits counts injection events that ran with the cap already reached,
+    // not sessions — printing it on the sessions line would misread as "N
+    // sessions hit the cap" rather than N injections. Say which unit it is.
     L.push(`  sessions   : ${s.injections.sessions}  ~${s.injections.tokensPerSessionAvg} tokens/session`);
     L.push(`  cap        : ${s.injections.capHits} injection(s) fired with the 1,200-token session cap already reached`);
     L.push(`  window     : ${win}`);

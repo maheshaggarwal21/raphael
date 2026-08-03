@@ -40,7 +40,7 @@ export default async function distill(args) {
   // FAIL CLOSED on the one flag whose whole job is bounding model spend.
   // `Number(...) || episodes.length` meant `--max-episodes 0`, a typo, or a
   // missing value all silently processed EVERY pending episode — the opposite of
-  // what the user asked for (audit 2026-07-26). The academy driver already
+  // what the user asked for. The academy driver already
   // validates its analogous flag; this one was just skipped.
   if (maxIdx >= 0) {
     const n = Number(args[maxIdx + 1]);

@@ -1,4 +1,4 @@
-// Optimizer loop (Phase 14 meta layer, docs/company-vision.md). One actionable
+// Optimizer loop (docs/company-vision.md). One actionable
 // "what should I prune / act on" screen for the brain, composed from the health
 // engines already built: the retire sweep (confidence + retrieval), the retrieval
 // miss (never-fired lessons), the confidence distribution, and agent coverage.

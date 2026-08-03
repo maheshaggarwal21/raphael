@@ -1,4 +1,4 @@
-// Self-patch gate (Phase 13b, ARCHITECTURE §11.11). Raphael may propose patches to
+// Self-patch gate (ARCHITECTURE §11.11). Raphael may propose patches to
 // its OWN code (from the driver, agent-maker follow-through, or a described fix), but
 // §11.11 is absolute: NEVER auto-applied — a self-patch is always PRESENTED for a
 // human to merge. This module is the deterministic gate a proposed patch must clear

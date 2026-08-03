@@ -1,4 +1,4 @@
-// Project atlas (Phase 16, docs/atlas-upgrade-plan.md) — a knowledge graph of a
+// Project atlas (docs/atlas-upgrade-plan.md) — a knowledge graph of a
 // project built DETERMINISTICALLY: files, exported symbols, imports, call sites,
 // tests, and error codes, extracted with a pure scan. Zero model tokens to build,
 // zero to query. This is the engine behind both faces of the awareness feature:
@@ -202,7 +202,7 @@ function resolveImport(fromFile, spec, fileSet) {
   if (!spec.startsWith('.')) {
     // Python module paths are DOTTED, not './'-prefixed, so the bare-specifier
     // rule turned every local Python import into a fake external package node
-    // (pkg:svc.util) and dropped the real file-to-file edge (audit 2026-07-26).
+    // (pkg:svc.util) and dropped the real file-to-file edge.
     return resolvePythonImport(fromFile, spec, fileSet);
   }
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), spec));
@@ -404,7 +404,7 @@ function owningFiles(atlas, nid, nbr) {
 // project called 'app' / 'api' / 'frontend' shared one file: `raph atlas where`,
 // the session-start digest and the freshness lint could all answer from a
 // DIFFERENT project's graph, and pulse thrash-rebuilt on every alternation
-// because the stored git HEAD never matched (audit 2026-07-26, finding 3.6).
+// because the stored git HEAD never matched.
 // Keyed by basename + a hash of the resolved absolute path: still human-readable,
 // no longer ambiguous. `root` is stored in the doc and verified on load, so a
 // stale or hand-moved cache is treated as missing rather than trusted.
@@ -534,7 +534,7 @@ export function whereQuery(atlas, text, { limit = 8 } = {}) {
     for (const node of atlas.nodes) {
       // Path-boundary matching only. A bare endsWith made 'a.js' match
       // 'schema.js' — and it subsumed both conditions before it, making them
-      // dead code (audit 2026-07-26).
+      // dead code.
       if (node.type === 'file' && (node.label === p2 || node.label.endsWith(`/${p2}`))) {
         bump(node.id, 3, 'named in the question');
       }

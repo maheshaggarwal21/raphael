@@ -1,6 +1,6 @@
 // `raph update` — check the npm registry for a newer raphael-brain and
-// upgrade in place (owner decision 2026-07-18). On autopilot this also runs
-// automatically inside the pulse (daily check), so most users never type it.
+// upgrade in place. On autopilot this also runs automatically inside the
+// pulse (daily check), so most users never type it.
 //
 //   raph update            check, and upgrade if behind
 //   raph update --check    check only, change nothing

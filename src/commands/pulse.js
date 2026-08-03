@@ -1,4 +1,4 @@
-// `raph pulse` — the autopilot heartbeat command (Phase 17.3).
+// `raph pulse` — the autopilot heartbeat command.
 //
 //   raph pulse            show the last pulse + whether autopilot is on
 //   raph pulse --run      run one heartbeat inline (mine -> distill -> curate

@@ -1,4 +1,4 @@
-// Decision ledger (Phase 16.8b, from the gstack audit — docs/atlas-upgrade-plan.md
+// Decision ledger (docs/atlas-upgrade-plan.md
 // addendum). A durable, append-only record of the durable calls a project has made —
 // architecture, scope, vendor, "we decided X because Y". Distinct from:
 //   - lessons  (advice: "do/don't do X" — go through the validate chokepoint), and

@@ -1,4 +1,4 @@
-// Curated frontend-design starter pack (Phase 20 / agent-architecture-final.md A4).
+// Curated frontend-design starter pack (docs/agent-architecture-final.md A4).
 //
 // Frontend design is the craft AI lags at most, and a brand-new brain knows nothing
 // about it. This pack seeds the mistakes that make AI-built UI read as generic

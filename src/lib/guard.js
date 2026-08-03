@@ -166,7 +166,7 @@ export function gitTopLevel(dir) {
 // any path containing non-ASCII or special characters ("src/\303\251.js"), and
 // `git show :"src/\303\251.js"` does not resolve — so readStagedBlob returned
 // null and scanStaged skipped the file with no signal. A secret in a file with a
-// non-ASCII name passed the guard silently (audit 2026-07-26). -z output is never
+// non-ASCII name passed the guard silently. -z output is never
 // quoted, so the whole evasion class disappears.
 function splitZ(stdout) {
   return String(stdout).split('\0').map((s) => s.trim()).filter(Boolean);
@@ -220,7 +220,7 @@ export function scanStaged(cwd, opts) {
   return { results, unreadable };
 }
 
-// --- skill supply-chain scan (Phase 20 / A7) ---------------------------------
+// --- skill supply-chain scan ---------------------------------------------
 // A malicious third-party Claude Code skill in .claude/skills/ is a DIFFERENT threat
 // class from a leaked secret: it tries to exfiltrate data, read credentials, or
 // inject instructions into the agent (gstack's CSO "skill supply chain" phase; the
@@ -286,7 +286,7 @@ export function scanSkills(cwd) {
   return { root: top, results, highest };
 }
 
-// --- design-token scan (Phase 20 / A7) ---------------------------------------
+// --- design-token scan ----------------------------------------------------
 // Hardcoded hex colors in component styles block theming and drift (ui-ux-pro-max's
 // token validator). Raw hex INSIDE a :root{} / :host{} block is the legitimate
 // place tokens are defined, so it is not flagged; raw hex elsewhere is a finding.
@@ -387,11 +387,11 @@ export function installPreCommitHook(projectDir, { force = false } = {}) {
   return { ok: true, hookPath, top };
 }
 
-// Autopilot's zero-touch guard (owner ask 2026-07-18): make sure a project's
-// git repo carries the pre-commit secret hook without anyone running
-// `raph guard install`. Idempotent and polite: an already-raphael hook is left
-// alone, a FOREIGN hook is NEVER clobbered (reported, not forced), and a
-// directory that is not a git repo is a clean no-op.
+// Autopilot's zero-touch guard: make sure a project's git repo carries the
+// pre-commit secret hook without anyone running `raph guard install`.
+// Idempotent and polite — an already-raphael hook is left alone, a foreign
+// hook is never clobbered (reported, not forced), and a directory that is not
+// a git repo is a clean no-op.
 export function ensureGuard(projectDir) {
   const status = hookStatus(projectDir);
   if (!status.isRepo) return { status: 'not-a-repo' };

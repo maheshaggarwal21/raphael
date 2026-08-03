@@ -1,5 +1,5 @@
-// `raph retire <id|slug...>` — retire an ACTIVE lesson that no longer holds
-// (Phase 16.6b). Thin skin over the shared review engine; a console button would
+// `raph retire <id|slug...>` — retire an ACTIVE lesson that no longer holds.
+// Thin skin over the shared review engine; a console button would
 // call the same retireRefs(). Retiring is irreversible, so it demands --confirmed
 // after the engine shows you exactly what would go.
 

@@ -126,11 +126,11 @@ export function detectLimit({ stdout = '', stderr = '', env = undefined } = {}) 
   return isLimitMessage(material) ? makeLimitError(material) : null;
 }
 
-// Pull the structured object out of the `claude -p --output-format json` envelope.
-// VERIFIED against a real run (2026-07-13): with --json-schema the payload lands in
-// `structured_output`, and `result` is an EMPTY STRING. So structured_output MUST be
-// checked first, and empty/whitespace strings treated as absent — otherwise `result: ""`
-// (not nullish) shadows the real object and extraction returns null.
+// Pull the structured object out of the `claude -p --output-format json`
+// envelope. With --json-schema the payload lands in `structured_output`, and
+// `result` is an empty string — so structured_output must be checked first,
+// and empty/whitespace strings treated as absent, or `result: ""` (not
+// nullish) shadows the real object and extraction returns null.
 function firstUsable(...vals) {
   for (const v of vals) {
     if (v && typeof v === 'object') return v;

@@ -141,10 +141,9 @@ function notAlreadyInjected(injected) {
 }
 
 // "Nothing fires without at least one trigger hit": a stack match or a recency
-// prior is CONTEXT, not evidence that this prompt is about this lesson.
-// The rule itself lives in match.js as hasQueryHit — `raph search` needs the
-// identical test (F15), and two copies of a retrieval guarantee is how the last
-// one drifted.
+// prior is context, not evidence that this prompt is about this lesson. The
+// rule itself lives in match.js as hasQueryHit, shared with `raph search` so a
+// retrieval guarantee has one definition rather than two that can drift apart.
 function hasTriggerHit(r) {
   return hasQueryHit(r.reasons);
 }
@@ -152,8 +151,8 @@ function hasTriggerHit(r) {
 // THE per-prompt selection policy, in one exported place. The eval command used
 // to carry a hand-maintained "faithful mirror" of this — which had already
 // drifted, pinning threshold 4.0 and 3 picks after the recall dial made both
-// configurable, so the eval measured a configuration no user might be running
-// (audit 2026-07-26). One function, both callers.
+// configurable, so the eval measured a configuration no user might be
+// running. One function, both callers.
 export function selectPromptLessons(lessons, ctx, { profile = null, capReached = false } = {}) {
   const prof = profile ?? recallProfile();
   const ranked = rank(lessons, ctx, prof.promptThreshold)
@@ -333,7 +332,7 @@ export function weeklyDigestBlock({ now = Date.now() } = {}) {
     // THE THROTTLE IS CHECKED FIRST, from a tiny marker file. This used to read
     // and JSON-parse the ENTIRE append-only events log just to find the last
     // 'digest-shown' timestamp — on every autopilot session start, i.e. the
-    // prompt-blocking hook path, growing forever (audit 2026-07-26). Six days
+    // prompt-blocking hook path, growing forever. Six days
     // out of seven the answer is "not yet", and that answer now costs one small
     // read. The events scan happens only when a digest is actually due.
     const lastShown = readDigestMarker();
@@ -429,8 +428,7 @@ export function runPreToolNudge(payload = {}) {
   // CHEAP CHECKS FIRST. This runs on every Grep/Glob call, and the capability
   // check used to be a full readFileSync + JSON.parse of the atlas — so after
   // the once-per-session nudge had already fired, every later search still paid
-  // the whole parse just to print nothing (audit 2026-07-26, finding 3.7; a real
-  // 64.5MB atlas made that a multi-hundred-ms tax per tool call).
+  // the whole parse just to print nothing.
   const state = loadSessionState(payload.session_id);
   if (state.atlas_nudged) return { text: '', injected: [], tokens: 0 }; // once per session
   // capability-check: no atlas built for this project → no nudge. Existence is
@@ -518,7 +516,7 @@ export function runInjection(event, payload = {}) {
       injected
     };
     // Both per-prompt guarantees are STRUCTURAL, not arithmetic. Relying on the
-    // score alone made both of them false (audit 2026-07-26, finding 3.2):
+    // score alone made both of them false:
     //   - "needs a trigger hit": stack 3.0 + a saturated prior 1.0 = exactly the
     //     4.0 threshold, and rank uses `<`, so equality passed with no hit at all
     //   - "never repeated in one session": the -10 penalty is outscored by any
@@ -561,10 +559,10 @@ export function runInjection(event, payload = {}) {
 // ARCHITECTURE §4 promised BOTH a latency_ms on every injection event and a
 // self-disable if the 150ms p95 budget were "consistently exceeded". Neither
 // existed: nothing in src measured its own latency, so a reader doing a trust
-// assessment believed in a protection that was not there, and the real cold path
-// (~390ms before 21.5) was exactly the condition it was supposed to catch
-// (audit 2026-07-26). Both are real now — measured here, at the process
-// boundary, which is the number a user actually waits for.
+// assessment believed in a protection that was not there, and the real cold
+// path was exactly the condition it was supposed to catch. Both are real now
+// — measured here, at the process boundary, which is the number a user
+// actually waits for.
 export const LATENCY_BUDGET_MS = 150;
 const LATENCY_TRIP_STREAK = 20; // consecutive over-budget fires before backing off
 

@@ -1,6 +1,6 @@
-// Shipped graph templates (Phase 23.5).
+// Shipped graph templates.
 //
-// These are DATA the owner can point a run at with `--graph <name>`. The model
+// These are data the owner can point a run at with `--graph <name>`. The model
 // never authors topology — graphs come from here or from the owner's own
 // `--graph-file`, never from a stage's output. Same rule as `--verify`, same
 // spirit as invariant #3 (nothing in a lesson may command an agent).
@@ -69,8 +69,8 @@ const fix = {
   ]
 };
 
-// `full-build` — the "every agent, in order, with loops" build. EXPERIMENTAL
-// until 23.9 puts it through a real observed run.
+// `full-build` — the "every agent, in order, with loops" build. Experimental
+// until it completes a real observed run end to end.
 //
 // This is the graph that justifies the whole phase: `frontend builds ->
 // design reviews -> send it back -> repeat` is not expressible in a pipeline
@@ -148,7 +148,7 @@ const fullBuild = {
 
 export const GRAPH_TEMPLATES = { linear, fix, 'full-build': fullBuild };
 
-// full-build stays EXPERIMENTAL until a real observed run (23.9).
+// full-build stays experimental until a real observed run completes it.
 export const EXPERIMENTAL_GRAPHS = new Set(['full-build']);
 
 export function graphNames() {

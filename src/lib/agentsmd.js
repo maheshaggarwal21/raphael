@@ -1,11 +1,10 @@
-// 18.6 — the canonical AGENTS.md, Raphael's reach beyond the Claude Code plugin.
+// The canonical AGENTS.md — Raphael's reach beyond the Claude Code plugin.
 //
-// WHY THIS IS THE WHOLE FEATURE (the scope decision, made 2026-07-19 and narrowed
-// again here): AGENTS.md is an open convention that several coding CLIs already
-// read from the repo root with no glue at all — Codex CLI is the proven target.
-// So generating a good AGENTS.md IS the integration; writing four bespoke wrappers
-// on top would be the gold-plating failure mode Raphael's own adopted lesson warns
-// about. One file, many readers, expand only on real demand.
+// AGENTS.md is an open convention that several coding CLIs already read from
+// the repo root with no glue at all — Codex CLI is the proven target. So
+// generating a good AGENTS.md is the integration; bespoke per-CLI wrappers on
+// top would be the gold-plating failure mode Raphael's own adopted lesson
+// warns about. One file, many readers, expand only on real demand.
 //
 // This repackages what `raph inject` already produces. No chokepoint, curator, or
 // Atlas change — lessons stay advisory DATA, and the framing says so in the file

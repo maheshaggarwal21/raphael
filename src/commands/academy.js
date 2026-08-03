@@ -274,10 +274,9 @@ export default async function academy(args) {
       console.error(`raph: another "raph academy drive ${project}" is already running — two drives would corrupt the cursor.`);
       return 2;
     }
-    // Say what ACTUALLY happened. This used to read "failed twice"
-    // unconditionally, which was false for every kind that cannot escalate (F11),
-    // and it read the node from pipeline[stage], which is undefined one past the
-    // end of a completed run.
+    // Say what actually happened, not a generic "failed twice" — that used to
+    // be printed unconditionally even for kinds that cannot escalate, and the
+    // node used to come from pipeline[stage], undefined one past a completed run.
     const esc = outcome.escalation;
     const nodeId = esc?.node ?? cursorNodeId(final.driver) ?? 'unknown';
     if (outcome.stopped === 'escalated') {

@@ -1,4 +1,4 @@
-// Skills factory (Phase 14 meta layer, docs/company-vision.md). Raphael watching
+// Skills factory (docs/company-vision.md). Raphael watching
 // its OWN recall to notice when a lesson has graduated from "a note worth recalling"
 // to "a recurring need worth packaging" — a lesson that fires across many sessions is
 // a candidate to become a reusable SKILL. Like adopt's skill drafts, output is STAGED,

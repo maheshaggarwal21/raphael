@@ -1,4 +1,4 @@
-// `raph report` — company reports (Phase 14). Thin printer over lib/report.js;
+// `raph report` — company reports. Thin printer over lib/report.js;
 // the console's Company tab calls the same functions.
 
 import { readWeekly, renderWeekly, DEFAULT_DAYS } from '../lib/report.js';

@@ -1,4 +1,4 @@
-// Freshness lint + retire heuristics (Phase 16.6, docs/atlas-upgrade-plan.md).
+// Freshness lint + retire heuristics (docs/atlas-upgrade-plan.md).
 // A read-only advisory pass over the brain's ACTIVE lessons that surfaces three
 // kinds of rot — all HUMAN-SURFACED, never auto-deleted (a lesson is only ever
 // retired by an explicit human action, 16.6b):
@@ -29,7 +29,7 @@ import { p } from './paths.js';
 const DATED_PATTERNS = [
   // A year, not any 4-digit number starting 19/20. "Use 2048-bit RSA keys" was
   // flagged as dated — a timeless lesson, and exactly the kind the linter exists
-  // to protect (audit 2026-07-26). Bounded to a plausible range and refusing a
+  // to protect. Bounded to a plausible range and refusing a
   // unit suffix keeps the real cases (a lesson pinned to "in 2024") while
   // dropping key sizes, port numbers and pixel values.
   { signal: 'dated', why: 'names a specific year', re: /\b(?:19[5-9]\d|20[0-4]\d)\b(?!\s*(?:-?\s*(?:bit|px|em|rem|ms|s|kb|mb|gb|hz)\b|x\d))/i },
@@ -40,7 +40,7 @@ const POINTER_PATTERNS = [
   // A line POINTER, which is the idiom the docstring describes: the word "line",
   // or a colon-number directly after a filename. A bare `:\d` matched every
   // ratio — "aim for a 3:1 contrast ratio" and the design pack's own "4.5:1"
-  // were reported as line pointers (audit 2026-07-26).
+  // were reported as line pointers.
   { signal: 'pointer', why: 'points at a line number', re: /\bline\s?\d{1,5}\b|\.[a-z]{1,4}:\d{1,5}\b/i },
   { signal: 'pointer', why: 'left an unresolved marker', re: /\b(TODO|FIXME|HACK|XXX)\b/ }
 ];
@@ -69,9 +69,7 @@ const CHECKABLE = new RegExp(`\\.(?:${ATLAS_EXT})$`, 'i');
 // triggers.paths plus any indexed-source token in the title/body. Paths the
 // atlas can't verify are dropped here so staleness stays provable, not guessed.
 // Technology names that end in an indexed extension. "Node.js" is not a file,
-// and a lesson mentioning it was being reported STALE against every project
-// atlas — found by running the linter on the real brain after tightening the
-// other freshness patterns (audit follow-up 2026-07-26).
+// and a lesson mentioning it was being reported STALE against every project atlas.
 const NOT_A_PATH = new Set([
   'node.js', 'next.js', 'nuxt.js', 'vue.js', 'react.js', 'express.js', 'ember.js',
   'backbone.js', 'angular.js', 'three.js', 'chart.js', 'd3.js', 'alpine.js', 'socket.js'
@@ -210,7 +208,7 @@ export function retireCandidates(lessons, { events = [], now = new Date() } = {}
 // A staleness verdict is only honest for a lesson that BELONGS to the project
 // being linted. Linting every active lesson against the cwd's atlas flagged a
 // lesson about another project's file as "stale" — pushing the user to retire a
-// perfectly valid lesson (audit 2026-07-26, finding: cross-project false STALE).
+// perfectly valid lesson.
 // An unscoped lesson (scope.projects empty) is still checked: it claims to apply
 // everywhere, so this project's graph is fair evidence.
 export function scopedToProject(lesson, project) {

@@ -1,4 +1,4 @@
-// Obsidian-compatible export of the atlas (Phase 16.5, docs/atlas-upgrade-plan.md).
+// Obsidian-compatible export of the atlas (docs/atlas-upgrade-plan.md).
 // Turns the deterministic project graph into a small self-contained vault:
 //   - one markdown note per file, mirroring the repo layout, with [[wikilinks]]
 //     to imports/callees and BACKREFS (imported-by / tested-by) computed from the
@@ -58,7 +58,7 @@ export function renderVault(atlas, { maxNotes = 2000, canvasTop = 48 } = {}) {
   const truncated = files.length > maxNotes;
   // Keep the MOST CONNECTED files when capping, not the alphabetical head. A
   // truncated vault used to keep assets/... and drop the src/... god files while
-  // the index note claimed the opposite (audit 2026-07-26). Re-sorted by label
+  // the index note claimed the opposite. Re-sorted by label
   // afterwards so the output stays deterministic.
   const kept = truncated
     ? [...files].sort((a, b) => ((b.degree ?? 0) - (a.degree ?? 0)) || a.label.localeCompare(b.label))
