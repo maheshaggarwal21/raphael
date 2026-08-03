@@ -86,7 +86,7 @@ Proof, not vibes — every number below is measured by the code in this repo:
 | **147.9× fewer tokens** | to answer "where do I look?" using the Atlas knowledge graph vs. grep-and-read — measured on this very repo: 174,324 tokens down to 1,179 across 10 real questions (per-question range 55×–385×). Zero model tokens spent to measure it. |
 | **≤ 1,200 tokens/session** | the hard cap on everything recall may inject in one session. Typical prompts cost **0** (injection requires a trigger hit). `raph why` itemizes every token. |
 | **26 curated security lessons** | pre-loaded from the global brain on day one — your agent starts smart before it has learned a single thing from you. And that brain is community-fed by design: contributed lessons, scrubbed and human-reviewed, ship to every install via a weekly hash-verified sync. |
-| **44 CLI verbs · 12 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
+| **43 CLI verbs · 12 agents · 8-tab console** | one engine underneath all of it — every button in the web console calls the exact same functions as the CLI. |
 | **812 tests, 6 CI combos** | plain `node:test`, no frameworks, run on Linux + Windows × Node 18/20/22 — plus a zero-token *canary gate* that re-proves the security chokepoint on every push. |
 | **2 runtime dependencies** | `ajv` and `js-yaml`. That's the whole supply chain. No frameworks, no daemons, no cloud. |
 | **100% local** | the brain lives in `~/.raphael`, in its own git repo that structurally blocks pushes. Nothing leaves your machine except by your own explicit action. |
@@ -825,7 +825,7 @@ Honesty is a feature. Raphael is **not**:
  engine    src/lib/*.js         65 modules, plain ESM, 2 runtime deps
  verbs     src/commands/*.js    43 thin command wrappers over the same engine
  plugin    plugin/              hooks (SessionStart · UserPromptSubmit · PreToolUse · SessionEnd)
-                                + 10 agents + 4 /brain commands + 4 recipes + recall skill
+                                + 12 agents + 4 /brain commands + 7 recipes + recall skill
  proof     test/ (812) · src/eval/ (6 scenarios + 6 canaries) · CI (Linux+Windows × Node 18/20/22)
 ```
 

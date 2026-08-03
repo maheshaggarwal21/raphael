@@ -1,19 +1,17 @@
-// THE EXECUTION LAYER — the one place a graph run spends tokens.
+// The execution layer — the one place a graph run spends tokens. Separated
+// from routing as a fact about the module graph, not just a comment: this
+// file must not import recovery.js or graph.js, and a test asserts it. A
+// runner that could see the RECOVERY table could route, which isn't its job.
 //
-// Extracted from driver.js in 23.4 so that commitment 2 ("separated layers") is
-// a fact about the module graph rather than a claim in a comment: this file MUST
-// NOT import recovery.js or graph.js, and a test asserts it. A runner that could
-// see the RECOVERY table could route, and routing is not its job.
+// Its contract is raw facts only — did the child spawn, did it time out, did
+// the deliverable satisfy its declared shape, how long did it take, what did
+// it cost. It never names a failure class or a node, never says what happens
+// next; classifyFailure() in recovery.js turns these observations into a
+// decision.
 //
-// Its contract is RAW FACTS ONLY. It reports what it observed — did the child
-// spawn, did it time out, did the deliverable satisfy its declared shape, how
-// long did it take, what did it cost. It never names a failure class, never
-// names a node, and never says what should happen next. classifyFailure() in
-// recovery.js is the only thing that turns these observations into a decision.
-//
-// Tools are ON here (a stage writes real files in the workspace), deliberately
-// unlike distill's zero-tool containment — but the GRANT is explicit and comes
-// from the roster via policy.tools. See buildStageArgs.
+// Tools are ON here (a stage writes real files), unlike distill's zero-tool
+// containment — but the grant is explicit and comes from the roster via
+// policy.tools. See buildStageArgs.
 
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
@@ -21,27 +19,24 @@ import { claudeBinary, detectLimit, isSuccessEnvelope } from './provider.js';
 
 export const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 minutes
 
-// The complete set of keys a stage result may carry. Asserted by SET EQUALITY in
-// the separation test — a subset check would let a routing key be added later
-// without anything failing. `failureClass`, `next` and `action` are absent by
-// design, and no key names a node.
+// The complete set of keys a stage result may carry. Asserted by set equality
+// in the separation test — a subset check would let a routing key be added
+// later without anything failing. `failureClass`, `next` and `action` are
+// absent by design, and no key names a node.
 export const RESULT_KEYS = Object.freeze([
   'ok', 'spawned', 'apiError', 'timedOut', 'gateFailed', 'verdictFailed', 'verifyFailed',
   'elapsedMs', 'tokens', 'tokensCaptured', 'output', 'error', 'decisions', 'verdict', 'sessionId'
 ]);
 
-// Did the CLI itself report a transport/auth failure rather than a model answer?
+// Did the CLI itself report a transport/auth failure rather than a model
+// answer? This is an observation, not a classification — classifyFailure()
+// still decides what it means. Without it, a revoked token or a transient DNS
+// failure arrives as a well-formed envelope (`spawned: true`) and gets
+// classified as `model`, sending a momentary network blip straight to a human
+// escalation, or burning an opus retry trying to out-think DNS.
 //
-// This is an OBSERVATION, not a classification: the CLI is telling us the call
-// never reached a model. classifyFailure() still decides what it means. It is
-// load-bearing because both live failures on 2026-07-29 (a revoked OAuth token,
-// and a transient DNS ENOTFOUND) arrived as well-formed envelopes, so `spawned`
-// was true and they were classified as `model` — meaning a non-escalatable node
-// escalated to a human with ZERO retries over a momentary network blip, and an
-// escalatable node would have burned an opus escalation trying to out-think DNS.
-//
-// `api_error_status` is the authoritative structured signal; the phrase list is
-// a narrow fallback for transport errors the CLI reports without a status code.
+// `api_error_status` is the authoritative structured signal; the phrase list
+// is a narrow fallback for transport errors reported without a status code.
 const TRANSPORT_ERROR = /\bAPI Error\b|\bUnable to connect\b|\bFailed to authenticate\b|\b(?:ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|ESOCKETTIMEDOUT)\b/i;
 
 export function isApiError(envMsg) {
@@ -69,18 +64,16 @@ function result(fields) {
     sessionId: null,
     ...fields
   };
-  // Every result carries exactly the declared keys, always — so the separation
-  // test is checking a real invariant rather than whichever branch it happened
-  // to exercise.
+  // Every result carries exactly the declared keys, always.
   return Object.fromEntries(RESULT_KEYS.map((k) => [k, out[k]]));
 }
 
-// Session persists under --session-id so an interrupted stage can continue with
-// --resume instead of restarting from zero.
+// Session persists under --session-id so an interrupted stage can continue
+// with --resume instead of restarting from zero.
 //
-// The tool grant (23.2) is EXPLICIT and fails closed: omitting --tools grants
-// every built-in tool, which is what made read-only roster agents into writers
-// inside the driver. `--tools <list>` was live-verified against the real CLI.
+// The tool grant is explicit and fails closed: omitting --tools would grant
+// every built-in tool, which is what once made read-only roster agents into
+// writers inside the driver.
 export function buildStageArgs({ model, effort, tools, sessionId, resume = false }) {
   const args = [
     '-p',
@@ -133,14 +126,14 @@ export function makeStageRunner({
     if (r.error) {
       const timedOut = r.error.code === 'ETIMEDOUT' || /ETIMEDOUT/i.test(String(r.error.message));
       return result({
-        // A timeout is an INTERRUPTION with work on disk and a live session; a
-        // spawn failure is environmental. Both are raw observations — naming
-        // them 'timeout' and 'infra' is the recovery layer's job.
+        // A timeout is an interruption with work on disk and a live session; a
+        // spawn failure is environmental. Naming them 'timeout'/'infra' is the
+        // recovery layer's job, not this one's.
         spawned: !timedOut ? false : true,
         timedOut,
         elapsedMs,
-        // Honest about cost: the child was killed, so its usage envelope never
-        // arrived. Report "not captured" rather than a 0 that reads as "free".
+        // The child was killed, so its usage envelope never arrived — "not
+        // captured", not a 0 that reads as "free".
         tokensCaptured: false,
         error: timedOut
           ? `stage exceeded its ${Math.round(budgetMs / 60000)}-minute budget and was interrupted (work on disk is kept; token cost not captured)`
@@ -163,17 +156,13 @@ export function makeStageRunner({
     const u = envMsg?.usage ?? {};
     const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
     if (!isSuccessEnvelope(envMsg)) {
-      // No usable envelope came back: environmental, not the model reasoning badly.
-      //
-      // The CLI's own `subtype` can read "success" on a FAILED envelope — observed
-      // live 2026-07-29: a revoked OAuth token produces
-      // { subtype:"success", is_error:true, api_error_status:401, result:"Failed
-      // to authenticate..." }. Leading with subtype in that case produced the
-      // actively misleading message "claude reported success" for an auth
-      // failure that blocks every subsequent spawn — exactly the moment an
-      // honest message matters most. `result` (when present) is the CLI's own
-      // human-readable reason and is always more informative than the subtype
-      // label, so it is preferred whenever this is a failure envelope.
+      // The CLI's own `subtype` can read "success" on a failed envelope — a
+      // revoked OAuth token, for instance, produces { subtype:"success",
+      // is_error:true, api_error_status:401, result:"Failed to
+      // authenticate..." }. Leading with subtype there produces the actively
+      // misleading message "claude reported success" for an auth failure.
+      // `result`, when present, is the CLI's own human-readable reason and is
+      // always preferred.
       const reason = (typeof envMsg?.result === 'string' && envMsg.result.trim())
         || envMsg?.subtype || envMsg?.error || 'error';
       const status = envMsg?.api_error_status ? ` (HTTP ${envMsg.api_error_status})` : '';
@@ -191,15 +180,12 @@ export function makeStageRunner({
     const output = typeof envMsg.result === 'string' && envMsg.result.trim() ? envMsg.result : null;
     if (!output) return result({ elapsedMs, error: 'stage produced no text deliverable', tokens, sessionId });
 
-    // THE SHAPE GATE. "Non-empty text" was never a completion test — it accepted
-    // a clarifying question as a finished spec (F4). The predicate itself is
-    // DECLARED by the node and injected here, so the runner holds no opinion
-    // about what passing means.
+    // The declared pass predicate, injected by the caller — the runner holds
+    // no opinion about what passing means. "Non-empty text" is not a
+    // completion test; it would accept a clarifying question as a finished spec.
     const verdictOfText = wantsVerdict && parseVerdict ? parseVerdict(output) : null;
-    // REQUIRED, not defaulted. A caller that forgets the gate must not get a
-    // runner that accepts any non-empty text — that IS the F4 defect (a
-    // planner's clarifying question accepted as a finished spec), and a
-    // permissive default would let it back in silently.
+    // Required, not defaulted — a caller that forgets the gate must not
+    // silently get a runner that accepts any non-empty text.
     if (typeof gate !== 'function') {
       throw new Error('E-DRIVER: a stage runner needs the node\'s declared gate — without one, any non-empty text would pass');
     }
@@ -207,9 +193,8 @@ export function makeStageRunner({
     if (!checked.ok) {
       return result({ elapsedMs, gateFailed: true, error: checked.why, output, tokens, sessionId, verdict: verdictOfText });
     }
-    // A verdict node that produced no parseable verdict FAILS CLOSED. An
-    // unparseable verdict is never an implicit approval — precedent: adopt.js
-    // treats a malformed reviewer verdict as a block.
+    // A verdict node that produced no parseable verdict fails closed — never
+    // an implicit approval.
     if (wantsVerdict && verdictOfText === null) {
       return result({
         elapsedMs,

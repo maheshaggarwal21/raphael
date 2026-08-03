@@ -1,15 +1,11 @@
-// Phase 23.3 — lifting a pre-graph driver state onto the graph engine.
+// Lifting a pre-graph driver state onto the graph engine. A linear pipeline
+// is a linear graph, so every state is read through ensureGraph() and the
+// driver only ever knows about graphs — no dual code path.
 //
-// ONE ENGINE, NOT TWO. A linear pipeline *is* a linear graph, so every state is
-// read through ensureGraph() and the driver only ever knows about graphs. A
-// dual code path would be exactly the "loop wearing a graph's vocabulary" this
-// phase exists to remove.
-//
-// The draft of this design covered migration in one sentence. There are eight
-// distinct shapes on disk, and three of them were silent bugs — see D18 in
-// docs/graph-engineering-plan.md. The fixtures under test/fixtures are taken
-// from the only two authentic pre-graph runs in existence (gatepost, microcache)
-// and both happen to be edge cases.
+// Eight distinct on-disk shapes exist; see D18 in
+// docs/graph-engineering-plan.md. Fixtures under test/fixtures are taken from
+// the two authentic pre-graph runs in existence (gatepost, microcache), both
+// edge cases.
 //
 // Pure: no clock of its own beyond a stamp, no file I/O, no spawns.
 
@@ -18,11 +14,11 @@ import { canEscalate } from './policy.js';
 
 export const STATE_SCHEMA_V2 = 'raphael/academy-state/v2';
 
-// A node's per-visit record. Visits are a LIST, not a slot: the pre-graph driver
-// keyed stage records by kind, so a pipeline running the same kind twice
-// silently overwrote the first — which is why a loop could not be expressed at
-// all. Keeping every visit is also what makes loop-back data possible, since the
-// evidence the loop exists to generate would otherwise be overwritten by it.
+// A node's per-visit record. Visits are a list, not a slot — a kind-keyed
+// record would silently overwrite on a repeated kind, which is why a loop
+// couldn't be expressed before this. Keeping every visit is also what makes
+// loop-back data possible, since the loop's own evidence would otherwise be
+// overwritten by it.
 export function newVisit(n, { startedAt = null } = {}) {
   return {
     n,
@@ -54,11 +50,9 @@ export function isGraphState(driver) {
 
 // ensureGraph(state) — returns the state with a graph-shaped driver.
 //
-// Shape 2 is the one that must NOT be "helpfully" filled in: a state with no
-// driver key at all is a project that has never been driven, and both
-// nextAction() ({type:'no-driver'}) and renderStatus depend on telling that
-// apart from an empty run. Synthesising a graph there would silently claim a
-// run exists.
+// A state with no driver key at all (shape 2) is a project that has never
+// been driven, and must stay that way — nextAction() and renderStatus depend
+// on telling that apart from an empty run.
 export function ensureGraph(state, { now = () => new Date().toISOString() } = {}) {
   if (!state || typeof state !== 'object') return state;
   const d = state.driver;
@@ -69,17 +63,14 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
   if (!pipeline.length) return state;   // nothing meaningful to lift
 
   const lifted = pipelineToGraph(pipeline, { name: 'custom' });
-  // `custom` for anything lifted, ALWAYS: the divergence check on resume compares
-  // graph_hash against the named template's current hash, and a shipped template
-  // can change under `raph update`. Naming a lifted pipeline after a template
-  // would make that check cry wolf on every resume of a migrated run.
+  // `custom` always, never a template name: the divergence check on resume
+  // compares graph_hash against the named template's current hash, and a
+  // shipped template can change under `raph update`.
   //
-  // Rule 15 (the boundary deny-scan) is deliberately SKIPPED here. This state
-  // already exists on disk and was already accepted by the pre-graph driver;
-  // refusing to load a user's completed run because its brief says "Out of
-  // scope: deploying it" would be a regression far worse than the risk. New
-  // graphs are scanned at init, which is where the scan can actually prevent
-  // something.
+  // The boundary deny-scan is skipped here on purpose. This state already
+  // exists on disk and was already accepted by the pre-graph driver; refusing
+  // to load a user's completed run over its brief's own wording would be a
+  // worse outcome than the risk. New graphs are scanned at init instead.
   const graph = validateGraph(lifted, { name: 'custom', scanBoundary: false });
 
   const idOf = (index) => graph.nodes[index]?.id ?? null;
@@ -93,11 +84,8 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
   const visits = {};
   const migratedAttempts = (rec) => {
     const attempts = [];
-    // Shape 7 — a stage that was interrupted carries `timeouts: n`. Dropping the
-    // scalar resets the budget: a stage already at 2 would get three MORE
-    // spawns, and `develop` carries a 25-minute clock, so that is up to ~75
-    // minutes of unbudgeted subscription spend on exactly the failure mode this
-    // phase cites. gatepost's `test` stage has timeouts: 1 on disk.
+    // An interrupted stage carries `timeouts: n`; dropping the scalar would
+    // reset the retry budget on migration, granting extra spawns.
     for (let i = 0; i < (rec.timeouts ?? 0); i += 1) {
       attempts.push({ class: 'timeout', action: 'resume', at: rec.at ?? stamp, evidence: null, migrated: true });
     }
@@ -111,9 +99,9 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
   for (const [index, kind] of pipeline.entries()) {
     const id = idOf(index);
     if (!id) continue;
-    // Records were keyed by KIND, so a duplicated kind has exactly one record
-    // shared between its visits. Lifting it onto each node is the honest reading:
-    // it is the only evidence that exists for either.
+    // Records were keyed by kind, so a duplicated kind shares one record
+    // between its visits — lifted onto each node as the only evidence that
+    // exists for either.
     const rec = d.stages?.[kind];
     const node = nodes[id];
     if (!rec) continue;
@@ -133,14 +121,13 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
       node.status = 'done';
       node.session_id = rec.session_id ?? null;
     } else if (rec.status === 'running') {
-      // Shape 4 — in flight with a live session. RESUME it, do not restart.
+      // In flight with a live session — resume it, don't restart.
       node.status = 'running';
       node.session_id = rec.session_id ?? null;
     } else if (rec.status === 'retry') {
-      // Shape 5 — the trap. 'retry' means "the session FAILED, start fresh at
-      // the escalated model", the opposite of 'running'. The obvious lift (both
-      // are in-flight, so both become running) would hand a failed session id to
-      // --resume, which the driver explicitly forbids.
+      // 'retry' means the session failed and should start fresh at the
+      // escalated model — the opposite of 'running'. Lifting it to 'running'
+      // naively would hand a dead session id to --resume.
       node.status = 'running';
       node.session_id = null;
       if (!visit.attempts.some((a) => a.class === 'model')) {
@@ -153,14 +140,12 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
     }
   }
 
-  // Shape 6 — BOTH real runs on disk. `pipeline[stage]` is undefined one past
-  // the end, so "map stage to the cursor" yields cursor: undefined for every
-  // completed run. null is a legal, documented terminal value.
+  // `pipeline[stage]` is undefined one past the end, so a completed run maps
+  // to cursor: null rather than an invalid index.
   const cursor = complete ? null : idOf(stageIndex);
-  // The node the run is SITTING ON has been entered, even if it has no record
-  // yet (it may never have spawned). Leaving its counter unset would make the
-  // three maps disagree the moment it finishes — visits is the loop counter, and
-  // an unset one reads as "never entered".
+  // The node the run is sitting on has been entered even without a record yet
+  // (it may not have spawned) — leaving its visit counter unset would read as
+  // "never entered" once it finishes.
   if (cursor && !visits[cursor]) visits[cursor] = 1;
   if (!complete) {
     for (const [index] of pipeline.entries()) {
@@ -186,14 +171,12 @@ export function ensureGraph(state, { now = () => new Date().toISOString() } = {}
     runLimit: null,
     status: d.status === 'done' ? 'done' : d.status ?? 'running',
     escalation: null,
-    // Preserved verbatim. microcache carries verify: "node --test" on disk, so a
-    // migration that dropped it would be a live regression, not a hypothetical.
     verify: d.verify ?? null,
     brief: d.brief ?? '',
     started_at: d.started_at ?? stamp,
     updated_at: stamp,
-    // Derived display field only — never routing. Kept so `raph academy status`
-    // and the two outside readers have something familiar to print.
+    // Derived display field only, never routing — kept for `raph academy
+    // status` and older readers to print.
     pipeline: [...pipeline],
     migrated_from: 'pipeline'
   };
@@ -237,10 +220,8 @@ export function clearNode(state, id, { resetLoops = false } = {}) {
   return state;
 }
 
-// The DECIDED block and the failure message both read the run's decisions. This
-// is the one accessor, so a shape change cannot silently empty either of them —
-// the old readers used `?? {}` and failed OPEN, which is why no existing test
-// caught the loss.
+// The one accessor for a run's decisions, so a shape change can't silently
+// empty the DECIDED block or the failure message.
 export function decisionsByNode(driver) {
   const out = [];
   if (!driver) return out;
@@ -258,9 +239,8 @@ export function decisionsByNode(driver) {
   return out;
 }
 
-// Which node is the run sitting on — for the F11 failure message and status.
-// Never `pipeline[stage]`, which degrades to "stage undefined failed" one past
-// the end of a completed run.
+// Which node the run is sitting on. Never `pipeline[stage]`, which degrades
+// to "stage undefined" one past the end of a completed run.
 export function cursorNodeId(driver) {
   if (!driver) return null;
   if (isGraphState(driver)) return driver.cursor;

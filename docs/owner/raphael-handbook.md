@@ -640,11 +640,13 @@ longitudinal numbers is still running. I'd rather name that than oversell it.
 > ▪ Measured — a built-in eval runs identical tasks brain-ON vs brain-OFF. Its
 > deterministic code graph answered "where does this error come from?" with 147.9×
 > fewer tokens than grep-and-read.
-> ▪ Self-trained — it autonomously built three real, public, tested products and
-> learned from its own builds. And it ships 10 specialist agents (planner,
-> architect, reviewer, debugger…) that all read the brain before acting.
+> ▪ Self-trained — it autonomously built real, public, tested products and
+> learned from its own builds, and now runs on an explicit graph so a build
+> loop's escalation path is inspectable before it ever runs. And it ships 12
+> specialist agents (planner, architect, reviewer, debugger…) that all read the
+> brain before acting.
 >
-> Local-first, MIT-licensed, 402 tests, zero-dependency core (Node + two libraries).
+> Local-first, MIT-licensed, 812 tests, zero-dependency core (Node + two libraries).
 >
 > `npm install -g raphael-brain` → `raph arise --autopilot`
 >

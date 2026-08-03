@@ -37,7 +37,7 @@ the record of *why* the system is shaped the way it is.
   disk), §3 (how a transcript becomes a lesson), §4 (how a lesson reaches an agent).
 - **"What did you decide, and when?"** — §11 (every owner decision, dated), §10 (the
   build order), §9 (who reviews what, in which mode).
-- **"What's the product?"** — §8 (the ten agents and the flywheel), §12 (the Academy),
+- **"What's the product?"** — §8 (the twelve agents and the flywheel), §12 (the Academy),
   §13 (adopt), §14 (the console).
 
 ## The system in one picture
@@ -76,7 +76,7 @@ the record of *why* the system is shaped the way it is.
                 │                                           │
                 ▼                                           ▼
         ┌──────────────────────────────────────────────────────────────┐
-        │            YOUR AGENT + THE TEN SPECIALISTS (§8)             │
+        │           YOUR AGENT + THE TWELVE SPECIALISTS (§8)           │
         │   shared spine: brain first · free checks first · map not    │
         │   repo · cheap→strong · write back                           │
         └──────────────────────────────┬───────────────────────────────┘
@@ -102,7 +102,7 @@ the record of *why* the system is shaped the way it is.
 | [§5](#5-threat-model-summary-register) | **Threat model** | Eight threats (T1–T8) with mitigations — and honest residuals, stated plainly |
 | [§6](#6-command-surface-v1) | **Command surface** | The v1 verb set, the error-handling contract, and what stays silent vs. what asks |
 | [§7](#7-eval-harness-prove-it-with-numbers) | **Eval harness** | Canaries as the hard gate, ON/OFF lift, tokens-per-task, and retrieval-miss — the metric that catches silent failure |
-| [§8](#8-the-agent-layer-the-product-surface) | **The agent layer** | The ten-agent roster, the five-rule spine, project maps, recipes — the flywheel that makes the brain worth having |
+| [§8](#8-the-agent-layer-the-product-surface) | **The agent layer** | The twelve-agent roster, the six-rule spine, project maps, recipes — the flywheel that makes the brain worth having |
 | [§9](#9-distribution--raphael-arise-and-the-community-brain) | **Distribution** | `arise`, auto mode's restricted tier, and the community loop with one reviewed door |
 | [§10](#10-v1-cutline-build-order) | **v1 cutline** | The build order, and what was explicitly deferred |
 | [§11](#11-product-decisions--decided-2026-07-13-owner-delegated) | **Product decisions** | The dated decision log — including §11.13, where autopilot's machine curator superseded the human queue |
@@ -532,22 +532,24 @@ users install, demo, and talk about. Strategy: **agents bring users, users gener
 the session data the brain learns from, the brain makes the agents better than anyone
 else's.** That loop is the product. So the agent team ships in v1, not later.
 
-### The roster (11 agents, all thin lenses over the same brain)
+### The roster (12 agents, all thin lenses over the same brain)
 
 | Agent | Job | Main token-saving trick |
 |---|---|---|
 | **Raphael (Manager)** | Takes your request, routes it to the right specialists, merges their results into one answer | Routing runs on a cheap model; specialists only see their slice |
 | **Planner** | Idea improver / finaliser: turns a raw, vague idea into a sharp, finalized spec (scope, users, success criteria, non-goals) before anyone designs or builds | Iterative-inquiry refinement (one question at a time) means the spec is right before expensive work starts — kills the biggest waste, building the wrong thing |
 | **Architect** | Senior-dev premium architecture from the finalized spec: system design, component structure, data flow, API design, data model, caching, and the minimal scalable implementation plan | Brain's past architecture decisions for this stack become the starting point instead of re-deriving a design from zero |
-| **Developer** | Writes code with relevant lessons already in context | Lessons prevent the write→fail→rewrite loop |
+| **Developer** | Writes backend/general code with relevant lessons already in context | Lessons prevent the write→fail→rewrite loop |
+| **Frontend** | Builds distinctive UI — the counterpart to Design's read-only review; can actually implement what Design flags | Same lesson-first discipline as Developer, tuned against AI-slop visual defaults |
 | **Code Reviewer** | Reviews diffs/code | Free tools first (linter, secret scan, diff stats — zero tokens); cheap model sweeps only changed/hot files; strong model verifies only the top findings |
 | **Security Engineer** | Audits for secrets, injection, auth mistakes | Free scanners first; brain's security lessons become a short targeted checklist instead of "think about everything" |
 | **Debugger** | Finds root causes | Brain's past root-cause lessons for this stack narrow the search before any file is read |
-| **Design Engineer** | UI/UX and consistency review | Checks against a stored design-decisions file instead of re-deriving taste each time |
+| **Design Engineer** | UI/UX and consistency review — read-only, hands findings to Frontend | Checks against a stored design-decisions file instead of re-deriving taste each time |
 | **Deployment Expert** | Pre-ship checks (migrations, env vars, rollback plan) | Deterministic checklist from brain's deploy lessons; model only reasons about exceptions |
 | **Critique** | Adversarial pass over any other agent's output before you see it | Only reads the output + evidence, never the whole codebase |
+| **Red Team** | Authorized offensive pentest of a system the user owns — proves real exploits with a minimal PoC, never patches | Read/Grep/Glob/Bash only, no Edit/Write, so it reports and never weaponizes |
 
-### The shared spine (every agent follows these five rules)
+### The shared spine (every agent follows these six rules)
 
 1. **Brain first.** Pull the relevant lessons for this stack/task before doing anything.
 2. **Free checks before paid checks.** Linters, secret scanners, grep, git stats cost
@@ -559,6 +561,14 @@ else's.** That loop is the product. So the agent team ships in v1, not later.
 5. **Write back.** Every agent run emits episodes (mistakes found, decisions made,
    fixes applied) into the mining pipeline. Using the agents literally feeds the
    brain — this is the data flywheel.
+6. **One decision, one question.** When a call needs the developer's input, state a
+   recommendation and why, then ask about exactly one thing — never bundle unrelated
+   decisions into a single question.
+
+Rules 1 and 5 render differently per agent: an agent without Bash (Manager, Planner,
+Design, Critique) cannot run `raph search`/`raph note` itself, so its spine text
+describes the form it actually has (lessons arrive pre-loaded in context; a durable
+finding is stated for the caller to capture) rather than an instruction it cannot follow.
 
 ### Two new knowledge types (beyond lessons)
 
@@ -795,7 +805,9 @@ better.** Early projects (empty brain) vs later projects (full brain) are also t
 proof the whole product works — measured, not claimed (§7).
 
 ### One project, start to finish (the build loop)
-Each project runs the 10-agent pipeline (§8) as stages. The output of one stage is the
+Each project runs a subset of the agent roster (§8) as stages on an explicit, bounded
+graph (§15) — which stages and in what order depends on the shipped template. The
+output of one stage is the
 input of the next ("team prompting", docs/prompt-library.md):
 
 1. **Idea** — pick the next project from the backlog (below).
@@ -1022,4 +1034,82 @@ model policy, the dial, guard allowlist) · Guard page.
 No model configured → adopt still snapshots + runs deterministic gates and says
 "queued for extraction"; all deterministic pages work. No git → doctor says so.
 The console never pretends a layer ran when it didn't.
+
+---
+
+## 15. The graph layer (Phase 23) — what runs next, declared before the run starts
+
+Origin: an owner-supplied framework (`Graph-Engineering.md`, session 17) arguing that an
+agent loop's "what runs next" decision should be explicit and bounded before a run starts,
+not implicit inside a model's own reasoning. Full design and its adversarial review in
+`docs/graph-engineering-plan.md`. Shipped session 18; live-dogfooded on real builds
+(`.claude/observation/2026-07-28-run-06-graph-live.md`).
+
+### Why: the driver could not express a loop
+
+Before this phase, `raph academy drive` ran a flat pipeline of task kinds; a stage record
+was keyed by kind, so a pipeline containing the same kind twice silently overwrote the
+first record. A review loop — "frontend builds, design reviews, send it back, repeat" —
+was not expressible. Separately, a manager-orchestrated agent run (outside the driver) ran
+that same kind of loop as prose in a prompt: it converged by luck, nothing bounded it, and
+it had no durable checkpoint.
+
+### The model
+
+- **Nodes** carry a `kind` (resolved against POLICY for model/effort/tools), a required
+  declarative `check` (never a shell command — the only command Raphael ever runs is the
+  owner's own `--verify`), and an `emit` of `deliverable` or `verdict`.
+- **Edges are the only control relation.** A node's `inputs` is a pure data selector (what
+  prior output renders into its prompt), never a routing signal — collapsing the two would
+  let audit history and actual data flow silently diverge.
+- **Every cycle is bounded.** `validateGraph()` requires a positive integer `maxTraversals`
+  on every edge inside a non-trivial strongly connected component (Tarjan SCC), so an
+  unbounded retry loop cannot exist in a graph that passes validation — not a convention,
+  a structural guarantee, tested by disabling the rule and confirming a genuinely unbounded
+  cycle validates without it.
+- **Verify is additive-only.** A graph may extend the owner's `--verify` command to a node
+  it would not otherwise cover; it can never switch it off — the one gate built because a
+  stage once self-reported "135 tests passing" while the real suite was red.
+- **Recovery is a declared table** (`RECOVERY` in `src/lib/recovery.js`), scoped per node
+  visit, with a hard `MAX_NODE_ATTEMPTS` closing the seam where several independent
+  per-class counters could otherwise compound past any single declared bound. Exhausting a
+  bound always escalates — there is no "carry on anyway" path, because on a review loop
+  that could only mean treating a rejected verdict as approved.
+- **The execution and recovery layers are provably separate**, not just described that way:
+  the stage runner (`src/lib/stage-runner.js`) returns raw observations only, a test asserts
+  set equality of its return keys, and the file is asserted to never import `recovery.js`.
+  Classification (`classifyFailure()`) lives entirely in the recovery module.
+- **Escalation is a real, visible state** — `escalated`, distinct from `failed`, with its own
+  exit code (3, vs. 2 = stopped and 4 = usage limit) — carrying the full per-attempt history
+  so a human does not have to reconstruct what was tried from a transcript.
+
+### Shipped templates
+
+`linear` (today's default pipeline, unchanged behavior) · `fix` (a bounded debug↔test loop)
+· `full-build` (11 nodes, every agent, the frontend↔design and review↔debug loops — marked
+**experimental** and announced as such on every use, because the gate for removing that flag
+is a run that finishes end to end, and as of this writing none has). The model never authors
+topology: graphs come from a shipped template or the owner's own `--graph-file`, never from
+a stage's output — the same rule that already governed `--verify`.
+
+### Enforced structurally, not by prompt
+
+`full-build`'s security node routes a `changes` verdict to the owner, never to an automatic
+fixer — invariant #4 was always the rule; this is the first place it is enforced by the
+graph's own structure rather than hoped for in a prompt. Similarly, `redteam` deliberately
+has no POLICY kind: adding one would make an offensive agent reachable, unattended, through
+the pre-existing `--pipeline` flag.
+
+### What live dogfooding actually found
+
+Two real bugs, both fixed the same session they were found: an agent with shell access but
+no edit tools created a file via redirection, then silently gave up trying to edit it on a
+later visit — fixed by having the driver itself own artifact writes, gated on whether the
+agent already wrote something *this attempt* (not merely this visit — the first version of
+the fix used the wrong boundary and could still be fooled by a multi-attempt visit). And a
+live escalation on a real build (`architect ⇄ critique`, hitting its traversal bound while
+critique was still finding genuine bugs) led directly to two owner-approved, now-tested
+standing rules: every shipped loop bound floors at 4 traversals, and `architect` alone gets
+a first-pass **opus** model — a named exception to "opus is escalation-only," enforced by a
+test that the exception set contains exactly that one kind.
 

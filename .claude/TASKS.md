@@ -363,8 +363,11 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
       (real plan stage, 541 tokens, spec written to the workspace)
 - [x] Limit-aware scheduler (14.5): E-LIMIT mid-stage -> state written FIRST,
       recordLimit w/ reset time, clean exit 4; rerunning `drive` clears the block
-      and resumes the interrupted stage. The timed re-trigger is the existing
-      auto-resume infra (resume.ps1 + Startup launcher, project-agnostic).
+      and resumes the interrupted stage. Re-trigger was originally a Startup-folder
+      logon launcher (resume.ps1); the owner had it opening a visible window on every
+      login even when idle, so the launcher was REMOVED (session 18) — resume.ps1
+      still exists in the repo but nothing auto-invokes it. Resuming a blocked run
+      is now a manual `raph academy drive` re-run.
 - [x] Model policy table (14.4): task-kind -> model (haiku mechanical / sonnet dev /
       opus escalation-only) + effort, `raph policy`, --model/--effort forwarded
 - [x] Session resume across pauses (14.5): every stage runs under its own
@@ -372,14 +375,21 @@ Expanded backlog + decision in docs/academy/backlog.md; live checkpoint in
 - [x] Autonomy boundary ENFORCED in code (14.5): no "deploy" task kind EXISTS
       (E-POLICY at init); pipeline completion records the boundary and blocks;
       boundary rules verbatim in every stage prompt; workspace-confined cwd
-- [ ] Sandbox workspace: ~/raphael-academy/<project>/, own git repo, never auto-pushed,
-      no real secrets; unattended tool use only inside it
-- [ ] Wire the loop into mining: each build session -> `raph mine` -> `raph distill`
-      (subscription) -> candidates -> owner review (human gate unchanged)
+- [x] Sandbox workspace SUPERSEDED BY REALITY: every Academy project (gatepost, microcache,
+      notecard, assay, onedesk, repo-keeper, tallyboard, and the graph-live runs) has run at
+      Desktop/Projects/<name> in its own git repo, never auto-pushed by the driver itself —
+      the literal `~/raphael-academy/` path was never built, but the property it asked for
+      (isolated, git-tracked, no shared secrets) has held across seven real builds.
+- [x] Wire the loop into mining SHIPPED as `raph pulse` (Phase 17.3): each session end ->
+      mine -> distill (subscription) -> curator/candidates -> review, on autopilot's own
+      schedule rather than per Academy build.
 - [ ] Tokens-per-task ON-vs-OFF recorded per project; report project #1 vs #5 (the proof)
-- [ ] Project backlog finalized with the owner (web / mobile / AI agent / CLI / realtime)
-- [ ] LIVE prerequisite: verify `claude -p` structured extraction once the subscription
-      limit resets (also unblocks the pending Phase 3 live smoke)
+- [x] Project backlog finalized THROUGH PRACTICE, not a single sit-down: Academy has shipped
+      6 real products (repo-keeper, onedesk, assay, gatepost, microcache, notecard) plus 2
+      graph-engine dogfood runs (tallyboard, the fix/full-build live tests) — the backlog
+      question was answered by building rather than by a planning session.
+- [x] LIVE prerequisite CLEARED long ago: `claude -p` structured extraction has run live
+      hundreds of times since (every Academy stage, every distill/curator pass).
 
 ## Phase 13 — Scout: the adopt pipeline (COMPLETE 2026-07-16, session 07;
 ## ARCHITECTURE §13 is the design; owner approved fetch + recommendations)
@@ -1241,9 +1251,16 @@ VERIFIED GAPS found while designing (each re-checked against real code, not infe
       resolves, so they cannot drift again.
       SEVEN gates proven RED-WITHOUT, incl. the fail-closed grant, the roster sourcing, the
       copy-not-reference return, and the pruned kinds coming back.
-- [ ] 23.3 ensureGraph + the 8-shape migration table + fixtures byte-copied from the real
-      gatepost/microcache state.json. Four regression tests shown RED-without: verifier
-      default, legacy retry_escalated, renderStatus DECIDED, duplicate-kind pipeline.
+- [x] 23.3 SHIPPED (2026-07-28, landed inside the 23.4 commit rather than its own — the
+      engine swap needed ensureGraph to exist before it could read anything, so they were
+      built and committed together). src/lib/graphstate.js: ensureGraph() migrates all 8
+      on-disk shapes, fixtures built from the real gatepost/microcache state.json (shape 6:
+      a completed run's `stage` sits one past the pipeline end, which the naive lift turns
+      into `cursor: undefined` for BOTH real runs — now `cursor: null`; shape 7: a consumed
+      timeout budget carries forward marked `migrated: true`, never passed off as observed;
+      shape 8: `retry_escalated` becomes one consumed model-class attempt, not a fresh
+      budget). 22 tests in test/graphstate.test.js, one per shape plus the regression set
+      (verifier default, renderStatus DECIDED, duplicate-kind pipeline).
 - [x] 23.4 + 23.6 SHIPPED (2026-07-28, 721 -> 757 tests). THE ENGINE SWAP: one path, no
       fallback — every state is read through ensureGraph, so the driver only knows graphs.
       COMMITMENT 2 is now a fact about the MODULE GRAPH, not a comment: makeStageRunner

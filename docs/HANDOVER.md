@@ -1,25 +1,22 @@
-# Handover — Raphael, as of 2026-07-28 (session 17)
+# Handover — Raphael, as of 2026-07-29 (session 18)
 
-You are picking up a live, shipped project from another AI model, mid-way through a
-deliberate stress-testing phase. This document is a complete, standalone orientation:
-read it and you should be able to continue without asking the owner to re-explain
-anything already established here.
+You are picking up a live, shipped, actively-dogfooded project from another AI model. This
+document is a complete, standalone orientation — read it and you should be able to continue
+without asking the owner to re-explain anything already established here.
 
 **Read these files, in this order, before doing anything substantive:**
-1. `CLAUDE.md` — the project's standing instructions + a long dated "Current state" log
-   going back to project start. It is the single most important file; its rules override
-   your defaults. It is also very long — skim the dated entries near the bottom for the
-   most recent sessions, but the invariants and working ritual near the top are load-bearing.
-2. `.claude/TASKS.md` — the build checklist and source of truth for progress (1200+ lines,
-   phases 1–23).
-3. `docs/graph-engineering-plan.md` — the most recent major design, FINAL status, not yet
-   built. Read this fully if you touch anything in `src/lib/driver.js`, `academy.js`, or
-   the agent roster.
-4. `.claude/observation/2026-07-26-run-01.md` and `.claude/observation/2026-07-28-run-05-agent-roster.md`
-   — the stress-test logs this whole session was built around.
-
-Everything below is a summary *of* those files plus context they don't carry (why decisions
-were made, what the owner actually said, what traps I hit).
+1. `CLAUDE.md` — the project's standing instructions + a long dated "Current state" log going
+   back to project start. The single most important file; its rules override your defaults.
+   It is very long — skim the dated entries near the bottom for the most recent sessions, but
+   the invariants and working ritual near the top are load-bearing.
+2. `.claude/TASKS.md` — the build checklist and source of truth for progress (phases 1–23).
+3. `docs/graph-engineering-plan.md` — the design for Phase 23 (the graph layer), now SHIPPED.
+   Read it fully before touching `src/lib/driver.js`, `graph*.js`, `stage-runner.js`,
+   `recovery.js`, `policy.js`, or the agent roster.
+4. `.claude/observation/` — the stress-test logs. `2026-07-26-run-01.md` (15 findings against
+   the pre-graph driver, all fixed), `2026-07-28-run-05-agent-roster.md` (the manager path has
+   no checkpoint — the reason Phase 23 exists), `2026-07-28-run-06-graph-live.md` (two real
+   post-graph driver runs, one complete, one escalated live).
 
 ---
 
@@ -29,236 +26,196 @@ A **learning layer ("brain") for AI coding agents.** It watches the developer's 
 distills durable lessons from it, and injects the relevant ones back into an agent's context
 at the moment they matter — so the agent stops repeating the same mistakes.
 
-- Ships as a **Node CLI (`raph`, 44 verbs)** + a **Claude Code plugin** (hooks, 12 agents,
-  slash commands, recipes, a recall skill, a localhost web console).
-- **Public and published:** `github.com/maheshaggarwal21/raphael` (public),
-  `raphael-brain` on npm. **Local package version is 0.5.4, UNRELEASED** — the registry is
-  at 0.5.3 (owner published it). Publishing is owner-only; I bump the version the moment
-  work lands past a release, not just at release time (this is itself a fix for a real bug,
-  F8 — see §9).
+- Ships as a **Node CLI (`raph`)** + a **Claude Code plugin** (hooks, 12 agents, slash
+  commands, recipes, a recall skill, a localhost web console).
+- **Public and published:** `github.com/maheshaggarwal21/raphael` (public), `raphael-brain`
+  on npm, **registry version 0.6.0** (the owner ran `npm publish` — repo and registry are in
+  sync as of this session).
 - **The moat is curation, not model cleverness.** Every lesson enters through one validated
-  chokepoint (`validateLesson()` in `src/lib/validate.js`); nothing bypasses it.
+  chokepoint (`validateLesson()` in `src/lib/validate.js`); nothing bypasses it, ever.
 - Two brains: a **global** one (owner-curated, seeds every install) and a **local** one (the
   user's own, learns from their work).
-- **Autopilot mode exists**: the brain can run in `curator` (human reviews everything) or
-  `autopilot` (machine curator handles routine lessons; security stays human — see invariant
-  #4 in CLAUDE.md). The owner's real brain runs in `autopilot`.
+- **Autopilot mode**: the brain runs in `curator` (human reviews everything) or `autopilot`
+  (machine curator handles routine lessons; security stays human — invariant #4). The owner's
+  real brain runs in `autopilot`.
+- **`raph academy drive`**: a real, checkpointed, unattended build autopilot — the thing this
+  whole session (and several before it) has been proving against real builds. As of this
+  session it runs on an explicit, validated, bounded **graph** rather than a flat pipeline
+  (Phase 23 — see §3).
 
-Zero runtime dependencies beyond `js-yaml` and `ajv`. Node ≥18, ESM, Windows-first — this
+Zero runtime dependencies beyond `js-yaml` and `ajv`. Node ≥18, ESM, **Windows-first** — this
 matters constantly; see §8.
 
 ---
 
-## 2. Current state (verified 2026-07-28, this session, not inherited)
+## 2. Current state (verified this session, not inherited)
 
 | | |
 |---|---|
-| Tests | **629 passing, 0 failing** (`npm test`) |
+| Tests | **812 passing, 0 failing** (`npm test`) |
 | `raph doctor` | **healthy** (all 12 checks pass) |
-| Working tree | **clean, pushed to `main`** — HEAD is `a5afa58` |
-| Package version | **0.5.4** (package.json / plugin.json / marketplace.json in lockstep) |
+| Working tree | clean, pushed to `main` — check `git log -1` for the current HEAD |
+| Package version | **0.6.0**, matches the published npm registry |
 | Agent roster | **12 agents** (manager, planner, architect, developer, frontend, reviewer,
   security, debugger, design, deployer, critique, redteam), 7 recipes |
-| Real brain (`~/.raphael`) | **88 active lessons**, mode = **autopilot**, **9 candidates
-  pending review** |
-| Development status | Core engine (Phases 1–17) is COMPLETE and has been for several
-  sessions. This session's work was **stress-testing** the finished product against real
-  builds, fixing what broke, then designing (not yet building) a significant architecture
-  upgrade — Phase 23, "the graph layer." |
+| Real brain (`~/.raphael`) | **91 active lessons**, mode = **autopilot**, roughly 20
+  candidates pending review at any time (the number moves — check `raph status`) |
+| Development status | Phases 1–17 (core engine) and Phase 23 (the graph layer, 23.1–23.8 +
+  23.10) are **shipped**. 23.9 (a full-build live run) is **partial by design** — it proved
+  the loop mechanism live but never finished a full 11-node run, so `full-build` correctly
+  keeps its EXPERIMENTAL flag. |
 
-**Nothing is half-built in the committed repo.** One thing IS half-built *outside* the repo:
-a test project called `notecard` at `C:/Users/Mahesh/Desktop/Projects/notecard`, produced by
-an interrupted agent-roster run — see §5.1. It is not part of Raphael and needs no action
-unless the owner asks you to resume it.
+**Nothing is half-built in the committed repo.** Test projects Raphael's own agents built
+along the way (`gatepost`, `microcache`, `notecard`, `tallyboard`) live as separate git repos
+under `Desktop/Projects/`, outside this repo, and need no action unless the owner asks.
 
 ---
 
-## 3. What this session actually was (read this to understand everything else)
+## 3. What the last two sessions actually were
 
-The owner gave one long-running directive that shaped the whole session: **stress-test
-Raphael by building real projects with it, observe every action, verify every claim
-independently, fix what's broken, and do none of the building yourself.**
+### Session 17 — stress-testing the pre-graph autopilot, then designing the graph layer
 
-Concretely, this happened in two phases:
+The owner's directive: build real projects with Raphael's own tooling, observe everything,
+verify every claim independently, fix what breaks, do none of the building yourself. This
+produced:
 
-### 3.1 — Driving the academy autopilot (`raph academy drive`) against real builds
+- **15 findings (F1–F15)** against the coded driver (`raph academy drive`), all fixed —
+  covering a planner that asked a question with nobody to answer it (F4), a stage that
+  self-reported "135 tests passing" while the real suite was red (the reason `--verify
+  "<cmd>"` exists — the driver runs the owner's own command and refuses to advance on a lie),
+  timeout/failure confusion, a dead-end retry command, and Claude Code's own ungoverned
+  project-memory tool competing with Raphael's governed brain (resolved as "absorb": steer
+  agents to the sanctioned `raph decide` channel instead).
+- **Run 05**: testing the *other* code path — the real Claude Code agent roster,
+  manager-orchestrated, the way an actual user would type "use the manager to build X." It
+  produced a real app (`notecard`) but proved this path has **no Raphael-managed checkpoint
+  at all** — files survive, orchestration position does not.
+- **The graph engineering design**: the owner supplied `Graph-Engineering.md` (a framework for
+  making an agent loop's "what runs next" decision explicit and bounded, before the run
+  starts, rather than implicit inside a model's head). The resulting design
+  (`docs/graph-engineering-plan.md`) went through a 7-lens adversarial critique (91 findings)
+  before being finalized — every critical/high finding was independently re-verified against
+  real code, not taken on the critique's word.
 
-Two real, from-scratch projects were built entirely by Raphael's own coded autopilot (a
-state machine in `src/lib/driver.js` that spawns headless `claude -p` subprocesses per
-pipeline stage): **Gatepost** and **Microcache**. A third, **Notecard**, was attempted via a
-different path (§3.2).
+### Session 18 — Phase 23 built end to end, then dogfooded live, then a real architecture audit
 
-This surfaced 15 real findings, all logged in `.claude/observation/2026-07-26-run-01.md`
-with full evidence, and **all fixed** (Phase 22 in TASKS.md, commits through `674c4b6`):
+All ten milestones attempted; nine shipped, one partial by design:
 
-- **F4** — the planner asked a clarifying question with nobody to answer it; the driver
-  accepted it as a finished spec. Fixed: `BOUNDARY_RULES` now states plainly there is no
-  human in the loop, and every deliverable must carry a `## DECISIONS` section, parsed and
-  gated deterministically (`gateDeliverable()`/`parseDecisions()` in `driver.js`).
-- **F9** — Claude Code's own ungoverned project-memory tool competed with Raphael's governed
-  brain. Owner decided **"absorb"**: `BOUNDARY_RULES` now explicitly steers agents to the
-  sanctioned `raph decide` channel instead of the host's raw memory files. Confirmed holding
-  across two independent from-scratch builds.
-- **F10/F11/F12/F14** — timeout-vs-failure confusion, a misleading hardcoded failure message,
-  `develop` never escalating to a stronger model, and a dead-end `retry` command. All fixed
-  with real regression tests (red-without/green-with).
-- **The verifier finding (biggest one)** — a `test` stage's own deliverable said "the counts
-  are exact: 135 total tests" and satisfied the DECISIONS gate, while an INDEPENDENT
-  `node --test` run showed a real failure. This is *the* reason `--verify "<cmd>"` exists now
-  (`runVerify()` in driver.js): the driver runs the owner's own command after code-bearing
-  stages and refuses to advance on a lie.
-- **The sticky-false token bug** — a stage killed once (0 tokens recorded) then resumed and
-  finished could end up reporting `tokens_captured: true` over an incomplete total. Fixed to
-  be sticky-false.
-- **F13** — a manual `raph update` never recorded that it had upgraded (only the automatic
-  pulse path did). Fixed.
+- **23.1** `src/lib/graph.js` — the graph model, `validateGraph()` (16 rules: explicit
+  entry, forward + co-reachability, Tarjan-SCC-bounded cycles, `when` exclusivity, required
+  declarative `check`, a boundary deny-scan), `pipelineToGraph()`, `renderGraph()`. Pure —
+  zero spawns, zero tokens.
+- **23.2** POLICY gains a `frontend` kind (the driver could not run the Frontend agent at
+  all before this) and an explicit per-kind `tools` grant sourced from the roster —
+  `buildStageArgs` now emits `--tools <list>` and fails closed on a missing grant, live-verified
+  twice against the real CLI. `redteam` deliberately still has **no** POLICY kind — adding one
+  would make an offensive agent drivable unattended via the existing `--pipeline` flag.
+- **23.3** `ensureGraph()` — migrates all 8 pre-graph on-disk state shapes (landed inside the
+  23.4 commit; its own checkbox had been left unticked in TASKS.md until this session —
+  fixed).
+- **23.4 + 23.6** the engine swap: the driver reads every state through `ensureGraph`, the
+  runner (`stage-runner.js`) is provably separated from routing (`recovery.js`), recovery is
+  scoped per node-visit, `MAX_NODE_ATTEMPTS` closes the between-classes seam, three checks
+  run on every resume (revalidate, hash match, state-vs-graph binding).
+- **23.5** shipped graphs (`linear` default, `fix`, `full-build` experimental), `--graph`/
+  `--graph-file`, `raph academy graph [--mermaid]`, exit code 3 = escalated.
+- **23.7** **the brain is finally in the loop** — the driver had been computing the right
+  lesson matches per stage and discarding them; they now render into every stage prompt.
+- **23.8** `graph-run`/`graph-escalation` events feed `raph stats` and `raph report weekly`.
+- **23.9** two real live runs (`.claude/observation/2026-07-28-run-06-graph-live.md`): a
+  `fix` graph completed clean and was independently verified; a `full-build` run hit the
+  subscription limit at 4/11 nodes but proved the loop mechanism fires for real (a `critique
+  → architect` loop-back left two separate visit records with separate token accounting,
+  which the old kind-keyed driver would have silently overwritten). `full-build` correctly
+  **keeps** its experimental flag — the gate is a run that finishes, and this one didn't.
+- **23.10** a spike, not a build: confirmed (by reading the installed Claude Code binary's own
+  zod schemas, not by inference) that `SubagentStop` hooks carry `agent_id`/`agent_type`,
+  refuting the design's original pessimism about the manager-orchestrated path being
+  uncheckpointable. Recorded as a **new**, not-yet-built milestone — deliberately not folded
+  into Phase 23.
 
-All of this is why the owner then handed me `Loop Engineering.md` (a skill doc on
-plan/execute/recover/escalate loop discipline) partway through, asking me to apply it — most
-of the fixes above are direct applications of that document's principles, discovered
-independently through live observation before the doc was even supplied.
+**Then real live dogfooding on a new project, "Tallyboard"** (a scoreboard app), which
+surfaced two more real things, both fixed the same session:
 
-**Standing constraint from this phase, still in force:** *"remember dont run multi-agent
-workflow from now on as we dont have enough limits."* **I have not used the `Workflow` tool
-since, except once at the owner's own later explicit request (see §3.3) — and even that one
-hit the session limit mid-run.** Default to inline work (Read/Bash/Grep/Edit), not fan-out.
+- The `architect ⇄ critique` loop hit its bound (`maxTraversals: 2`) and escalated —
+  correctly, since critique kept finding real bugs on every round. Owner's call: raise the
+  bound (architect↔critique to 5, every other shipped bound to a floor of 4, enforced by a
+  test across all templates) **and** give `architect` a first-pass **opus** model — a
+  deliberate, named exception to "opus is escalation-only, never first-pass," visible in code
+  as `FIRST_PASS_OPUS_KINDS` and tested both ways so no other kind can quietly join it.
+- **The artifact-ownership bug**: `architect` has Bash but no Write/Edit, so it created
+  `ARCHITECTURE.md` via shell redirection on visit 1, then on visit 2 needed to *edit* it,
+  couldn't, and gave up — leaving a stale v1 file on disk while the corrected version lived
+  only in the response text. Fixed by making **the pipeline own the artifact**: an optional
+  `artifact` node field, written by the driver itself (atomic, path-validated, fails open).
+  A second, subtler version of the same bug was caught by `critique` itself doing its job on
+  a later run (an artifact-write guard used the *visit* start instead of the *attempt* start,
+  so a corrected second attempt within one visit could still be blocked by its own first
+  attempt's file) — fixed the same session.
+- **A real architecture audit** (owner: "reinspect the whole architecture, find the gaps, fix
+  them, give me a working feature-tested system") found and fixed four more gaps, all with
+  live evidence: environmental failures (a revoked OAuth token, a transient DNS blip) were
+  being misclassified as `model` failures, which either wasted a human escalation on a
+  network blip or (worse) burned an opus escalation trying to reason past DNS — now classified
+  as `infra`, retried automatically; the run lock never checked whether its owner process was
+  actually alive, so a killed drive could wedge a project for 45 minutes — fixed with a
+  liveness check; `limit`/`paused` terminal states were never logged as graph-run events,
+  undercounting the escalation-rate denominator — fixed.
 
-### 3.2 — Testing the OTHER code path: the actual agent roster (run 05)
-
-The owner then asked for something different: **not** the coded driver, but the real
-Claude Code subagent roster, manager-orchestrated, the way an actual user would type "use
-the manager to build X." Brief: `.claude/observation/notecard-brief.md`. Log:
-`.claude/observation/2026-07-28-run-05-agent-roster.md`.
-
-This is architecturally a *different, unrelated code path* — nothing in `driver.js` runs
-here. I invoked `raphael-brain:raphael-manager` via the Agent tool in the background and
-watched it drive the other 11 agents through its own Task tool.
-
-It got through planner → architect → critique → frontend → a real
-design↔frontend loop (confirmed genuinely iterative: two `raph decide` records exist, the
-second an explicit correction of the first's focus-ring colors) → developer → a
-reviewer↔debugger loop, and was about to start the security stage when the owner asked me
-to pause it (usage-limit concern). I stopped it cleanly via `TaskStop`.
-
-**What this run proved, the hard way:** this path has **no Raphael-managed checkpoint at
-all**. Files on disk survive (a real, substantial Notecard app — see §5.1), but the
-orchestration *position* — which loop iteration, what was mid-flight — has no durable record
-anywhere. I told the owner this plainly when asked "will it resume from a checkpoint": no,
-not the way `raph academy drive` does. This became the direct trigger for the next phase.
-
-### 3.3 — The graph engineering design (Phase 23) — the most recent work, NOT YET BUILT
-
-The owner supplied a long article (`Graph-Engineering.md`, still in the repo root, not
-deleted on purpose — it's the design's primary source) on "graph engineering": the idea that
-an agent loop's implicit "what runs next" decision should instead be an explicit, validated,
-bounded graph — locked before the run starts, auditable after. The owner: *"this is the thing
-our autopilot and our agents need... design it completely and take care of all edge cases,
-follow the graph-engineering.md."*
-
-I did four things, in order:
-1. Read the source fully and mapped it honestly against Raphael's real code (not
-   aspirationally — I verified every claim with grep/node one-liners before writing it down).
-2. Wrote a first draft, `docs/graph-engineering-plan.md`.
-3. **At the owner's explicit request**, ran a 7-agent adversarial `Workflow` critique against
-   that draft — the one exception to the no-Workflow constraint this session, and it still
-   hit the session limit on its final synthesis step (7 of 8 agents completed; the 8th,
-   pure synthesis, failed on limit). I did NOT waste that: I read the raw per-agent journal
-   output directly (`journal.jsonl` in the workflow's transcript dir) and manually harvested
-   all 91 findings myself, since the synthesis agent's death didn't invalidate the 7 completed
-   critiques.
-4. **Independently re-verified every critical/high finding against the real code** (not
-   trusting the critique agents at face value — several early findings in the session had
-   already taught this lesson) before rewriting the design. One finding I disproved outright:
-   the draft claimed the manager-orchestrated path "cannot be checkpointed because Raphael
-   doesn't own that runtime" — I found `SubagentStart`/`SubagentStop` hook event strings
-   inside the actual installed Claude Code binary, meaning that premise was simply wrong.
-
-The result is `docs/graph-engineering-plan.md`, marked **FINAL**, and milestones 23.1–23.10
-are in `.claude/TASKS.md`, all currently **`[ ]` — designed, not built**. Read that document
-before touching `driver.js` or `academy.js`. Highlights worth knowing without re-reading the
-whole thing:
-
-- **The honest premise, corrected from the first draft:** the graph doesn't fix any observed
-  bug — Phase 22 already fixed everything real, and both post-fix driver runs on disk
-  finished clean. The one thing genuinely missing is that **the driver cannot express a
-  loop at all** (stage records are keyed by kind; a repeated kind silently overwrites). That
-  is what makes the owner's "frontend builds → design reviews → send back → repeat" request
-  currently unbuildable through the governed path, and it's the actual justification.
-- The build order puts the *earned* part first (23.1–23.4: graph model, validation, POLICY
-  gaining a `frontend` kind, the driver running on the graph) and defers the general/
-  speculative machinery (23.5–23.10) until that's live and proven.
-- `redteam` (the pentest agent) is **deliberately never added to POLICY** — doing so would
-  make it invocable, unattended, via the existing `--pipeline` flag, with Edit/Write tools
-  the roster withheld on purpose. This is a considered decision, not an oversight — don't
-  "fix" it later without re-reading why.
-- §7 of the design ("the brain in the loop") found that `driver.js` computes exactly the
-  right lesson matches (`lessonMatchesFor`) and then **discards them** — they only feed a log
-  line. The autopilot's most expensive builds run with zero lessons actually injected. This
-  is milestone 23.7, and it's arguably the most important one for the product's own thesis.
+**The Windows Startup-folder auto-resume launcher was removed this session**, at the owner's
+request — it had been popping up a visible `claude` terminal window at every login, which the
+owner didn't want. `resume.ps1` itself is still in the repo; nothing invokes it anymore.
+TASKS.md has been corrected to say so (it previously described the launcher as active).
 
 ---
 
 ## 4. Decisions that are CLOSED — do not re-open these
 
-1. **Never run the `Workflow` (multi-agent) tool unless the owner explicitly asks for it in
-   that turn.** Stated flatly, twice, after a costly workflow burned session limit early in
-   this session. This is the single most important standing behavioral constraint right now.
+1. **Never run the `Workflow` (multi-agent) tool unless the owner explicitly asks in that
+   turn.** Stated flatly after a workflow burned session limit early in session 17. Still in
+   force. Everything else defaults to acting without asking.
 2. **Raphael's own code stays single-vendor** — no second AI vendor call from Raphael's own
-   code (settled session 14; invariant #5 unchanged, no "#5e").
-3. **The two-tier `flagship` agent flag is retired for good** — one bar for every agent.
-4. **`redteam` does not get a POLICY kind** (Phase 23 decision, this session) — it stays
-   reachable only through human-in-the-loop paths (the manager, the `pentest` recipe).
-5. **F9 resolved as "absorb"**, not "govern" (lint the host's memory) or "complement" (leave
-   the split as-is) — steer via prompt, confirmed holding across two builds.
-6. **Version bump discipline:** bump semver the moment work lands past a published release,
-   not just at release time. This exists because an earlier bug (F8) let an unbumped version
-   hide real fixes from the self-updater's string comparison.
-7. **Out of scope permanently:** embeddings/vector DB, unbounded agent-driven external fetch,
-   `pptx`/`docx`/slide/logo generation as a Raphael feature, gstack's heavy telemetry
-   preamble.
-8. **`AskUserQuestion` tool is banned in this environment** — it errors. Ask inline in chat
-   text instead.
+   code (settled session 14; invariant #5 unchanged).
+3. **`redteam` does not get a POLICY kind** — stays reachable only through human-in-the-loop
+   paths (the manager, the `pentest` recipe).
+4. **F9 resolved as "absorb"** — steer agents to `raph decide` via prompt, not host memory.
+   Confirmed holding across every build since.
+5. **Version bump discipline**: bump semver the moment work lands past a published release,
+   not just at release time (this exists because an earlier bug, F8, let a stale version hide
+   real fixes from the self-updater's string comparison).
+6. **`full-build` stays EXPERIMENTAL** until a run of it actually completes end to end. Do not
+   remove the flag on partial evidence — that would be exactly the self-reported-success
+   failure mode Phase 23 was built to eliminate.
+7. **Architect gets a first-pass opus model — a named, tested exception.** Every other kind
+   stays "opus is escalation-only." Do not generalize this without the owner's say-so; the
+   test suite enforces the exception list stays exactly `{'architect'}`.
+8. **The Startup-folder auto-resume launcher is gone, on purpose.** Don't recreate it without
+   being asked — the owner found the popup window intrusive.
+9. **`AskUserQuestion` tool is banned in this environment** — it errors. Ask inline in chat.
+10. **Out of scope permanently:** embeddings/vector DB, unbounded agent-driven external
+    fetch, `pptx`/`docx`/slide/logo generation as a Raphael feature.
 
 ---
 
 ## 5. What's actually open (pick up from here)
 
-Ordered by how ready each is.
-
-1. **9 candidates pending review on the real brain, right now.** `raph queue`, then
-   `raph show <n>`, then `raph approve`/`raph reject`. Genuinely actionable immediately.
-2. **Phase 23 (the graph layer) — designed, nothing built.** Start with 23.1
-   (`src/lib/graph.js`: the graph model + `validateGraph()`, pure, zero spawns, fully
-   testable alone) if the owner says go. Full milestone list and rationale in
-   `docs/graph-engineering-plan.md` §11.
-3. ~~**Phase 18 (v2 vision) — still not built.**~~ **CORRECTED 2026-07-28 (session 18): this
-   was wrong.** Phase 18 shipped in session 15 — `.claude/TASKS.md` shows 18.1–18.14 all
-   ticked "SHIPPED 2026-07-25" (18.8 was dropped deliberately), and `CLAUDE.md` records
-   "PHASE 18 COMPLETE + v0.4.0 TAGGED". Nothing is open here. Verify against TASKS.md before
-   trusting any "not built" claim in this document.
-4. **§5.1 below — the paused Notecard build.** Not Raphael code; a test artifact. Do nothing
-   with it unless asked.
-5. **A9 / 19.6 — per-agent outcome mining.** Deliberately deferred; needs its own design pass.
-   The known trap: transcript evidence alone can't tell "ignored because wrong" from "ignored
-   because busy" from "fixed differently."
-6. **Owner-gated switches:** `npm publish` for 0.5.4 (owner-only, per the "do not npm publish
-   yourself" pattern — I bump version and prep CHANGELOG, the owner runs the actual publish
-   command); the Phase 10 self-use RUN (calendar, not code).
-
-### 5.1 — The paused Notecard build (context, not a to-do)
-
-`C:/Users/Mahesh/Desktop/Projects/notecard` — a real, substantial local notes app (markdown
-body, tags, search, zero-dep Node HTTP API, safe-HTML rendering) built by the manager-
-orchestrated roster before being stopped mid-pipeline (it had just reached the security
-stage). Files exist: `SPEC.md`, `ARCHITECTURE.md`, 7 backend modules under `src/`, a 3-file
-frontend under `public/`, 18 sample note JSON files. **No `test/` directory exists** — the
-brief explicitly required `node:test` coverage of the markdown-to-safe-HTML path, and whether
-that gap is a real defect or just "the run never got that far" is **unconfirmed** — I was
-mid-investigation on this exact question when the previous context window ended. If the owner
-wants this resumed, the honest options are: continue via `SendMessage` to the same stopped
-agent (untested whether that actually restores full context after a real stop, as opposed to
-a live background agent), or restart it once Phase 23's driver improvements make the governed
-path capable of the same build (it currently can't run `frontend` — see §3.3).
+1. **~20 candidates pending review on the real brain** — run `raph queue` / `raph show <n>` /
+   `raph approve`/`raph reject`. Genuinely actionable right now.
+2. **23.10's follow-on**: a `SubagentStop`-hook-driven cursor for the manager-orchestrated
+   path is now known to be *buildable* (confirmed via the CLI's own schemas), but is not yet
+   built. It's a real milestone, deliberately not folded into Phase 23.
+3. **19.6 / A9 — per-agent outcome mining.** Deliberately deferred; needs its own design pass.
+   The known trap: transcript evidence alone can't distinguish "ignored because wrong" from
+   "ignored because busy" from "fixed differently."
+4. **A full `full-build` live run, start to finish**, to actually clear its experimental flag
+   — an 11-node build on a real brief is a multi-limit-window job; plan for that before
+   scheduling one.
+5. **Phase 18 (v2 vision)** — most of its 14 milestones were folded in and shipped across
+   sessions 14–15 (cache-stable ordering, the `preference` category, AGENTS.md, testing/
+   performance packs, etc. — check `.claude/TASKS.md` Phase 18 directly rather than assuming
+   anything here, it has moved since any earlier summary).
+6. **Owner-gated switches**: further `npm publish` runs (owner-only); the Phase 10 self-use
+   RUN (calendar, not code).
 
 ---
 
@@ -275,36 +232,40 @@ time or annoy him.
 - **Standing full-autonomy mandate**: build milestone by milestone without checking in;
   publish green work; pick the next project yourself when asked to.
 - **Don't over-defer.** Publishing repos, approving authorized candidates, choosing next
-  steps — that's your job. He has corrected me on this explicitly, more than once, across
-  sessions.
-- **The one sharp exception, from THIS session:** multi-agent `Workflow` use is now
-  gated — never run it unless he explicitly asks in that turn. This slightly narrows the
-  "just act" default; everything else about autonomy still applies fully.
+  steps — that's your job. He has corrected me on this explicitly, more than once.
+- **The one sharp exception**: multi-agent `Workflow` use is gated — never run it unless he
+  explicitly asks in that turn (§4.1). Everything else about autonomy still applies fully.
 - When he delegates a decision ("decide yourself"), actually decide it — state the choice and
   why, don't hand back a menu.
+- When he gives direct feedback on a live result (e.g. "raise the loop bound and give
+  architect a first-pass opus model"), that becomes a standing, tested rule immediately —
+  not a one-off tweak. See §4.7 for the exact pattern this takes in code.
 
 ### Where you MUST stop
 Deploy, sign-in, spending money, amending a "NEVER violate" security invariant. That's the
 complete list. Everything else: proceed.
 
-### Verify before you propose or report — this was tested hard this session
-He does not want self-reported success taken at face value, from Raphael's own stages OR
-from other agents (including critique/review agents). The verifier feature in `driver.js`
-exists *because* a stage's own deliverable confidently claimed "135 tests passing" while the
-real test run was red. When I harvested the 91-finding critique this session, I did not
-report it — I independently re-verified every critical/high claim against real code with
-grep and one-off Node scripts before writing a single line of the rewritten design. Do the
-same: **trust nothing that reports its own success; check.**
+### Verify before you propose or report
+He does not want self-reported success taken at face value — from Raphael's own stages, from
+other agents, or from an adversarial critique's own findings. The verifier feature in
+`driver.js` exists *because* a stage's own deliverable confidently claimed "135 tests passing"
+while the real test run was red. When a 91-finding adversarial critique came back on the graph
+design, every critical/high claim was independently re-checked against real code before being
+acted on — one of the critique's own findings turned out to be wrong (it said the manager path
+"cannot be checkpointed," which a five-minute check of the installed CLI's binary disproved).
+**Trust nothing that reports its own success or failure; check.**
+
+### Root-cause, not patch
+When something breaks live (the Tallyboard artifact bug, the misleading "claude reported
+success" error message), the fix traces to the actual mechanism — read the real transcript,
+resume the exact killed session, quote the raw error envelope — rather than guessing from
+symptoms. Both real bugs this session were root-caused this way before a line of code changed.
 
 ### Tooling notes
 - `AskUserQuestion` is banned — errors in this environment.
-- Prefer inline work over the `Workflow`/multi-agent tool by default (§4.1). When you do use
-  it (only if explicitly asked), don't waste a partial result if it hits the session limit —
-  raw per-agent transcripts are still readable from the journal file even if a synthesis step
-  fails.
-- The model was switched mid-session (`claude-opus-5` → `claude-sonnet-5`) via `/model`, at
-  the owner's own command — not something you need to manage, just don't be surprised if the
-  effective model changes between turns.
+- Prefer inline work over the `Workflow`/multi-agent tool by default.
+- Run builds **inline**, not via parallel agent fan-out unless explicitly asked — heavy
+  parallel workflows hit the session limit fast, confirmed multiple times.
 
 ---
 
@@ -321,23 +282,23 @@ same: **trust nothing that reports its own success; check.**
    to it without an explicit owner-approved invariant amendment.
 6. Everything mined stays local; nothing transmits without the user's own action.
 
-### The testing standard (owner directive, strictly enforced this session)
+### The testing standard (owner directive, strictly enforced)
 Every function gets **(a)** a success case, **(b)** at least one failure case, **(c)** edge
 cases. A regression test for a bug fix **must be shown failing without the fix, passing with
-it** — this was checked literally, multiple times this session, including on my own first
-attempts at some of these tests (I twice wrote a "vacuous" test that passed even with the
-fix removed — the deliverable-gate test and the verifier test both had this happen and had
-to be redone end-to-end through the real runner, not just the pure function). Watch for this
-failure mode in your own work.
+it** — a test that always passes proves nothing. This session's own harness pattern for Phase
+23: a "gate" is proven by disabling it and asserting the covering test fails (RED-WITHOUT) —
+used repeatedly, and it caught real vacuous tests more than once (a test whose escape-path
+assertion wrote a stray file into the shared system temp root; a test that only checked one
+of three shipped graph templates and so missed a real gap in the other two).
 
 ### The working ritual (mandatory at every task boundary)
-1. `npm test` — must stay green. **Always assert the actual pass/fail line, never `| tail -3`
-   or similar truncation** — this hid a real CI failure once (lesson:
-   `truncated-test-output-hides-failures`, now in the brain itself).
+1. `npm test` — must stay green. **Always assert the actual pass/fail line, never truncate
+   output** — this hid a real CI failure once (lesson: `truncated-test-output-hides-failures`,
+   now in the brain itself).
 2. Update docs: tick `.claude/TASKS.md`, append to `.claude/logs/YYYY-MM-DD-NN.md`, update
    `CLAUDE.md`'s "Current state" if the project's shape changed.
 3. Commit **and push**.
-4. Bump the version if work has landed past the last published release (§4.6).
+4. Bump the version if work has landed past the last published release.
 5. Then it's safe to compact.
 
 ---
@@ -346,7 +307,7 @@ failure mode in your own work.
 
 ```bash
 node bin/raph.js <cmd>        # the CLI during development
-npm test                      # full suite (node:test, no framework), 629 tests currently
+npm test                      # full suite (node:test, no framework)
 node scripts/build-agents.mjs # REQUIRED after any agents.js change — commits generated output
 node scripts/build-global-brain.mjs  # after editing a pack's specs
 ```
@@ -358,63 +319,78 @@ node scripts/build-global-brain.mjs  # after editing a pack's specs
 - **Never put backticks inside a double-quoted shell string** — not `node -e "..."`, not
   `bash -c "..."`, not `git commit -m "..."`. Bash performs command substitution inside double
   quotes, so prose merely *mentioning* a backticked command name can actually run it. This
-  bit twice in earlier sessions (once nearly triggering a real `npm publish`). Write prose
-  with Write/Edit tools; use a quoted heredoc for commit messages:
+  has bitten multiple sessions, including once nearly triggering a real `npm publish`. Write
+  prose with Write/Edit tools; use a quoted heredoc for commit messages:
   ```bash
   git commit -F - << 'ENDOFMSG'
   message with `backticks` intact, never expanded
   ENDOFMSG
   ```
-- **Coded errors:** `E-<NAME>` (E-SCHEMA, E-URL, E-SECRET, E-GRAPH (new, Phase 23), …).
+- **Coded errors:** `E-<NAME>` (E-SCHEMA, E-URL, E-SECRET, E-GRAPH, E-POLICY, …).
 - `plugin/agents/*.md` and `plugin/agents/README.md` are **generated** — edit
   `src/lib/agents.js`, never the output.
-- Research clones live outside the repo (not committed).
+- A killed subprocess never delivers a usage/token envelope — treat any token count from a
+  timed-out or interrupted stage as untrustworthy (`tokensCaptured: false` / `complete: false`
+  exist for exactly this, and token budgets are advisory, never a hard bound).
 
 ### Layout
 ```
 bin/raph.js       CLI entry
 src/cli.js        command router
 src/commands/     one file per verb (academy.js is the autopilot CLI)
-src/lib/          agents.js (roster+SPINE), driver.js (autopilot state machine),
-                   validate.js (THE chokepoint), scrub.js, atlas.js, guard.js, curator.js,
-                   policy.js (model/effort per task kind), decisions.js (the ledger), …
+src/lib/
+  agents.js        roster + SPINE (spine is DATA — renderSpine adapts to each agent's tools)
+  driver.js        the autopilot loop: spawns stages, applies results
+  graph.js         the planning layer — validateGraph(), pipelineToGraph(), pure
+  graphstate.js    ensureGraph() — migrates every pre-graph on-disk state shape
+  graph-templates.js  linear / fix / full-build
+  graphrun.js      graph-run / graph-escalation event recording
+  stage-runner.js  the execution layer — raw observations only, no routing
+  recovery.js      RECOVERY table + classifyFailure() + MAX_NODE_ATTEMPTS
+  policy.js        model/effort/tools per task kind, escalation table
+  validate.js      THE chokepoint
+  scrub.js, atlas.js, guard.js, curator.js, decisions.js, academy.js, …
 src/schemas/      lesson.schema.json (canonical)
 src/eval/         canaries + scenarios + harness
-test/             node:test suites (driver.test.js is the largest, ~600+ lines)
+test/             node:test suites (driver.test.js and graph*.test.js are the largest)
 plugin/           the Claude Code plugin (agents/ + recipes/ are GENERATED)
 global-brain/     the owner-curated seed brain
 docs/             architecture, audits, plans, manual, owner handbook, THIS FILE
 .claude/
   TASKS.md        the checklist, phases 1-23
-  observation/    stress-test logs + project briefs (this session's primary artifact)
+  observation/    stress-test logs + project briefs (the primary evidence trail)
   logs/           dated session logs
 ```
 
 ---
 
-## 9. Traps hit this session — don't repeat them
+## 9. Traps hit across these sessions — don't repeat them
 
-- **Self-reported success is not evidence.** A driver stage claimed "135 tests passing" and
-  satisfied its own gate while the real suite was red. Always independently verify.
-- **A test that passes even with the fix removed proves nothing.** Happened twice this
-  session on my own first-draft tests; fixed by testing end-to-end through the real runner.
-- **`npm test | tail -3` can hide the actual failure line.** Assert the explicit pass/fail
-  count.
+- **Self-reported success is not evidence** — from a stage, from another agent, from a
+  critique. Always independently verify.
+- **A test that passes even with the fix removed proves nothing.** Prove every regression
+  test RED-WITHOUT the fix before trusting it GREEN-WITH it.
+- **Truncating test output can hide the actual failure line.** Assert the explicit pass/fail
+  count, never pipe through `tail`.
 - **Backticks inside double-quoted shell strings execute as command substitution**, even in
   plain prose that only *mentions* a command name. See §8.
-- **A killed subprocess never delivers a usage/token envelope** — treat any token count from
-  a timed-out or interrupted stage as untrustworthy (`tokens_captured: false` exists for
-  exactly this).
+- **A killed subprocess never delivers a usage/token envelope** — any token/cost figure from
+  an interrupted stage is a lower bound, not a fact.
+- **An agent that can create a file via shell but can't edit it will silently give up on a
+  second pass**, leaving stale content on disk while the corrected version exists only in its
+  response. If the driver ever owns a file the agent also touches, use the *attempt* start
+  time as the "did the agent already write this" cutoff, not the *visit* start — a visit can
+  hold more than one attempt.
+- **A well-formed response envelope does not mean success** — a revoked OAuth token and a
+  transient DNS failure both arrive as valid envelopes with `is_error: true`; classify by the
+  actual error content, not by "did it parse."
+- **A lock needs a liveness check, not just a staleness timer** — a killed process leaves a
+  lock file that looks fresh.
 - **Parallel multi-agent fan-out burns session limit fast** — and per the standing
   instruction, don't reach for it unasked anyway.
-- **A background agent stopped via `TaskStop` has no Raphael-managed resume** — only files
-  on disk persist; orchestration position does not (proven live on the Notecard run).
-- **An adversarial critique's raw per-agent output survives even if a later synthesis step
-  hits the session limit** — read the journal file directly rather than treating a failed
-  synthesis as a lost result.
-- **Verify a critique's own claims too**, not just the original work — one lens flagged
-  something as "unverifiable"; I checked it directly (grepped the installed Claude Code
-  binary) and found the critique's own pessimistic conclusion was wrong.
+- **A background agent stopped via `TaskStop` has no Raphael-managed resume** on the
+  manager-orchestrated path — only files on disk persist, though a `SubagentStop`-hook-based
+  cursor is now known to be buildable (§5.2) if that path ever needs it.
 
 ---
 
@@ -423,7 +399,7 @@ docs/             architecture, audits, plans, manual, owner handbook, THIS FILE
 1. **`CLAUDE.md` is the contract.** Read it before acting; update it when the shape changes.
 2. **The chokepoint (`validateLesson()`) is sacred.** It's the whole product.
 3. **Never run the `Workflow` tool unless explicitly asked this turn** — the one hard
-   exception to "act, don't ask" carved out this session.
+   exception to "act, don't ask."
 4. **Act, don't ask** otherwise — except at deploy / sign-in / spend / security-invariant
    changes.
 5. **Verify against real code before you claim anything — including other agents' claims,
@@ -431,7 +407,8 @@ docs/             architecture, audits, plans, manual, owner handbook, THIS FILE
 6. **Run the ritual at every boundary** (test → docs → commit+push → version bump if past
    release), so the next handover is as clean as this one.
 
-The project is healthy: 629 tests green, doctor clean, working tree clean and pushed. The
-engine has been complete for a while; this session's work was proving it under real load,
-fixing what broke, and designing (not yet building) the next real upgrade — Phase 23. Start
-there if the owner says go; otherwise the 9 pending candidates are the fastest concrete win.
+The project is healthy: 812 tests green, doctor clean, working tree clean and pushed. The
+core engine has been complete for a while; the graph layer (Phase 23) shipped and has real
+live dogfood evidence, including a genuine escalation and two real bugs found and fixed by
+watching it run. The fastest concrete next step is the pending review queue; the most
+interesting open one is 23.10's follow-on (a checkpointable manager path).

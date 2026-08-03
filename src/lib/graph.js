@@ -1,24 +1,21 @@
-// The graph layer (Phase 23, ARCHITECTURE §15) — "what runs next", declared
-// before the run starts instead of decided inside it.
+// The graph layer (ARCHITECTURE §15) — "what runs next", declared before the
+// run starts instead of decided inside it. Design: docs/graph-engineering-plan.md.
 //
-// Design: docs/graph-engineering-plan.md. The honest justification, in one
-// sentence: the driver keys stage records by KIND (`d.stages[kind]`), so a
-// pipeline containing the same kind twice silently overwrites the first record —
-// which makes "frontend builds, design reviews, send it back, repeat" not
-// expressible at all. A graph with per-visit records is what makes it expressible,
-// and making it BOUNDED and INSPECTABLE is what keeps it safe.
+// A pipeline stage keyed by kind (`d.stages[kind]`) makes a repeated kind
+// silently overwrite its own record, so a loop like "frontend builds, design
+// reviews, send it back, repeat" isn't expressible. Per-visit records make it
+// expressible; bounding and validating the graph is what keeps it safe.
 //
-// This module is the PLANNING layer and nothing else. It is pure: it spawns
-// nothing, spends nothing, reads no files, and has no clock. Everything it can
-// reject, it rejects before a single token is spent.
+// This module is the planning layer only. Pure: it spawns nothing, spends
+// nothing, reads no files, has no clock — everything rejectable is rejected
+// before a token is spent.
 //
-// Two rules that shape the whole file:
-//   - `edges` are the ONLY control relation. `inputs` is a pure data selector
-//     (which prior nodes' text gets rendered into this node's prompt) and has no
-//     effect on ordering. Defining topology twice is how a graph ends up unable
-//     to pass its own validator.
+// Two rules shape the whole file:
+//   - `edges` are the only control relation. `inputs` is a pure data selector
+//     (which prior nodes' text renders into this node's prompt) with no effect
+//     on ordering — defining topology twice is how a graph fails its own validator.
 //   - The model never authors topology. Graphs come from a shipped template or
-//     the owner's --graph-file, never from stage output. Same rule as --verify.
+//     the owner's --graph-file, never from stage output — same rule as --verify.
 
 import { createHash } from 'node:crypto';
 import { policyKinds, canEscalate, VERIFIED_KINDS } from './policy.js';
@@ -62,22 +59,20 @@ function bad(message) {
 
 // ---- the boundary deny-scan (D13) -------------------------------------------
 
-// The draft claimed the deploy boundary was structural because "there is no
-// deploy kind, so no valid graph can contain one". That is a claim about node
-// LABELS, not capabilities: every node spawns with --permission-mode acceptEdits,
-// tools on, cwd = the real workspace. What actually stops a deploy today is
-// BOUNDARY_RULES prose — and a graph ADDS free-text `criteria` rendered into
-// that same prompt. So
+// "There is no deploy kind" is a claim about node labels, not capabilities —
+// every node spawns with --permission-mode acceptEdits, tools on, cwd = the
+// real workspace. What actually stops a deploy is BOUNDARY_RULES prose, and a
+// graph adds free-text `criteria` rendered into that same prompt, so
 //   { id:'ship', kind:'develop', criteria:'Publish the package to npm ...' }
 // would otherwise pass validation in full.
 //
 // This scan is the deterministic floor under that prose: zero tokens, runs at
-// init, before anything spawns. It matches boundary verbs in an ACTION position
-// (verb + article/preposition/object), never bare topic words — so "deploy-prep",
-// "deployment checklist" and "the release notes" do not fire, while "deploy the
-// app to production" does. Negated mentions are exempt via the brain's own
-// negation helper, because the correct criteria for a deploy-prep node reads
-// "produce the checklist; never deploy anything yourself".
+// init, before anything spawns. It matches boundary verbs in an action
+// position (verb + article/preposition/object), never bare topic words — so
+// "deploy-prep" and "deployment checklist" don't fire, "deploy the app to
+// production" does. Negated mentions are exempt via the brain's own negation
+// helper, since the correct criteria for a deploy-prep node reads "produce the
+// checklist; never deploy anything yourself".
 const BOUNDARY_RULES_SCAN = [
   ['publish', /\b(?:npm|yarn|pnpm)\s+publish\b/gi,
     'publishing a package is the owner\'s action'],
@@ -136,12 +131,11 @@ export function scanBoundaryVerbs(text, { label = 'text' } = {}) {
 
 // ---- check validation (rule 11) ---------------------------------------------
 
-// `check` is the DECLARED pass predicate — the sharpest finding of the review
-// was that the draft made topology explicit while leaving the predicate that
-// selects an edge exactly as it is today (a self-assessed "does the text have a
-// DECISIONS heading"). Every node must declare one, and it is type-checked here.
+// `check` is the declared pass predicate for a node's edge — every node must
+// declare one, type-checked here, rather than falling back to a self-assessed
+// "does the text have a DECISIONS heading".
 //
-// `check.command` is deliberately NOT an allowed form. A shell command in a
+// `check.command` is deliberately not an allowed form. A shell command in a
 // graph would be a new execution channel reachable from a shipped template
 // (which `raph update` replaces daily) or an adopted file. The only shell
 // command in the system stays the owner's --verify, typed on the CLI.
@@ -342,11 +336,10 @@ export function validateGraph(graph, { brief = '', name = null, scanBoundary = t
     }
     validateCheck(node.check, where);
 
-    // D6 — verify is ADDITIVE ONLY. A graph may EXTEND verification to a node
-    // the code would not check; it may never SUBTRACT one. Graph data switching
-    // off the owner's verifier would invert the trust direction on the one gate
-    // that exists because a `test` stage claimed 135 passing tests while the
-    // suite was red.
+    // verify is additive only. A graph may extend verification to a node the
+    // code would not check; it may never subtract one — letting graph data
+    // switch off the owner's verifier would invert the trust direction of the
+    // one gate that catches a stage lying about a passing test suite.
     if (node.verify !== undefined && typeof node.verify !== 'boolean') {
       throw bad(`${where}: verify must be true or false when present`);
     }
@@ -354,21 +347,12 @@ export function validateGraph(graph, { brief = '', name = null, scanBoundary = t
       throw bad(`${where}: a graph cannot switch off the owner's verifier (kind "${kind}" is always verified)`);
     }
 
-    // ARTIFACT — where this node's deliverable is PERSISTED, written by the
-    // driver rather than by the agent.
-    //
-    // Observed live 2026-07-29: `architect` created ARCHITECTURE.md on visit 1
-    // via shell redirection, then on visit 2 needed to EDIT it, reached for the
-    // Edit tool it does not have, and gave up — leaving a stale v1 file on disk
-    // while the corrected design existed only in the response text. The same
-    // hole is worse for `planner`, which has neither Bash nor Write and so can
-    // never produce a file at all.
-    //
-    // Fixing it by granting Write to those agents would re-open exactly what
-    // 23.2 closed: a reviewer that can edit the thing it reviews. So the
-    // PIPELINE owns the artifact. It needs no tool grant, works for every agent
-    // regardless of its tools, cannot go stale (each visit overwrites), and
-    // makes a `file_exists` check meaningful instead of a hope.
+    // Where this node's deliverable is persisted — written by the driver
+    // rather than the agent, since an agent with Bash but no Edit can create a
+    // file via redirection but not revise it on a later visit, and granting
+    // Write more broadly would let a reviewer edit the thing it reviews. The
+    // pipeline owning the artifact needs no tool grant, works regardless of
+    // the agent's tools, and never goes stale (each visit overwrites).
     if (node.artifact !== undefined) {
       assertWorkspacePath(node.artifact, `${where}: artifact`);
     }
@@ -423,13 +407,11 @@ export function validateGraph(graph, { brief = '', name = null, scanBoundary = t
     normalisedEdges.push(normalised);
   }
 
-  // D5 — `when` exclusivity, plus rule 8. A node has EITHER exactly one `always`
-  // edge OR exactly one `pass` edge paired with exactly one `changes` edge.
-  // The draft allowed pass + changes + always on one node, where an APPROVED
-  // verdict matched two edges with no declared precedence — an ambiguity whose
-  // test would have documented whichever branch the implementation happened to
-  // reach first. And since a `changes` edge may only leave a verdict node, this
-  // resolves to: deliverable nodes advance, verdict nodes branch.
+  // `when` exclusivity: a node has either exactly one `always` edge, or
+  // exactly one `pass` edge paired with exactly one `changes` edge — never
+  // both, which would leave an APPROVED verdict matching two edges with no
+  // declared precedence. A `changes` edge may only leave a verdict node, so
+  // this resolves to: deliverable nodes advance, verdict nodes branch.
   for (const node of normalisedNodes) {
     const outs = outgoing.get(node.id);
     const byWhen = { pass: [], changes: [], always: [] };

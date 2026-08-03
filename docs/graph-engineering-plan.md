@@ -1,6 +1,9 @@
 # Phase 23 — Graph engineering: making "what runs next" inspectable
 
-**Status:** FINAL design (2026-07-28, session 17). Supersedes the 2026-07-28 draft.
+**Status:** SHIPPED (2026-07-28/29, session 18). Milestones 23.1–23.8 and 23.10 are built and
+tested; 23.9 ran two real live drives and is documented as partial by design (see the addendum
+below and `.claude/TASKS.md`). This document is the design that was implemented — read it as
+the rationale behind the code, not as a plan still awaiting a decision.
 **Source:** `Graph-Engineering.md` (owner-supplied) — three articles on the harness / loop /
 graph layering, the strongest being the arXiv-derived "three commitments" framework.
 **Review:** the draft was put through a 7-lens adversarial critique (91 findings, 42
@@ -10,9 +13,43 @@ before being written down — quoted evidence, not inference.
 
 **The honest framing the source itself insists on:** the three-commitments framework is an
 *unimplemented design* by its own author's disclaimer, analysed against 70 systems but not
-validated at scale. So this plan treats it as a hypothesis to test. §10 (measurement) is a
-build milestone, not an afterthought. If Raphael's escalation rate does not improve, that is
-a finding worth publishing, not a failure to hide.
+validated at scale. This plan treated it as a hypothesis to test, not a fact to adopt — §10
+(measurement) shipped as a build milestone, not an afterthought, and the live evidence in the
+addendum below is the actual measurement, not a projection.
+
+---
+
+## Addendum — what changed between design and implementation (session 18)
+
+Read in full in `.claude/TASKS.md` Phase 23; summarized here so this document doesn't go
+stale next to the code.
+
+- **Landed as designed:** the single control-relation decision (edges only, `inputs` as pure
+  data), the required declarative `check` per node, `verify` as additive-only, `failureClass`
+  banned from the runner's return value, per-visit recovery scoping, `MAX_NODE_ATTEMPTS`,
+  Tarjan-SCC cycle bounding, the three resume-time checks, `redteam` withheld from POLICY.
+- **23.3 landed inside the 23.4 commit**, not separately — the engine swap needed
+  `ensureGraph()` to exist before it could read anything, so they were built together. Its
+  TASKS.md checkbox was left unticked until this cleanup pass; now corrected.
+- **Two real bugs found by running it, not by re-reading the design**: an artifact-ownership
+  bug (an agent with Bash but no Write/Edit created a file via shell redirection, then
+  couldn't edit it on a later visit — fixed by having the driver itself own artifact writes)
+  and a narrower version of the same bug (the artifact guard used the *visit* start instead
+  of the *attempt* start as its "did the agent already write this" cutoff).
+- **One live escalation, exactly as designed**: `architect ⇄ critique` hit its `maxTraversals`
+  bound on a real build (Tallyboard) while critique was still finding real bugs — the correct
+  behavior, not a defect. Owner's response: raise that bound to 5 (every other shipped bound
+  to a floor of 4, enforced by a cross-template test) and give `architect` a first-pass
+  **opus** model, a named, tested exception to "opus is escalation-only" (`FIRST_PASS_OPUS_KINDS`
+  in `policy.js`).
+- **`full-build` still hasn't finished a live run** (hit the subscription limit at 4/11
+  nodes on its one attempt so far, though it proved the loop-back mechanism works — see
+  `.claude/observation/2026-07-28-run-06-graph-live.md`). It correctly keeps its EXPERIMENTAL
+  flag per §11 open question 4's original leaning.
+- **A follow-on milestone was discovered, not built**: 23.10 was a spike, not a build, and it
+  answered §9's open question — `SubagentStop` hooks do carry `agent_id`/`agent_type` (read
+  directly from the installed CLI's own schemas). A checkpointable cursor for the
+  manager-orchestrated path is therefore buildable; it is a new, separate milestone.
 
 ---
 

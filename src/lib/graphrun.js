@@ -1,6 +1,6 @@
-// Phase 23.4 — the run state machine over a locked graph. PURE: it spawns
-// nothing, reads no clock of its own (`now` is injected), and touches the
-// filesystem only through an injected reader for file-shaped checks.
+// The run state machine over a locked graph. Pure: it spawns nothing, reads no
+// clock of its own (`now` is injected), and touches the filesystem only
+// through an injected reader for file-shaped checks.
 //
 // The three commitments, made literal:
 //   1. Immutable plan — the graph is validated and hashed once, and every
@@ -24,14 +24,13 @@ export const VERDICT_CHANGES = 'CHANGES REQUESTED';
 // prompt.
 export const MAX_INPUT_CHARS = 12000;
 
-// ---- the verdict contract (D16) ---------------------------------------------
+// ---- the verdict contract ----------------------------------------------------
 
-// Hardened against ECHO. The draft said "last heading wins", mirroring
-// parseDecisions — but for a verdict that is the wrong default: a reviewer's
-// prompt CONTAINS the reviewed node's output, so any trailing "## VERDICT /
-// APPROVED" echoed from the input, planted or innocent, would become the routing
-// decision. Hence: exactly one section, it must be final, exactly one token.
-// Anything else is null, and null fails closed.
+// Hardened against echo: "last heading wins" (parseDecisions' rule) is the
+// wrong default here, because a reviewer's prompt contains the reviewed
+// node's output, so a trailing "## VERDICT / APPROVED" echoed from the input
+// would become the routing decision. Requires exactly one section, final,
+// exactly one token — anything else is null, and null fails closed.
 export function parseVerdict(text) {
   const s = String(text ?? '');
   const heading = /^[ \t]{0,3}#{1,6}[ \t]*VERDICT[ \t]*:?[ \t]*$/gim;
@@ -50,11 +49,7 @@ export function parseVerdict(text) {
   const isChanges = upper.startsWith(VERDICT_CHANGES);
   if (isApproved === isChanges) return null;  // neither, or somehow both
 
-  // Named `verdictWord` rather than `token`: Raphael's own pre-commit guard
-  // flags `token = ...` as a possible credential, and it is right to — the
-  // pattern is high-value. Renaming is the correct fix, since bypassing the hook
-  // or allowlisting the file would weaken real scanning to satisfy a naming
-  // accident, and this name is clearer regardless.
+  // Named verdictWord, not token — the guard's secret scanner flags `token = `.
   const verdictWord = isApproved ? VERDICT_APPROVED : VERDICT_CHANGES;
   // Nothing of substance may follow it — a "## VERDICT / APPROVED" with three
   // more paragraphs after it is not a final section.
@@ -109,11 +104,10 @@ function escapeRe(s) {
 
 // ---- bounds ------------------------------------------------------------------
 
-// How many attempts of `cls` this VISIT has already consumed. Per VISIT, not per
-// node: under loops, a node that escalated on visit 1 must still be able to
-// escalate on visit 2, or its genuine second failure falls straight through to
-// `failed`. (The pre-graph driver set `retry_escalated` permanently on the stage
-// record, so this was a real latent bug the moment a loop existed.)
+// How many attempts of `cls` this visit has already consumed. Scoped per
+// visit, not per node: under loops, a node that escalated on visit 1 must
+// still be able to escalate on visit 2, or its genuine second failure falls
+// straight through to `failed`.
 export function attemptsOfClass(visit, cls) {
   return (visit?.attempts ?? []).filter((a) => a.class === cls).length;
 }
@@ -123,9 +117,8 @@ export function boundExceeded(node, visit, cls) {
   if ((visit?.attempts?.length ?? 0) >= MAX_NODE_ATTEMPTS) return 'max-node-attempts';
   const rule = RECOVERY[cls];
   if (!rule) return `unknown-class:${cls}`;
-  // Escalatability is resolved at VALIDATE time, not failure time: only 2 of the
-  // 14 task kinds carry an escalation model, so a table saying "model: max 1"
-  // would be right for two kinds and wrong for twelve.
+  // Escalatability is resolved at validate time: only 2 of 14 task kinds carry
+  // an escalation model, so this can't be a shared constant on the table.
   if (cls === 'model' && !node.escalatable) return 'not-escalatable';
   if (attemptsOfClass(visit, cls) >= rule.max) return `class:${cls}`;
   return null;
@@ -141,14 +134,12 @@ export function edgeKey(edge) {
   return `${edge.from}->${edge.to}`;
 }
 
-// Pick the outgoing edge for a node that PASSED. Pure.
-//
-// D17 — evidence outranks confidence. Where a node has a declared check or an
-// effective verify, that is authoritative and has already been applied before we
-// get here: a failing check is a failure, not a verdict to weigh. The parsed
-// verdict routes only the taste-shaped loop (a design review), which is the one
-// place the system loops on a cross-agent assertion — and even there
-// maxTraversals is the safety net.
+// Pick the outgoing edge for a node that passed. Pure. Evidence outranks
+// confidence: a declared check or verify is authoritative and already applied
+// before this runs — a failing check is a failure, not a verdict to weigh.
+// The parsed verdict routes only the taste-shaped loop (a design review),
+// the one place the system routes on a cross-agent assertion, bounded by
+// maxTraversals.
 export function route(graph, node, { verdict = null } = {}) {
   const outs = edgesFrom(graph, node.id);
   if (node.emit === 'verdict') {
@@ -167,13 +158,10 @@ export function route(graph, node, { verdict = null } = {}) {
   return edge;
 }
 
-// Has this edge exhausted its declared traversal bound?
-//
-// Exhausting a bound ALWAYS escalates. The draft allowed `onExhausted:
-// 'continue'` and never defined it — on the canonical design-review loop it
-// could only mean "the driver decides, unattended, that a reviewer which said
-// CHANGES REQUESTED three times shall be treated as having approved". That is
-// the silent drift this layer exists to eliminate, as a one-word enum.
+// Has this edge exhausted its declared traversal bound? Exhausting a bound
+// always escalates — there is no "carry on anyway" path, because on the
+// canonical design-review loop that could only mean treating three rejected
+// verdicts as an approval.
 export function traversalExhausted(driver, edge) {
   if (edge.maxTraversals === undefined) return false;
   return (driver.edge_visits[edgeKey(edge)] ?? 0) >= edge.maxTraversals;
@@ -208,10 +196,10 @@ export function nextGraphAction(state) {
   const record = d.nodes[d.cursor];
   if (!record) throw new Error(`E-GRAPH: no record for node "${d.cursor}" — state and graph have drifted`);
 
-  // RESUME IS THE FIRST BRANCH, ahead of routing. A resume is NOT a traversal:
-  // it must never touch visits[] or edge_visits, or three limit interruptions
-  // inside a maxTraversals:3 loop would exhaust the edge and escalate a run that
-  // never actually looped.
+  // Resume is checked first, ahead of routing. It is not a traversal — it
+  // must never touch visits[] or edge_visits, or repeated limit interruptions
+  // inside a bounded loop would exhaust the edge without the loop ever
+  // actually running.
   const visit = currentVisit(record);
   const resumeSessionId = record.status === 'running' && record.session_id ? record.session_id : null;
   return { type: 'run', node, resumeSessionId, visit };
@@ -237,11 +225,9 @@ export function applyNodeResult(state, nodeId, result, { now = () => Date.now() 
     record.visits.push(visit);
   }
 
-  // Cost first, and honestly. tokensCaptured is STICKY-FALSE: once any pass of
-  // this visit went unmeasured the total is incomplete forever, so a later
-  // captured pass must not overwrite the doubt. A killed child never delivers a
-  // usage envelope — one measured case recorded "failed, 0 tokens" while 423,523
-  // billable tokens had been spent.
+  // tokensCaptured is sticky-false: once any pass of this visit went
+  // unmeasured, the total stays incomplete forever, so a later captured pass
+  // never overwrites the doubt. A killed child delivers no usage envelope.
   visit.tokens += result.tokens ?? 0;
   if (result.tokensCaptured === false) visit.tokensCaptured = false;
   visit.elapsedMs += result.elapsedMs ?? 0;
@@ -284,9 +270,7 @@ export function applyNodeResult(state, nodeId, result, { now = () => Date.now() 
       return { state, outcome: 'done', escalation: null };
     }
 
-    // Move the cursor. A node entered again gets a NEW visit, which is the whole
-    // reason this engine exists — the pre-graph driver keyed records by kind and
-    // silently overwrote the first.
+    // A node entered again gets a new visit rather than overwriting the last.
     d.cursor = edge.to;
     d.visits[edge.to] = (d.visits[edge.to] ?? 0) + 1;
     const nextRecord = d.nodes[edge.to];
@@ -347,14 +331,12 @@ function escalate(state, nodeId, visit, bound, reason, stamp) {
 
 // ---- budgets -----------------------------------------------------------------
 
-// Returns the bound that has been exhausted, or null.
-//
-// Tokens are ADVISORY, never binding: a killed child delivers no usage envelope,
-// so `spent.tokens` undercounts hardest on exactly the nodes a token budget
-// would be trying to bound. Wall clock is the binding cost signal, and it is
-// SUMMED SPAWN DURATION rather than elapsed-since-start — a run that hits a
-// subscription limit resumes hours later, and an elapsed-since-start budget
-// would escalate a healthy run on its first post-reset node.
+// Returns the bound that has been exhausted, or null. Tokens are advisory,
+// never binding — a killed child delivers no usage envelope, so
+// `spent.tokens` undercounts hardest on exactly the nodes a budget would try
+// to bound. Wall clock is the binding signal, summed as spawn duration rather
+// than elapsed-since-start, so a run resuming after a subscription limit
+// isn't punished for the gap.
 export function budgetExceeded(driver) {
   const b = driver.budgets ?? {};
   if (Number.isFinite(b.maxNodes) && driver.spent.nodes >= b.maxNodes) return 'budget:maxNodes';
@@ -364,14 +346,11 @@ export function budgetExceeded(driver) {
 
 // ---- prompt inputs -----------------------------------------------------------
 
-// Assemble a node's declared inputs. Each source is capped INDEPENDENTLY with an
-// explicit truncation marker, so a 200 KB deliverable — or three of them joined —
-// cannot silently blow the prompt.
-//
-// Every source is wrapped in a data envelope carrying the framing sentence the
-// injection layer uses, and the verdict contract states that a VERDICT inside an
-// input block is data and must not be reproduced. That is what stops a reviewed
-// node's echoed verdict from becoming the reviewer's routing decision.
+// Assemble a node's declared inputs. Each source is capped independently with
+// an explicit truncation marker, so several large deliverables can't jointly
+// blow the prompt. Every source is wrapped in a data envelope stating that a
+// VERDICT inside it must not be reproduced — what stops a reviewed node's
+// echoed verdict from becoming the reviewer's own routing decision.
 export function assembleInputs(driver, node, { loopBack = null } = {}) {
   const blocks = [];
   for (const sourceId of node.inputs ?? []) {

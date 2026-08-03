@@ -481,7 +481,7 @@ automatic *push* of the hooks.
 
 ### The 12 agents — who they are and how to use them
 
-The plugin ships eleven specialist agents. What makes them different from generic
+The plugin ships twelve specialist agents. What makes them different from generic
 personas is the shared **spine** baked into each one, in this order:
 1. **Brain first** — pull the relevant lessons (`raph search`) before doing anything.
 2. **Free checks before paid checks** — linters, grep, git stats cost zero tokens.
@@ -489,6 +489,13 @@ personas is the shared **spine** baked into each one, in this order:
 4. **Cheap → strong** — sweep with a cheap model, escalate only survivors.
 5. **Write back** — durable findings become `raph note` candidates. Using the
    agents feeds the brain.
+6. **One decision, one question** — state a recommendation and why, then ask about
+   exactly one thing at a time.
+
+Rules 1 and 5 take a different shape for the four agents with no shell (Manager,
+Planner, Design, Critique): they can't run `raph search`/`raph note` themselves, so
+their spine text describes what they actually have instead of an instruction they
+structurally can't follow.
 
 **Invoking one:** you rarely have to. Each agent's `description` carries a
 "use proactively when…" trigger (e.g. the debugger fires on an error or failing
