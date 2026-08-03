@@ -8,6 +8,7 @@ import { makeLesson, writeActiveLesson } from './helpers.js';
 import { atomicWrite } from '../src/lib/files.js';
 import { lessonId } from '../src/lib/ulid.js';
 import { p } from '../src/lib/paths.js';
+import { computeConfidence } from '../src/lib/confidence.js';
 
 async function withSandbox(fn) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-compile-'));
@@ -160,5 +161,37 @@ test('verifyIndex: the stat fast-path still catches every kind of drift', async 
     // a DELETED file -> caught
     rmSync(target, { force: true });
     assert.equal(verifyIndex(load()), false, 'a deleted file must invalidate');
+  });
+});
+
+// A curated lesson's confidence floor must survive the trip through the index.
+//
+// The index is a PROJECTION of the lesson file — it keeps a chosen subset of
+// fields. computeConfidence reads provenance.tier (curated floors at 6) and
+// provenance.human_edited, so dropping provenance from the projection silently
+// turns every curated lesson into a 0-confidence one everywhere the index is
+// the source: the driver's per-stage lesson envelope and the generated
+// AGENTS.md both read loadIndex().
+//
+// This could not be caught by confidence.test.js, which builds lesson objects
+// that always carry provenance by construction — the gap is the seam between
+// the two modules, which no test crossed.
+test('a curated lesson keeps its confidence floor when read back from the index', async () => {
+  await withSandbox(async () => {
+    writeActiveLesson({
+      slug: 'curated-one',
+      // curated lessons are authored, not mined: zero evidence BY DEFINITION,
+      // so the tier floor is the only thing holding their confidence up.
+      evidence: { refs: [], observations: 0, distinct_projects: 0, first_seen: '2026-01-01', last_seen: '2026-01-01' },
+      provenance: { created_by: 'raphael/design-pack', source_kind: 'imported', human_edited: false, tier: 'curated' }
+    });
+    buildIndex();
+
+    const entry = loadIndex().lessons.find((l) => l.slug === 'curated-one');
+    assert.ok(entry, 'the curated lesson should be in the index');
+    assert.equal(entry.provenance?.tier, 'curated', 'the index must carry the tier the floor depends on');
+
+    const conf = computeConfidence(entry, { now: new Date('2026-07-01T00:00:00Z') });
+    assert.ok(conf >= 6, `a curated lesson must not read as low confidence through the index (got ${conf})`);
   });
 });

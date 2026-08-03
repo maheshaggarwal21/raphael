@@ -81,6 +81,15 @@ export function buildIndex() {
         distinct_projects: d.evidence?.distinct_projects ?? 0,
         last_seen: d.evidence?.last_seen ?? null
       },
+      // computeConfidence reads these two. Without them the index yields
+      // provenance: undefined, so the curated floor, the human_edited bump and
+      // the machine-tier discount all silently no-op — and curated lessons,
+      // which carry zero mined evidence by definition, read as 0/10 everywhere
+      // the index is the source (the driver's per-stage envelope, AGENTS.md).
+      provenance: {
+        tier: d.provenance?.tier ?? null,
+        human_edited: d.provenance?.human_edited ?? false
+      },
       injection: d.injection,
       counter_indications: d.counter_indications ?? null,
       file: relToLessons(file),

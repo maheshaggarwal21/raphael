@@ -241,6 +241,9 @@ export function applyNodeResult(state, nodeId, result, { now = () => Date.now() 
     visit.output = result.output ?? null;
     visit.decisions = result.decisions ?? [];
     visit.verdict = result.verdict ?? null;
+    // null when this visit was not a loop-back; true/false when it was and the
+    // driver fingerprinted the artifact either side of the spawn.
+    if (result.revised !== undefined) visit.revised = result.revised;
     record.status = 'done';
 
     let edge;

@@ -9,6 +9,7 @@ import {
   nextAction,
   applyStageResult,
   renderStagePrompt,
+  artifactFingerprint,
   retryStage,
   parseDecisions,
   gateDeliverable,
@@ -1411,6 +1412,81 @@ test('END TO END: the driver passes the ATTEMPT start, so a retry\'s artifact is
       'the corrected retry must reach disk — the visit start would have blocked it');
   } finally {
     delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- severity-banded verdicts + real-revision detection ----------------------
+//
+// Why these exist: a design loop consumed an entire usage-limit window on
+// document self-consistency and never reached the code. Each review round found
+// a genuinely real defect, so the reviewer was not at fault — it had no
+// termination condition. Banding gives it one.
+
+test('the verdict contract bands findings and only HIGH may block', () => {
+  const prompt = renderStagePrompt(
+    { id: 'critique', kind: 'critique', emit: 'verdict', criteria: '', check: { requires_section: '## DECISIONS' } },
+    { project: 'p', brief: 'b', input: 'i', priorKind: null }
+  );
+  // the two bands must be defined, not just mentioned
+  assert.match(prompt, /\*\*HIGH\*\*/, 'the HIGH band must be defined for the reviewer');
+  assert.match(prompt, /\*\*LOW\*\*/, 'the LOW band must be defined for the reviewer');
+  // the routing rule has to be explicit in both directions
+  assert.match(prompt, /at least one HIGH finding\s*->\s*CHANGES REQUESTED/);
+  assert.match(prompt, /no HIGH findings\s*->\s*APPROVED/);
+  // and the tie-break, or "unsure" silently becomes a blocker again
+  assert.match(prompt, /genuinely unsure .* it is LOW/i, 'unsure must resolve to LOW, not HIGH');
+});
+
+test('a verdict node gets the banding contract; a deliverable node does not', () => {
+  const base = { project: 'p', brief: 'b', input: 'i', priorKind: null };
+  const deliverable = renderStagePrompt(
+    { id: 'architect', kind: 'architect', emit: 'deliverable', criteria: '', check: { requires_section: '## DECISIONS' } },
+    base
+  );
+  assert.ok(!/at least one HIGH finding/.test(deliverable), 'a non-verdict node must not be asked to band findings');
+});
+
+test('a loop-back tells the node to re-check the WHOLE artifact, above the review text', () => {
+  const node = { id: 'architect', kind: 'architect', emit: 'deliverable', criteria: '', check: { requires_section: '## DECISIONS' } };
+  const base = { project: 'p', brief: 'b', input: 'THE REVIEW BODY', priorKind: 'the review that sent this back' };
+
+  const plain = renderStagePrompt(node, { ...base, isLoopBack: false });
+  assert.ok(!/RE-CHECK THE WHOLE ARTIFACT/.test(plain), 'a first visit must not get the loop-back directive');
+
+  const looped = renderStagePrompt(node, { ...base, isLoopBack: true });
+  assert.match(looped, /RE-CHECK THE WHOLE ARTIFACT/);
+  assert.match(looped, /Rewrite the artifact in full/);
+  // ordering matters: the instruction must precede the findings it applies to
+  assert.ok(
+    looped.indexOf('RE-CHECK THE WHOLE ARTIFACT') < looped.indexOf('THE REVIEW BODY'),
+    'the directive must come before the review text, not read as an afterthought'
+  );
+});
+
+test('artifactFingerprint tells a real revision from a restated one', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-fp-'));
+  try {
+    const node = { id: 'architect', kind: 'architect', artifact: 'ARCHITECTURE.md' };
+    // no file yet
+    assert.equal(artifactFingerprint(node, dir), null, 'a missing artifact has no fingerprint');
+
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), '# v1\nthe original design\n');
+    const before = artifactFingerprint(node, dir);
+    assert.ok(before, 'an existing artifact fingerprints');
+
+    // rewriting identical bytes is NOT a revision
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), '# v1\nthe original design\n');
+    assert.equal(artifactFingerprint(node, dir), before, 'identical content must fingerprint identically');
+
+    // a real change is
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), '# v2\nthe revised design\n');
+    assert.notEqual(artifactFingerprint(node, dir), before, 'changed content must fingerprint differently');
+
+    // a node with no declared artifact is not measurable, and must not throw
+    assert.equal(artifactFingerprint({ id: 'x', kind: 'plan' }, dir), null);
+    assert.equal(artifactFingerprint(node, null), null);
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
