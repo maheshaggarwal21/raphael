@@ -205,3 +205,26 @@ test('a code-writing kind is claim-checked, an advisory one is not', () => {
   assert.equal(CODE_BEARING_KINDS.has('plan'), false);
   assert.ok(CODE_BEARING_KINDS.has('frontend'), 'the new builder reads the workspace map too');
 });
+
+// Both builders get the builder's clock. policy.js justifies develop's override
+// as "a stage that writes a whole codebase and one that writes a checklist do
+// not deserve the same clock" — frontend writes a whole codebase too and holds
+// the identical tool grant, but shipped on the reviewer's default and timed out
+// on its first real UI build.
+//
+// Asserted through resolvePolicy, not the raw table: agent-bearing kinds carry
+// no literal `tools` field (they resolve from the roster), so filtering the
+// table on e.tools matches nothing and silently checks nothing.
+test('a kind that can Write gets more than the reviewer default clock', () => {
+  const writers = policyKinds().filter((k) => (resolvePolicy(k).tools ?? []).includes('Write'));
+  assert.ok(writers.includes('develop') && writers.includes('frontend'),
+    `both builders must resolve Write; got ${writers.join(',')}`);
+
+  assert.equal(resolvePolicy('review').timeoutMs, undefined, 'a reviewer stays on the shared default');
+
+  for (const kind of ['develop', 'frontend']) {
+    const p = resolvePolicy(kind);
+    assert.ok(Number.isFinite(p.timeoutMs) && p.timeoutMs > 600000,
+      `${kind} builds a whole codebase and needs more than the 10-minute default (got ${p.timeoutMs})`);
+  }
+});

@@ -59,6 +59,27 @@ function shannon(s) {
 // once (dec_ was missing, so decision ids were mangled as secrets).
 const RAPHAEL_ID_RE = new RegExp(`^(?:${ID_PREFIXES.join('_|')}_)[0-9A-HJKMNP-TV-Z]{26}$`);
 
+// A source location — a stack frame, a module specifier, a file path with a
+// line number. These read as high-entropy (mixed case, digits, punctuation,
+// varied charset) but are diagnostics, never credentials.
+//
+// Exempting them matters because error text is scrubbed before it reaches an
+// escalation message or a retry prompt. Redacting the stack destroys precisely
+// the evidence a human needs to act on the escalation, and the evidence the
+// retrying stage needs to repair — turning "here is where it broke" into a
+// column of <SECRET:high-entropy>.
+//
+// Safety: this narrows only the ENTROPY HEURISTIC. The named rules (AWS keys,
+// bearer tokens, private keys, connection strings...) run first and are
+// untouched, so a real credential that happens to sit inside a path is still
+// caught by its own rule.
+const SOURCE_LOCATION_RE = new RegExp([
+  '^node:',                                   // node:internal/modules/cjs/loader:1145:15
+  '^file://',                                 // file:///C:/Users/x/app.js:42:11
+  ':\\d+:\\d+$',                              // ...loader:1145:15  (line:col)
+  '\\.(?:js|mjs|cjs|ts|tsx|jsx|json|md|py|go|rs|java|rb|php):\\d+$' // app.js:42
+].join('|'));
+
 // True when a single token looks like a high-entropy secret. Shared by the
 // scrubber (below) and the guard's opt-in --entropy pass, so both agree.
 export function isHighEntropyToken(tok) {
@@ -66,6 +87,7 @@ export function isHighEntropyToken(tok) {
   if (tok.includes('<SECRET:')) return false;
   const bare = tok.replace(/^[[('"]+|[\])>,'"]+$/g, '');
   if (RAPHAEL_ID_RE.test(bare)) return false;
+  if (SOURCE_LOCATION_RE.test(bare)) return false;
   // require a mixed charset so long ordinary words never trip the scan
   if (!/[0-9]/.test(tok) || !/[A-Za-z]/.test(tok)) return false;
   if (shannon(tok) < ENTROPY_THRESHOLD) return false;

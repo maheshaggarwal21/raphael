@@ -64,7 +64,13 @@ export const POLICY = [
   // "AI slop" UI is the default failure mode, and the reasoning is what buys
   // distinctiveness; no escalate, because a stronger model is not what fixes
   // taste. `redteam` is deliberately NOT given a kind — see DRIVER_FORBIDDEN.
-  { kind: 'frontend',    agent: 'frontend',  model: 'sonnet', effort: 'high',
+  // timeoutMs matches `develop` for the same stated reason: this is the other
+  // builder. It writes a whole UI surface — markup, styles, behaviour — not a
+  // review or a checklist, and it holds the identical tool grant. Observed
+  // live: on the default 10-minute clock a real UI build timed out on its
+  // first attempt, spending a resume from a budget shared with every other
+  // failure class.
+  { kind: 'frontend',    agent: 'frontend',  model: 'sonnet', effort: 'high', timeoutMs: 1500000,
     why: 'UI is where a generic default is worst; spend the reasoning on being distinctive' },
   { kind: 'test',        agent: null,        model: 'sonnet', effort: 'medium',
     tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],

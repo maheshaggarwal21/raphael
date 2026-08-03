@@ -166,3 +166,53 @@ test('scrubSecrets is idempotent: scrubbing twice changes nothing further', () =
   assert.equal(twice.text, once, 'placeholders must not re-trigger any rule');
   assert.deepEqual(twice.found, []);
 });
+
+// ---- stack traces are diagnostics, not credentials ---------------------------
+//
+// Error text is scrubbed before it reaches an escalation message or a retry
+// prompt. Observed live: a frontend node escalated and the message handed to
+// the owner had every stack frame replaced by <SECRET:high-entropy>, destroying
+// the only evidence of where the failure came from.
+
+test('a Node stack trace survives scrubbing intact', () => {
+  const trace = [
+    'Error: Cannot find module',
+    '    at Function._resolveFilename (node:internal/modules/cjs/loader:1145:15)',
+    '    at Module._load (node:internal/modules/cjs/loader:986:27)',
+    '    at file:///C:/Users/dev/Projects/app/src/server.js:42:11',
+    '    at /home/dev/app/src/router.js:88'
+  ].join('\n');
+
+  const { text, found } = scrubSecrets(trace);
+  assert.ok(!text.includes('<SECRET:'), `no part of a stack trace is a secret:\n${text}`);
+  assert.equal(found.length, 0, 'nothing should have fired on a stack trace');
+  // the actual diagnostic value must be preserved, not just "no redaction marker"
+  assert.match(text, /loader:1145:15/, 'the failing line number must survive');
+  assert.match(text, /server\.js:42:11/, 'the source location must survive');
+});
+
+test('exempting source locations does NOT weaken real secret detection', () => {
+  // every one of these must still be caught, or the fix traded safety for detail
+  const cases = [
+    ['AWS key', 'AKIAIOSFODNN7EXAMPLE'],
+    // deliberately NOT a provider-shaped key: a realistic-looking one here was
+    // caught by GitHub push protection, which is the scanner doing its job.
+    ['bearer', 'Authorization: Bearer EXAMPLEtokenNOTREAL0000000000'],
+    ['assignment', 'const apiKey = "s3cr3tV4lu3W1thNumb3rsAndL3ngth"'],
+    ['pg url', 'postgres://admin:hunter2primary@db.internal:5432/app']
+  ];
+  for (const [label, sample] of cases) {
+    const { text } = scrubSecrets(sample);
+    assert.ok(text.includes('<SECRET:'), `${label} must still be redacted, got: ${text}`);
+  }
+});
+
+test('a secret is still caught when it sits next to a stack frame', () => {
+  const mixed = [
+    '    at Module._load (node:internal/modules/cjs/loader:986:27)',
+    'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE'
+  ].join('\n');
+  const { text } = scrubSecrets(mixed);
+  assert.match(text, /loader:986:27/, 'the frame survives');
+  assert.ok(!text.includes('AKIAIOSFODNN7EXAMPLE'), 'the key next to it does not');
+});
