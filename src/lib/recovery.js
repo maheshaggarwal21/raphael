@@ -32,7 +32,13 @@ export const RECOVERY = Object.freeze({
     why: 'the verdict was unparseable — restate the verdict contract' }),
   model: Object.freeze({ max: 1, per: 'visit', action: 'escalate',
     why: 'one stronger pass — only if the node is escalatable' }),
-  infra: Object.freeze({ max: 1, per: 'visit', action: 'retry',
+  // 2 rather than 1: an infra failure is transient BY DEFINITION (a network
+  // flap, an expired session), and a flap commonly outlasts a single retry.
+  // Cheap to allow — a transport error fails in seconds — and MAX_NODE_ATTEMPTS
+  // still caps the total. A genuinely permanent one (a revoked token) burns two
+  // fast failures and then reaches a human with the real reason, which is the
+  // correct outcome since no amount of retrying fixes it.
+  infra: Object.freeze({ max: 2, per: 'visit', action: 'retry',
     why: 'a spawn or envelope failure is environmental, not a reasoning problem' })
 });
 
@@ -56,6 +62,15 @@ export const FAILURE_CLASSES = Object.freeze(Object.keys(RECOVERY));
 export function classifyFailure(result = {}) {
   if (result.timedOut) return 'timeout';
   if (result.spawned === false) return 'infra';
+  // A transport/auth failure reported by the CLI is ENVIRONMENTAL, even though
+  // the envelope parsed cleanly and so `spawned` is true. Without this, both
+  // live failures on 2026-07-29 — a revoked OAuth token and a transient DNS
+  // ENOTFOUND — were classified as `model`, which meant a non-escalatable node
+  // escalated to a human with zero retries over a momentary blip, and an
+  // escalatable node would have spent an opus escalation trying to reason its
+  // way past a network error. The model never saw the request; it cannot be the
+  // model's failure.
+  if (result.apiError) return 'infra';
   if (result.gateFailed) return 'gate';
   if (result.verdictFailed) return 'verdict';
   if (result.verifyFailed) return 'verify';

@@ -519,16 +519,40 @@ export function runLockFile(project) {
   return path.join(p.academyProject(project), 'drive.lock');
 }
 
-export function acquireRunLock(project, { now = Date.now } = {}) {
+// Is the process that holds the lock actually still running?
+//
+// Signal 0 performs the permission/existence check without delivering a signal,
+// on both POSIX and Windows. ESRCH means "no such process". EPERM means the
+// process EXISTS but belongs to another user — that is alive, so it must not be
+// stolen. Any other error is treated as alive, because wrongly stealing a live
+// lock corrupts a run while wrongly keeping a dead one only costs a wait.
+export function isProcessAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if (err.code === 'ESRCH') return false;
+    return true;
+  }
+}
+
+export function acquireRunLock(project, { now = Date.now, alive = isProcessAlive } = {}) {
   const file = runLockFile(project);
   try { mkdirSync(path.dirname(file), { recursive: true }); } catch { /* exists */ }
   if (existsSync(file)) {
     let held = null;
     try { held = JSON.parse(readFileSync(file, 'utf8')); } catch { held = null; }
-    // Steal ONLY if stale — a crashed run must not wedge the project forever,
-    // but a live one must not be trampled either.
-    const fresh = held && Number.isFinite(held.at) && now() - held.at < LOCK_STALE_MS;
-    if (fresh && held.pid !== process.pid) return false;
+    if (held && held.pid !== process.pid) {
+      // LIVENESS FIRST, staleness second. A killed or crashed run leaves its
+      // lock behind — the `finally` that releases it never runs — so a
+      // wall-clock-only rule wedged the project for the full stale window even
+      // though nothing was running. Observed 2026-07-29 after stopping a drive
+      // by hand. If the owner is gone, the lock is garbage and is taken now.
+      const ownerAlive = alive(held.pid);
+      const fresh = Number.isFinite(held.at) && now() - held.at < LOCK_STALE_MS;
+      if (ownerAlive && fresh) return false;
+    }
   }
   writeFileSync(file, JSON.stringify({ pid: process.pid, at: now() }), 'utf8');
   return true;
@@ -610,6 +634,7 @@ export async function drive(project, {
         state.driver.status = 'paused';
         state.driver.runLimit = maxStages;
         writeState(project, state);
+        logGraphRun(project, state.driver, 'paused');
         return { stopped: 'paused', state, escalation: null };
       }
 
@@ -665,6 +690,13 @@ export async function drive(project, {
       // The node's DECLARED predicate, closed over the workspace so file-shaped
       // checks can be evaluated after the node has run. The runner calls this
       // and holds no opinion about what passing means.
+      // The moment THIS spawn began. The artifact guard is per-ATTEMPT, not
+      // per-visit: a visit can hold several attempts (a gate failure, a repair),
+      // and using the visit's start would mean attempt 1's file blocks attempt
+      // 2's corrected output from ever being written — re-creating the stale
+      // artifact bug one level down.
+      const attemptStartedMs = now();
+
       const gate = (output) => {
         // Persist the declared artifact BEFORE evaluating the check, so a
         // `file_exists` / `file_matches` check can actually see the deliverable
@@ -676,10 +708,10 @@ export async function drive(project, {
         // (verified its own work with grep before reporting on it), then
         // returned a condensed summary as its final response — which this
         // function then overwrote the verified file with, destroying real work.
-        // The fix respects anything the agent wrote ITSELF during this visit;
-        // the driver only fills the gap when nothing (or something stale from
-        // an EARLIER visit) is there — the original bug this exists to fix.
-        persistArtifact(node, output, ws, log, { sinceMs: Date.parse(action.visit?.startedAt ?? '') });
+        // The fix respects anything the agent wrote ITSELF during THIS attempt;
+        // the driver only fills the gap when nothing (or something older) is
+        // there — the original bug this exists to fix.
+        persistArtifact(node, output, ws, log, { sinceMs: attemptStartedMs });
         const checked = evaluateCheck(node.check, {
           output,
           exists: (rel) => ws ? existsSync(path.join(ws, rel)) : false,
@@ -699,6 +731,10 @@ export async function drive(project, {
           state.driver.status = 'limit';
           writeState(project, state);
           recordLimit(project, { resetAt: err.resetText ? `${err.resetText}${err.resetZone ? ` ${err.resetZone}` : ''}` : null });
+          // Recorded like any other terminal state. Leaving it out undercounted
+          // the denominator of the escalation rate 23.8 exists to measure — a
+          // run stopped by a usage limit is still a run that was attempted.
+          logGraphRun(project, state.driver, 'limit');
           const after = readState(project);
           ensureGraph(after);
           return { stopped: 'limit', state: after, escalation: null };

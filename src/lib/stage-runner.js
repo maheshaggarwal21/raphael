@@ -26,14 +26,35 @@ export const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 
 // without anything failing. `failureClass`, `next` and `action` are absent by
 // design, and no key names a node.
 export const RESULT_KEYS = Object.freeze([
-  'ok', 'spawned', 'timedOut', 'gateFailed', 'verdictFailed', 'verifyFailed',
+  'ok', 'spawned', 'apiError', 'timedOut', 'gateFailed', 'verdictFailed', 'verifyFailed',
   'elapsedMs', 'tokens', 'tokensCaptured', 'output', 'error', 'decisions', 'verdict', 'sessionId'
 ]);
+
+// Did the CLI itself report a transport/auth failure rather than a model answer?
+//
+// This is an OBSERVATION, not a classification: the CLI is telling us the call
+// never reached a model. classifyFailure() still decides what it means. It is
+// load-bearing because both live failures on 2026-07-29 (a revoked OAuth token,
+// and a transient DNS ENOTFOUND) arrived as well-formed envelopes, so `spawned`
+// was true and they were classified as `model` — meaning a non-escalatable node
+// escalated to a human with ZERO retries over a momentary network blip, and an
+// escalatable node would have burned an opus escalation trying to out-think DNS.
+//
+// `api_error_status` is the authoritative structured signal; the phrase list is
+// a narrow fallback for transport errors the CLI reports without a status code.
+const TRANSPORT_ERROR = /\bAPI Error\b|\bUnable to connect\b|\bFailed to authenticate\b|\b(?:ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|ESOCKETTIMEDOUT)\b/i;
+
+export function isApiError(envMsg) {
+  if (!envMsg) return false;
+  if (Number.isFinite(envMsg.api_error_status)) return true;
+  return typeof envMsg.result === 'string' && TRANSPORT_ERROR.test(envMsg.result);
+}
 
 function result(fields) {
   const out = {
     ok: false,
     spawned: true,
+    apiError: false,
     timedOut: false,
     gateFailed: false,
     verdictFailed: false,
@@ -156,7 +177,16 @@ export function makeStageRunner({
       const reason = (typeof envMsg?.result === 'string' && envMsg.result.trim())
         || envMsg?.subtype || envMsg?.error || 'error';
       const status = envMsg?.api_error_status ? ` (HTTP ${envMsg.api_error_status})` : '';
-      return result({ spawned: Boolean(envMsg), elapsedMs, error: `claude reported: ${reason}${status}`, tokens, sessionId });
+      return result({
+        spawned: Boolean(envMsg),
+        // The CLI's own report that the call never reached a model. The recovery
+        // layer reads this to retry environmentally instead of blaming the model.
+        apiError: isApiError(envMsg),
+        elapsedMs,
+        error: `claude reported: ${reason}${status}`,
+        tokens,
+        sessionId
+      });
     }
     const output = typeof envMsg.result === 'string' && envMsg.result.trim() ? envMsg.result : null;
     if (!output) return result({ elapsedMs, error: 'stage produced no text deliverable', tokens, sessionId });

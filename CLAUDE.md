@@ -1084,6 +1084,41 @@ compaction (manual or automatic) can never lose progress.
   before the patch landed — Node does not hot-reload, so THIS run's remaining nodes may
   still clobber an artifact once more; will hand-verify/correct after architect visit 2
   finishes. Every run started fresh from here on gets the fix automatically.
+- ARCHITECTURE AUDIT (session 18, 2026-07-29, owner: "reinspect the whole architecture,
+  find the gaps, fix them, give me a working feature-tested system"). Inline audit, no
+  multi-agent workflow. FOUR real gaps found, all with live evidence, all fixed + tested:
+  (1) HIGH — ENVIRONMENTAL ERRORS MISCLASSIFIED AS `model`. Both failures that night (a
+  revoked OAuth token, a transient DNS ENOTFOUND) arrived as WELL-FORMED envelopes, so
+  `spawned` was true and classifyFailure fell through to `model`. Consequences, both real:
+  a non-escalatable node escalated to a human with ZERO retries over a momentary network
+  blip (this is what actually killed architect visit 1), and an escalatable node would have
+  burned an OPUS escalation trying to reason past DNS. Fix: stage-runner reports the raw
+  observation `apiError` (from `api_error_status`, plus a narrow transport-phrase fallback);
+  classifyFailure maps it to `infra` BEFORE the model fallback. Tested that prose merely
+  DISCUSSING connection errors does not trip it — the same confusion class that once made a
+  security stage's own correct answer halt the pipeline. RECOVERY.infra raised 1 -> 2
+  (transient by definition; a permanent fault burns two ~2s failures then reaches a human
+  with the real reason).
+  (2) MEDIUM — the artifact guard used the VISIT start, but a visit holds multiple attempts.
+  Attempt 1's file blocked attempt 2's corrected output from ever being written, recreating
+  the stale-artifact bug one level down. Now uses the ATTEMPT/spawn start. The unit test was
+  VACUOUS (it passed sinceMs directly, so it could not catch the driver handing over the
+  wrong one) — replaced with an end-to-end drive() test doing a real gate-failure-then-retry.
+  (3) MEDIUM — the run lock never checked whether its owner was ALIVE, only wall-clock
+  staleness, so a killed/crashed drive wedged the project for the full 45-min window. Found
+  live: the drive stopped by hand left a lock owned by pid 24140 (ESRCH). Fix: isProcessAlive
+  via signal 0 (EPERM = alive, ESRCH = dead, anything else = assume alive, since wrongly
+  stealing a live lock corrupts a run while wrongly keeping a dead one only costs a wait).
+  Both directions tested.
+  (4) LOW — `limit` and `paused` terminal states were never logged as graph-run events,
+  undercounting the denominator of the escalation rate 23.8 exists to measure. Now logged.
+  6 gates proven RED-WITHOUT. 803 -> 812 tests.
+  LIVE END-TO-END VERIFICATION: a real `fix` graph run on a fresh workspace with a genuine
+  failing test (competition-ranking ties) COMPLETED CLEAN, exit 0, 3 nodes / 15,392 tokens.
+  INDEPENDENTLY verified afterwards: suite 1 fail -> 2 pass, and it fixed src/rank.js rather
+  than editing the test. Artifact written (reviews/code-review.md), brain injected 5 lessons
+  per node, verifier ran on the code-bearing nodes, graph-run telemetry recorded terminal
+  `done`. Full CLI surface smoke-tested (12 verbs, no runtime errors); doctor healthy.
 - **NEVER put backticks inside ANY double-quoted shell string.** Not `node -e "..."`, not
   `bash -c "..."`, and NOT `git commit -m "..."`. Bash performs command substitution inside
   double quotes, so prose that merely *mentions* a backticked command name runs it.

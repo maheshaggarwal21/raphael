@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, utimesSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -1322,6 +1322,93 @@ test('a SECOND visit rewrites its artifact end to end — the live failure, repr
     assert.match(onDisk, /DESIGN v2 CORRECTED/, 'the second visit must supersede the first on disk');
     assert.equal(/DESIGN v1/.test(onDisk), false, 'the stale v1 must be gone — that was the observed bug');
     assert.match(readFileSync(path.join(dir, 'reviews', 'critique.md'), 'utf8'), /REVIEW/, 'a read-only reviewer still gets its findings persisted');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a RETRY within the same visit still gets its corrected artifact written', () => {
+  // The artifact guard is per-ATTEMPT, not per-visit. A visit can hold several
+  // attempts (a gate failure, then a repair). Keying the guard on the visit's
+  // start would let attempt 1's file block attempt 2's corrected output from
+  // ever reaching disk — re-creating the stale-artifact bug one level down.
+  const dir = sandbox();
+  try {
+    const node = { id: 'architect', artifact: 'ARCHITECTURE.md' };
+    const visitStart = Date.now();
+
+    // attempt 1: the agent writes its own file, then its output is rejected
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), 'ATTEMPT 1 DRAFT\n');
+
+    // attempt 2 begins LATER and produces a corrected deliverable
+    const attempt2Start = Date.now() + 5000;
+    persistArtifact(node, 'ATTEMPT 2 CORRECTED', dir, () => {}, { sinceMs: attempt2Start });
+
+    assert.equal(
+      readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8'),
+      'ATTEMPT 2 CORRECTED\n',
+      'the corrected retry must reach disk — keying on the visit start would have blocked it'
+    );
+
+    // and within ONE attempt, the agent's own write is still respected
+    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), 'AGENT WROTE THIS ITSELF\n');
+    persistArtifact(node, 'summary only', dir, () => {}, { sinceMs: visitStart });
+    assert.equal(readFileSync(path.join(dir, 'ARCHITECTURE.md'), 'utf8'), 'AGENT WROTE THIS ITSELF\n');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('END TO END: the driver passes the ATTEMPT start, so a retry\'s artifact is written', async () => {
+  // The unit test above can only check persistArtifact given a timestamp; it
+  // cannot catch the driver handing over the WRONG one. This drives a real
+  // gate-failure-then-retry inside ONE visit and asserts the corrected output
+  // reaches disk. With the visit's start time it would not: attempt 1's file is
+  // newer than the visit start, so attempt 2 would be skipped forever.
+  const dir = sandbox();
+  try {
+    startProject('att', { title: 'Att', workspace: dir });
+    const st = readState('att');
+    initDriver(st, {
+      brief: 'Design it.',
+      graph: {
+        entry: 'architect',
+        nodes: [{ id: 'architect', kind: 'architect', artifact: 'ARCHITECTURE.md', check: { requires_section: '## DECISIONS' } }],
+        edges: [{ from: 'architect', to: '@done', when: 'always' }]
+      }
+    });
+    writeState('att', st);
+
+    // A clock ahead of real time, so it can be compared against a real mtime
+    // deterministically rather than racing it.
+    let clock = Date.now() + 1_000_000;
+    const target = path.join(dir, 'ARCHITECTURE.md');
+
+    let n = 0;
+    const runner = async (opts) => {
+      n += 1;
+      if (n === 1) {
+        // the agent writes its own draft during attempt 1, stamped at this attempt
+        writeFileSync(target, 'ATTEMPT 1 DRAFT\n');
+        utimesSync(target, new Date(clock), new Date(clock));
+        clock += 10_000;                       // attempt 2 begins later
+        // ...but its response misses the contract, so the gate rejects it
+        const bad = 'no contract section here';
+        const g = opts.gate(bad);
+        return { ok: false, gateFailed: true, error: g.why, output: bad, tokens: 1 };
+      }
+      const good = 'ATTEMPT 2 CORRECTED\n\n## DECISIONS\n- none';
+      opts.gate(good);
+      return { ok: true, output: good, tokens: 1, decisions: [] };
+    };
+
+    await drive('att', { runner, log: () => {}, workspace: dir, now: () => clock });
+
+    assert.equal(n, 2, 'the gate failure must have produced a retry');
+    assert.match(readFileSync(target, 'utf8'), /ATTEMPT 2 CORRECTED/,
+      'the corrected retry must reach disk — the visit start would have blocked it');
   } finally {
     delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });

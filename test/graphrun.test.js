@@ -19,13 +19,13 @@ import { fileURLToPath } from 'node:url';
 import {
   parseVerdict, evaluateCheck, route, nextGraphAction, applyNodeResult,
   boundExceeded, attemptsOfClass, traversalExhausted, budgetExceeded,
-  assembleInputs, edgeKey, MAX_INPUT_CHARS, VERDICT_APPROVED, VERDICT_CHANGES
+  assembleInputs, edgeKey, currentVisit, MAX_INPUT_CHARS, VERDICT_APPROVED, VERDICT_CHANGES
 } from '../src/lib/graphrun.js';
 import { classifyFailure, MAX_NODE_ATTEMPTS, RECOVERY } from '../src/lib/recovery.js';
 import { validateGraph, graphHash, TERMINAL_DONE, TERMINAL_OWNER } from '../src/lib/graph.js';
 import { ensureGraph, newVisit } from '../src/lib/graphstate.js';
-import { makeStageRunner, RESULT_KEYS } from '../src/lib/stage-runner.js';
-import { initDriver, assertResumable, acquireRunLock, releaseRunLock } from '../src/lib/driver.js';
+import { makeStageRunner, RESULT_KEYS, isApiError } from '../src/lib/stage-runner.js';
+import { initDriver, assertResumable, acquireRunLock, releaseRunLock, isProcessAlive } from '../src/lib/driver.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CHECK = { requires_section: '## DECISIONS' };
@@ -703,4 +703,147 @@ test('edge: with no runs at all, neither report invents a rate', async () => {
   const w = computeWeekly({ states: [], events: [], adoptions: [], activeLessons: [], now: new Date(), days: 7 });
   assert.equal(w.graph.runs, 0);
   assert.equal(/Autopilot \(the graph layer\)/.test(renderWeekly(w)), false, 'an empty section is not printed');
+});
+
+// ---- environmental failures are not the model's fault (2026-07-29) ----------
+// Both live failures that night arrived as WELL-FORMED envelopes, so `spawned`
+// was true and they classified as `model`. Consequence: a non-escalatable node
+// escalated to a human with zero retries over a momentary DNS blip, and an
+// escalatable node would have spent an opus escalation reasoning about DNS.
+
+test('a transport or auth failure classifies as infra, not model', () => {
+  // the exact envelopes observed live
+  assert.equal(classifyFailure({ spawned: true, apiError: true, error: 'claude reported: Failed to authenticate. API Error: 401 OAuth access token has been revoked. (HTTP 401)' }), 'infra');
+  assert.equal(classifyFailure({ spawned: true, apiError: true, error: 'claude reported: API Error: Unable to connect to API (ENOTFOUND)' }), 'infra');
+
+  // a GENUINE model failure is still the model's fault
+  assert.equal(classifyFailure({ spawned: true, apiError: false, error: 'stage produced no text deliverable' }), 'model');
+
+  // ordering: an interruption still outranks it (work is on disk, session live)
+  assert.equal(classifyFailure({ timedOut: true, apiError: true }), 'timeout');
+  // a child that never produced an envelope at all is still infra
+  assert.equal(classifyFailure({ spawned: false, apiError: false }), 'infra');
+});
+
+test('isApiError reads the CLI\'s own report, and does not fire on ordinary output', () => {
+  assert.equal(isApiError({ api_error_status: 401, result: 'Failed to authenticate.' }), true);
+  assert.equal(isApiError({ api_error_status: 529, result: 'overloaded' }), true, 'any status code is structural');
+  assert.equal(isApiError({ result: 'API Error: Unable to connect to API (ENOTFOUND)' }), true);
+  assert.equal(isApiError({ result: 'ECONNRESET while streaming' }), true);
+
+  // MUST NOT fire on a deliverable that merely discusses these topics — the same
+  // class of confusion that once made a security stage's own correct answer
+  // halt the pipeline as a "limit reached".
+  assert.equal(isApiError({ subtype: 'success', result: 'The design handles ECONN-style failures by retrying.' }), false,
+    'prose about connection errors is not a connection error');
+  assert.equal(isApiError({ subtype: 'success', result: 'Return 401 when the token is absent.' }), false);
+  assert.equal(isApiError(null), false);
+  assert.equal(isApiError({}), false);
+});
+
+test('a network blip RETRIES instead of escalating a non-escalatable node', () => {
+  // `review` has no escalation model. Before this fix its first transient
+  // failure escalated straight to a human with zero retries — which is exactly
+  // what killed architect visit 1 on a DNS blip.
+  const graph = validateGraph({
+    entry: 'review',
+    nodes: [{ id: 'review', kind: 'review', emit: 'verdict', check: { ...CHECK } }],
+    edges: [
+      { from: 'review', to: TERMINAL_DONE, when: 'pass' },
+      { from: 'review', to: TERMINAL_OWNER, when: 'changes' }
+    ]
+  });
+  const state = runState(graph);
+
+  const blip = { ok: false, spawned: true, apiError: true, tokens: 0, error: 'claude reported: API Error: Unable to connect to API (ENOTFOUND)' };
+  const first = applyNodeResult(state, 'review', blip);
+  assert.equal(first.outcome, 'retry', 'a transient network error must be retried, not escalated');
+  assert.equal(state.driver.status, 'running');
+  assert.equal(attemptsOfClass(currentVisit(state.driver.nodes.review), 'infra'), 1);
+  assert.equal(state.driver.nodes.review.session_id, null, 'a fresh session — never resume a dead one');
+
+  // and it is still BOUNDED: a permanent fault reaches a human rather than looping
+  applyNodeResult(state, 'review', blip);
+  const third = applyNodeResult(state, 'review', blip);
+  assert.equal(third.outcome, 'escalated');
+  assert.equal(state.driver.escalation.bound, 'class:infra');
+  assert.match(state.driver.escalation.reason, /ENOTFOUND/, 'the human is told the real reason');
+});
+
+test('an escalatable node no longer burns an opus escalation on a network error', () => {
+  // `develop` escalates to opus. Spending that on a DNS failure is pure waste —
+  // a stronger model cannot reason its way past a name-resolution failure.
+  const graph = validateGraph({
+    entry: 'develop',
+    nodes: [{ id: 'develop', kind: 'develop', check: { ...CHECK } }],
+    edges: [{ from: 'develop', to: TERMINAL_DONE, when: 'always' }]
+  });
+  const state = runState(graph);
+
+  applyNodeResult(state, 'develop', { ok: false, spawned: true, apiError: true, tokens: 0, error: 'API Error: Unable to connect to API (ENOTFOUND)' });
+  const visit = currentVisit(state.driver.nodes.develop);
+  assert.equal(attemptsOfClass(visit, 'infra'), 1);
+  assert.equal(attemptsOfClass(visit, 'model'), 0, 'no model attempt was consumed');
+  assert.equal(visit.escalated, false, 'and no opus escalation was spent on a network error');
+});
+
+// ---- the run lock must notice a DEAD owner (2026-07-29) ---------------------
+// A killed or crashed drive never runs its release `finally`, so the lock file
+// survives. A wall-clock-only rule then wedged the project for the whole stale
+// window even though nothing was running — observed after stopping a drive by
+// hand, which left a lock owned by a pid that no longer existed.
+
+test('a lock held by a DEAD process is taken immediately, not after the stale window', () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-lock-dead-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    const realPid = process.pid;
+    // another process takes the lock, RIGHT NOW (so it is fresh by wall clock)
+    Object.defineProperty(process, 'pid', { value: realPid + 1, configurable: true });
+    assert.equal(acquireRunLock('proj', { now: () => 1000 }), true);
+    Object.defineProperty(process, 'pid', { value: realPid, configurable: true });
+
+    // owner ALIVE + fresh -> genuinely busy, must not be trampled
+    assert.equal(acquireRunLock('proj', { now: () => 1000, alive: () => true }), false);
+
+    // owner DEAD + fresh -> the lock is garbage, take it now
+    assert.equal(acquireRunLock('proj', { now: () => 1000, alive: () => false }), true,
+      'a dead owner must not wedge the project for the stale window');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME; else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('isProcessAlive: this process is alive, an absurd pid is not, and it never throws', () => {
+  assert.equal(isProcessAlive(process.pid), true);
+  assert.equal(isProcessAlive(2147483646), false, 'a pid that cannot exist is not alive');
+  // edge cases must be answers, not exceptions
+  assert.equal(isProcessAlive(0), false);
+  assert.equal(isProcessAlive(-1), false);
+  assert.equal(isProcessAlive(undefined), false);
+  assert.equal(isProcessAlive('nonsense'), false);
+});
+
+test('a live owner still wins even once the wall clock says stale', () => {
+  // Belt and braces in the other direction: a genuinely long run must not have
+  // its lock stolen out from under it just because it passed the stale window.
+  const home = mkdtempSync(path.join(os.tmpdir(), 'raph-lock-live-'));
+  const prev = process.env.RAPHAEL_HOME;
+  process.env.RAPHAEL_HOME = home;
+  try {
+    const realPid = process.pid;
+    Object.defineProperty(process, 'pid', { value: realPid + 1, configurable: true });
+    acquireRunLock('proj', { now: () => 0 });
+    Object.defineProperty(process, 'pid', { value: realPid, configurable: true });
+
+    // stale by clock, but the owner is alive -> stealable (a hung run must not
+    // block forever either). This documents the deliberate precedence.
+    assert.equal(acquireRunLock('proj', { now: () => 60 * 60 * 1000, alive: () => true }), true,
+      'a hung run past the stale window is still recoverable');
+  } finally {
+    if (prev === undefined) delete process.env.RAPHAEL_HOME; else process.env.RAPHAEL_HOME = prev;
+    rmSync(home, { recursive: true, force: true });
+  }
 });
