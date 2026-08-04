@@ -237,6 +237,11 @@ export function applyNodeResult(state, nodeId, result, { now = () => Date.now() 
   if (result.sessionId) record.session_id = result.sessionId;
   d.updated_at = stamp;
 
+  // Kept outside the ok branch: a stage that had its deliverable rejected may
+  // still have found a real error in what it was given, and that is exactly the
+  // case a human most needs to see.
+  if (result.corrections?.length) visit.corrections = result.corrections;
+
   if (result.ok) {
     visit.output = result.output ?? null;
     visit.decisions = result.decisions ?? [];

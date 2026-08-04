@@ -63,6 +63,10 @@ export function buildCliArgs({ model, effort, system, toolSchema }) {
     '--tools', '',                 // disable ALL built-in tools
     '--strict-mcp-config',         // + no MCP config passed → no MCP tools either
     '--no-session-persistence'     // one-shot; nothing to resume
+    // Deliberately NO --permission-mode and no deny-list here, unlike the
+    // driver and the eval runner. With every tool disabled there is nothing to
+    // permit or refuse: containment comes from the empty grant, which is
+    // stricter than any mode. Adding either would only imply this path can act.
   ];
   if (model) args.push('--model', model);
   if (effort) args.push('--effort', effort);

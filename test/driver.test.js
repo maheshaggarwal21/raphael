@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, utimesSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync, utimesSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -191,7 +191,7 @@ test('failure path: a kind with an escalation retries once on the stronger model
 
 test('stage prompts carry the boundary rules + roster mission; args resume sessions; plan renders', () => {
   const p1 = renderStagePrompt('plan', { project: 'kit', brief: 'THE BRIEF', input: 'THE BRIEF', priorKind: null });
-  assert.match(p1, /NEVER deploy, sign in/);
+  assert.match(p1, /Publishing or shipping|publish or push/i);
   assert.match(p1, /THE BRIEF/);
   assert.match(p1, /finalized spec/i); // the Planner roster mission, not a generic line
   assert.equal(p1.includes('Input from the previous stage'), false);
@@ -204,7 +204,7 @@ test('stage prompts carry the boundary rules + roster mission; args resume sessi
   assert.equal(fresh[fresh.indexOf('--session-id') + 1], 'abc');
   assert.equal(fresh[fresh.indexOf('--model') + 1], 'sonnet');
   assert.equal(fresh[fresh.indexOf('--effort') + 1], 'high');
-  assert.equal(fresh[fresh.indexOf('--permission-mode') + 1], 'acceptEdits');
+  assert.equal(fresh[fresh.indexOf('--permission-mode') + 1], 'bypassPermissions');
   // 23.2: the tool grant is EXPLICIT. Before this the flag was absent, which
   // granted every built-in tool and made read-only roster agents writers.
   assert.equal(fresh[fresh.indexOf('--tools') + 1], 'Read,Write');
@@ -696,11 +696,11 @@ test('gateDeliverable: a question fails the gate, a real deliverable passes', ()
 
 test('the stage prompt carries the no-human rule and the decisions contract', () => {
   const prompt = renderStagePrompt('plan', { project: 'p', brief: 'b', input: 'b', priorKind: null });
-  assert.match(prompt, /NO HUMAN in this loop/);
-  assert.match(prompt, /Never end by asking for clarification/);
+  assert.match(prompt, /no human in this loop/i);
+  assert.match(prompt, /Decide, do not ask/i);
   assert.match(prompt, /## DECISIONS/);
   // deciding for yourself must never read as permission to cross the boundary
-  assert.match(prompt, /never authorises a deploy/);
+  assert.match(prompt, /Spending money, signing in|the developer.s call, not yours/i);
 });
 
 test('decisions and honesty markers land on the visit record', () => {
@@ -880,9 +880,9 @@ test('tokensCaptured is sticky-false once any pass went unmeasured', () => {
 // other one.
 test('F9: the boundary explicitly steers decisions away from host memory tools', () => {
   const p = renderStagePrompt('plan', { project: 'p', brief: 'b', input: 'b', priorKind: null });
-  assert.match(p, /memory\/note-taking tools/);
-  assert.match(p, /outside this directory/i);
-  assert.match(p, /DECISIONS section below is what the next stage reads/);
+  assert.match(p, /memory tools/i);
+  assert.match(p, /outside this workspace/i);
+  assert.match(p, /Notes for the next stage go in DECISIONS/i);
 });
 
 // ---- 23.2: the tool grant reaches the real spawn -----------------------------
@@ -1149,9 +1149,13 @@ test('persistArtifact respects content the agent wrote itself THIS VISIT', () =>
   const dir = sandbox();
   try {
     const node = { id: 'architect', artifact: 'ARCHITECTURE.md' };
-    const visitStart = Date.now();
     // the agent writes a full document itself (as if via Bash), AFTER the visit started
-    writeFileSync(path.join(dir, 'ARCHITECTURE.md'), 'FULL 447-LINE DOC, SELF-VERIFIED\n');
+    const target = path.join(dir, 'ARCHITECTURE.md');
+    writeFileSync(target, 'FULL 447-LINE DOC, SELF-VERIFIED\n');
+    // Stamp the ordering rather than racing the clock: Date.now() has ms
+    // resolution and the recorded mtime can round below it, which made this
+    // assert fail at random even though the guard was behaving correctly.
+    const visitStart = statSync(target).mtimeMs - 5000;
 
     persistArtifact(node, 'condensed summary only', dir, () => {}, { sinceMs: visitStart });
 

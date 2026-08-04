@@ -15,7 +15,7 @@ import { existsSync, readdirSync, readFileSync, mkdirSync, renameSync } from 'no
 import path from 'node:path';
 import { atomicWrite } from './files.js';
 import { p } from './paths.js';
-import { decisionsByNode } from './graphstate.js';
+import { decisionsByNode, correctionsByNode } from './graphstate.js';
 
 const SCHEMA = 'raphael/academy-state/v1';
 export const STATUSES = ['in-progress', 'blocked-limit', 'blocked-boundary', 'done'];
@@ -214,6 +214,17 @@ export function renderStatus(state) {
   if (decided.length > 0) {
     lines.push('  DECIDED (the autopilot chose these itself — review them):');
     for (const d of decided) lines.push(`    - [${d.kind}] ${d.note}`);
+  }
+  // Listed ABOVE nothing and read FIRST on purpose: these are the places the
+  // machine says the human's own instructions were wrong. That is the highest-
+  // value line in this report and the easiest to lose in a wall of decisions.
+  const corrected = correctionsByNode(state.driver);
+  if (corrected.length > 0) {
+    lines.push('  CORRECTED (a stage found an error in what it was given — read these first):');
+    for (const entry of corrected) {
+      const label = entry.visit > 1 ? `${entry.id} #${entry.visit}` : entry.id;
+      for (const c of entry.corrections) lines.push(`    - [${label}] ${c}`);
+    }
   }
   if (state.boundary) lines.push(`  BOUNDARY:  ${state.boundary.reason} (since ${state.boundary.at})`);
   if (state.status === 'blocked-limit' && state.limit) lines.push(`  LIMIT:     hit ${state.limit.at}, resets ${state.limit.reset_at || 'unknown'}`);

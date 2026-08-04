@@ -1132,6 +1132,48 @@ compaction (manual or automatic) can never lose progress.
       ...message with `backticks` intact...
       ENDOFMSG
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
+- AUTONOMY CHARTER + bypassPermissions (session 2026-08-04, owner directive
+  "make bypassPermissions everywhere ... raphael should have its own set of
+  preamble, rules and constraints ... an independent thinking system ... that
+  corrects the user, instead of needing correction from them"). Driver stages
+  spawned with `--permission-mode acceptEdits`, which auto-accepts file edits
+  but still ASKS before running a command — and a headless run has nobody to
+  ask, so 34% of Bash calls in an observed run died as "requires approval",
+  including every `node --test` and every `raph` call the spine tells agents to
+  make. The pipeline believed its agents were running tests; they were reading
+  them. NEW src/lib/autonomy.js replaces the prompt with two layers: HARD =
+  FORBIDDEN_TOOL_PATTERNS (37 patterns) passed as `--disallowedTools`, covering
+  only the irreversible and boundary-crossing (rm -rf, git reset --hard, DB
+  drops, push/publish/deploy, sudo, credential paths); SOFT = CHARTER, six
+  rules in every stage prompt (understand before acting, prefer the reversible
+  form, verify what you did, CORRECT WHAT IS WRONG INCLUDING YOUR INSTRUCTIONS,
+  decide don't ask, stay inside your work). LIVE-VERIFIED both arms on the real
+  binary because help text is a claim not evidence: a denied `echo` was refused
+  UNDER bypassPermissions, an undenied one ran, and a real `rm -rf` against a
+  throwaway dir was blocked with the directory surviving. Same fix applied to
+  src/eval/runner.js (an eval agent that cannot run a command measures the
+  permission prompt, not the brain); provider.js deliberately gets neither and
+  says so — with `--tools ""` there is nothing to permit.
+  THE CORRECTIONS CHANNEL: charter rule 4 was worthless without a destination,
+  so an optional `## CORRECTIONS` section now runs end to end — parsed
+  (parseCorrections), carried on the stage result contract, persisted per visit
+  (survives a REJECTED deliverable on purpose — a stage can be right about its
+  input and wrong about its output), read through one accessor
+  (correctionsByNode), and rendered as a CORRECTED block in `raph academy
+  status`. Optional on purpose: a required section fills with manufactured
+  disagreement and buries the real ones. Separate budgets from decisions (700
+  chars x 6 vs 300 x 12) because a correction has to carry its ARGUMENT.
+  Two real bugs found while testing: the bullet parser's `/^none/i` filter ate
+  any bullet merely STARTING with "none" ("none of the listed endpoints exist —
+  ..." is a correction, not an empty section) — latent in DECISIONS for as long
+  as that parser existed; and the persistArtifact visit-guard test raced
+  Date.now() against filesystem mtime resolution, failing ~1 run in 6 while the
+  guard behaved correctly. 8 gates proven RED-WITHOUT. 812 -> 843 tests.
+  LIVE END-TO-END: a `fix` graph on a repo with a real failing test AND a brief
+  whose diagnosis was FALSE (blamed a greedy regex, instructed a change that
+  fixes nothing). Exit 0; independently verified suite 1 fail -> 2 pass with the
+  test file untouched and the REAL bug fixed. All three stages corrected the
+  brief with their reasoning, and all three reached the owner's status output.
 - STARTUP LAUNCHER REMOVED (session 2026-08-03): the Windows Startup-folder
   auto-resume `.cmd` was deleted at the owner's request (it popped a visible
   `claude` terminal at every login, even though it was almost always a no-op).

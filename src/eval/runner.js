@@ -13,6 +13,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { claudeBinary, detectLimit, isSuccessEnvelope } from '../lib/provider.js';
+import { FORBIDDEN_TOOL_PATTERNS } from '../lib/autonomy.js';
 
 const RUN_TIMEOUT_MS = 300000;
 
@@ -20,7 +21,12 @@ export function buildEvalArgs({ model }) {
   const args = [
     '-p',
     '--output-format', 'json',
-    '--permission-mode', 'acceptEdits', // auto-accept file writes in the throwaway fixture
+    // Same reasoning as the driver (autonomy.js): acceptEdits auto-accepts file
+    // writes but still ASKS before running a command, and an eval run is
+    // headless. A scenario agent that cannot run a command is not measuring the
+    // brain's effect, it is measuring the permission prompt.
+    '--permission-mode', 'bypassPermissions',
+    '--disallowedTools', ...FORBIDDEN_TOOL_PATTERNS,
     '--strict-mcp-config',              // no MCP tools
     '--no-session-persistence'
   ];

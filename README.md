@@ -822,7 +822,7 @@ Honesty is a feature. Raphael is **not**:
  ├── academy/                   autonomous build state, checkpointed
  └── events log                 every injection, approval, adoption, pulse — auditable
 
- engine    src/lib/*.js         65 modules, plain ESM, 2 runtime deps
+ engine    src/lib/*.js         66 modules, plain ESM, 2 runtime deps
  verbs     src/commands/*.js    43 thin command wrappers over the same engine
  plugin    plugin/              hooks (SessionStart · UserPromptSubmit · PreToolUse · SessionEnd)
                                 + 12 agents + 4 /brain commands + 7 recipes + recall skill

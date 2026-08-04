@@ -31,6 +31,7 @@ import { loadIndex } from './compile.js';
 import { rank } from './match.js';
 import { computeConfidence } from './confidence.js';
 import { AGENTS, renderSpine } from './agents.js';
+import { CHARTER } from './autonomy.js';
 import { PREAMBLE } from './inject.js';
 import {
   validateGraph, pipelineToGraph, graphHash, DRIVER_FORBIDDEN_KINDS, TERMINALS
@@ -64,24 +65,23 @@ const KIND_MISSIONS = {
   }
 };
 
-const BOUNDARY_RULES = `Rules (the autonomy boundary — these are enforced, not suggestions):
-- Work ONLY inside the current directory (the project workspace). This includes
-  memory/note-taking tools: do not write project facts, architectural decisions,
-  or "for next time" notes to any file or tool outside this directory. That
-  channel is invisible to the pipeline, is never reviewed, and cannot carry your
-  reasoning forward — the DECISIONS section below is what the next stage reads.
-- NEVER deploy, sign in, create accounts, spend money, publish packages, or push to any remote.
-- Produce your deliverable as plain text/files and stop; the next stage picks it up.
+// The charter (autonomy.js) carries the operating rules and the prohibitions.
+// What stays here is the part specific to being ONE STAGE of a pipeline rather
+// than an operator in general: your output is another stage's input, and the
+// deliverable must be the artifact itself.
+const BOUNDARY_RULES = `${CHARTER}
 
-There is NO HUMAN in this loop. Nobody will read a question you ask, and no answer
-can arrive — the next stage receives your output verbatim as its input. So:
-- Never end by asking for clarification, confirmation, or a preference.
-- When something is genuinely ambiguous, CHOOSE the option you would defend to a
-  senior engineer, state the choice, and keep going. Deciding is your job here.
-- The autonomy boundary above is NOT an ambiguity to resolve. "Decide for yourself"
-  never authorises a deploy, a sign-in, a purchase, or a push.
-- Your deliverable is the thing itself (the spec, the design, the code), never a
-  description of what you would produce given more information.`;
+## You are one stage of a pipeline
+
+Your output is passed verbatim to the next stage as its input. Nobody reads it
+in between.
+
+- Your deliverable is the thing itself — the spec, the design, the code — never
+  a description of what you would produce given more information.
+- Notes for the next stage go in DECISIONS. Do not write them to memory tools or
+  to files outside this workspace; that channel is invisible here and is never
+  reviewed.
+- Finish and stop. The next stage picks up from what you leave behind.`;
 
 // The one structural contract every deliverable must satisfy. Deliberately a
 // contract rather than a question-detector: a clarifying question cannot
@@ -160,8 +160,35 @@ Apply the changes below. Then, before you answer:
    not, say why. Declining a point with a reason is a legitimate answer;
    silently skipping it is not.`;
 
+// The charter tells a stage to correct wrong input rather than execute it
+// faithfully. That instruction is worth nothing if the correction has nowhere
+// to go: buried among a dozen DECISIONS bullets it reads as one more judgement
+// call, and the owner never learns their brief was wrong.
+//
+// So corrections get their own channel. Deliberately OPTIONAL, unlike
+// DECISIONS — a required section would be filled with manufactured
+// disagreement on every stage, which is worse than none, because it makes the
+// real ones unfindable.
+const CORRECTIONS_CONTRACT = `## Optional section: corrections
+
+If something you were given was wrong — the brief, the spec, a previous
+stage's output, a reviewer's demand — add a section headed exactly
+"## CORRECTIONS" before DECISIONS, with one "- " bullet per correction in the
+form "<what was wrong> — <what you did instead>".
+
+Only real errors belong here: a factual mistake, an impossible or
+self-contradictory requirement, an instruction that would produce a defect.
+A preference of yours is not a correction. If nothing you were given was
+wrong, omit this section entirely — an empty one is worse than none.`;
+
 const MAX_DECISIONS = 12;
 const MAX_DECISION_LEN = 300;
+// Corrections get more room than decisions and there are fewer of them. A
+// correction has to carry the ARGUMENT ("slug() is never called on already-
+// suffixed candidates, so greediness is irrelevant"), not just the claim — the
+// first live run cut exactly that reasoning off mid-sentence at 300.
+const MAX_CORRECTIONS = 6;
+const MAX_CORRECTION_LEN = 700;
 
 // Parse the "## DECISIONS" section out of a deliverable. Pure, total, forgiving
 // about formatting but strict about presence: the last matching heading wins (a
@@ -169,8 +196,18 @@ const MAX_DECISION_LEN = 300;
 // the next heading, "- none" is a valid explicit answer. Null means absent —
 // the failure the gate acts on.
 export function parseDecisions(text) {
+  return parseBulletSection(text, 'DECISIONS', MAX_DECISIONS, MAX_DECISION_LEN);
+}
+
+// Same parser, different heading and budget. Absence is legal here (the section
+// is optional), so callers read [] rather than null as "nothing was wrong".
+export function parseCorrections(text) {
+  return parseBulletSection(text, 'CORRECTIONS', MAX_CORRECTIONS, MAX_CORRECTION_LEN) ?? [];
+}
+
+function parseBulletSection(text, name, maxItems, maxLen) {
   const s = String(text ?? '');
-  const heading = /^[ \t]{0,3}#{1,6}[ \t]*DECISIONS[ \t]*:?[ \t]*$/gim;
+  const heading = new RegExp(`^[ \\t]{0,3}#{1,6}[ \\t]*${name}[ \\t]*:?[ \\t]*$`, 'gim');
   let last = -1;
   for (let m = heading.exec(s); m; m = heading.exec(s)) last = m.index + m[0].length;
   if (last === -1) return null;
@@ -186,9 +223,13 @@ export function parseDecisions(text) {
     if (!bullet) continue;
     const item = bullet[1].trim();
     if (!item) continue;
-    if (/^none\b/i.test(item) || /^n\/a\b/i.test(item)) continue; // explicit "no decisions"
-    out.push(item.slice(0, MAX_DECISION_LEN));
-    if (out.length >= MAX_DECISIONS) break;
+    // The explicit "nothing to report" answer, and ONLY that. Matching a bullet
+    // that merely STARTS with "none" silently eats real content — "none of the
+    // listed endpoints exist — built against the real routes" is a correction,
+    // not an empty section.
+    if (/^(?:none|n\/a)[.!]?$/i.test(item)) continue;
+    out.push(item.slice(0, maxLen));
+    if (out.length >= maxItems) break;
   }
   return out;
 }
@@ -203,10 +244,11 @@ export function gateDeliverable(output) {
     return {
       ok: false,
       decisions: [],
+      corrections: [],
       why: 'no "## DECISIONS" section — the deliverable is incomplete (a question or a request for input is not a deliverable)'
     };
   }
-  return { ok: true, decisions, why: null };
+  return { ok: true, decisions, corrections: parseCorrections(output), why: null };
 }
 
 const VERIFY_TIMEOUT_MS = 300000;
@@ -505,7 +547,7 @@ export function renderStagePrompt(nodeOrKind, { project, brief, input, priorKind
       ''
     );
   }
-  lines.push('## Your deliverable', m.output, '', DECISIONS_CONTRACT);
+  lines.push('## Your deliverable', m.output, '', CORRECTIONS_CONTRACT, '', DECISIONS_CONTRACT);
   if (node.emit === 'verdict') lines.push('', VERDICT_CONTRACT);
   return lines.join('\n');
 }
@@ -744,7 +786,12 @@ export async function drive(project, {
           exists: (rel) => ws ? existsSync(path.join(ws, rel)) : false,
           readFile: (rel) => { try { return ws ? readFileSync(path.join(ws, rel), 'utf8') : ''; } catch { return ''; } }
         });
-        return { ok: checked.ok, decisions: parseDecisions(output) ?? [], why: checked.why };
+        return {
+          ok: checked.ok,
+          decisions: parseDecisions(output) ?? [],
+          corrections: parseCorrections(output),
+          why: checked.why
+        };
       };
 
       let result;

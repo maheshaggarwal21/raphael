@@ -16,6 +16,7 @@
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import { claudeBinary, detectLimit, isSuccessEnvelope } from './provider.js';
+import { FORBIDDEN_TOOL_PATTERNS } from './autonomy.js';
 
 export const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 minutes
 
@@ -25,7 +26,7 @@ export const STAGE_TIMEOUT_MS = 600000; // a stage writes real code; give it 10 
 // absent by design, and no key names a node.
 export const RESULT_KEYS = Object.freeze([
   'ok', 'spawned', 'apiError', 'timedOut', 'gateFailed', 'verdictFailed', 'verifyFailed',
-  'elapsedMs', 'tokens', 'tokensCaptured', 'output', 'error', 'decisions', 'verdict', 'sessionId'
+  'elapsedMs', 'tokens', 'tokensCaptured', 'output', 'error', 'decisions', 'corrections', 'verdict', 'sessionId'
 ]);
 
 // Did the CLI itself report a transport/auth failure rather than a model
@@ -60,6 +61,7 @@ function result(fields) {
     output: null,
     error: null,
     decisions: [],
+    corrections: [],
     verdict: null,
     sessionId: null,
     ...fields
@@ -78,7 +80,19 @@ export function buildStageArgs({ model, effort, tools, sessionId, resume = false
   const args = [
     '-p',
     '--output-format', 'json',
-    '--permission-mode', 'acceptEdits',
+    // bypassPermissions, not acceptEdits. acceptEdits auto-accepts file edits
+    // but still ASKS before running a command, and a headless run has no one to
+    // ask — 34% of Bash calls in an observed run died as "requires approval",
+    // including every `node --test` and every `raph` invocation the spine tells
+    // agents to make. The prompt was not protecting anything here; it was only
+    // preventing work.
+    //
+    // What replaces it is deterministic rather than interactive: the
+    // irreversible and boundary-crossing commands are refused by the CLI via
+    // --disallowedTools below, the tool grant is already per-agent from the
+    // roster, cwd is the workspace, and the charter carries the judgment.
+    '--permission-mode', 'bypassPermissions',
+    '--disallowedTools', ...FORBIDDEN_TOOL_PATTERNS,
     '--strict-mcp-config'
   ];
   if (!Array.isArray(tools)) {
@@ -191,7 +205,12 @@ export function makeStageRunner({
     }
     const checked = gate(output);
     if (!checked.ok) {
-      return result({ elapsedMs, gateFailed: true, error: checked.why, output, tokens, sessionId, verdict: verdictOfText });
+      return result({
+        elapsedMs, gateFailed: true, error: checked.why, output, tokens, sessionId, verdict: verdictOfText,
+        // A gate failure still carries the stage's corrections: "your input was
+        // wrong" is worth reading even when the deliverable was rejected.
+        corrections: checked.corrections ?? []
+      });
     }
     // A verdict node that produced no parseable verdict fails closed — never
     // an implicit approval.
@@ -203,9 +222,15 @@ export function makeStageRunner({
         output,
         tokens,
         sessionId,
-        decisions: checked.decisions ?? []
+        decisions: checked.decisions ?? [],
+        corrections: checked.corrections ?? []
       });
     }
-    return result({ ok: true, elapsedMs, output, tokens, sessionId, decisions: checked.decisions ?? [], verdict: verdictOfText });
+    return result({
+      ok: true, elapsedMs, output, tokens, sessionId,
+      decisions: checked.decisions ?? [],
+      corrections: checked.corrections ?? [],
+      verdict: verdictOfText
+    });
   };
 }

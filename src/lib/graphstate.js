@@ -26,6 +26,7 @@ export function newVisit(n, { startedAt = null } = {}) {
     output: null,
     verdict: null,
     decisions: [],
+    corrections: [],
     tokens: 0,
     tokensCaptured: true,
     elapsedMs: 0,
@@ -235,6 +236,22 @@ export function decisionsByNode(driver) {
   }
   for (const [kind, rec] of Object.entries(driver.stages ?? {})) {
     if (rec?.decisions?.length) out.push({ id: kind, visit: 1, decisions: rec.decisions });
+  }
+  return out;
+}
+
+// Where a stage said its input was wrong. Same accessor discipline as
+// decisionsByNode: one reader, so moving the records cannot silently empty the
+// only place the owner sees that the machine disagreed with them. Pre-graph
+// states have no corrections field at all, which reads as "none" — correct,
+// since the channel did not exist when they ran.
+export function correctionsByNode(driver) {
+  const out = [];
+  if (!driver || !isGraphState(driver)) return out;
+  for (const [id, node] of Object.entries(driver.nodes ?? {})) {
+    for (const visit of node.visits ?? []) {
+      if (visit.corrections?.length) out.push({ id, visit: visit.n, corrections: visit.corrections });
+    }
   }
   return out;
 }
