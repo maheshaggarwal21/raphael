@@ -19,7 +19,8 @@ import {
   renderBench,
   atlasPaths,
   loadAtlasDoc as loadAtlas,
-  buildAndSaveAtlas as buildAndSave
+  buildAndSaveAtlas as buildAndSave,
+  refreshAtlasIfStale
 } from '../lib/atlas.js';
 import { mapFileName } from '../lib/map.js';
 import { renderVault } from '../lib/obsidian.js';
@@ -33,9 +34,20 @@ function projectDirFrom(args) {
 }
 
 // Load the atlas, building it on demand (it costs nothing but a scan).
+//
+// The cache used to be returned unconditionally unless --refresh, with no
+// staleness check of any kind, so `raph atlas where` could answer from a graph
+// several commits behind the working tree — silently, since a stale answer
+// looks exactly like a fresh one. refreshAtlasIfStale is the same check pulse
+// already uses (HEAD moved, or a day old with no git to compare) and rebuilds
+// incrementally, so being correct here costs a per-file SHA pass, not a scan.
 function ensureAtlas(projectDir, { refresh = false } = {}) {
   const previous = loadAtlas(projectDir);
-  if (previous && !refresh) return { atlas: previous, built: false };
+  if (previous && !refresh) {
+    const r = refreshAtlasIfStale(projectDir);
+    if (!r.refreshed) return { atlas: previous, built: false };
+    return { atlas: loadAtlas(projectDir) ?? previous, built: true, why: r.why };
+  }
   const out = buildAndSave(projectDir, { previous });
   return { ...out, built: true };
 }

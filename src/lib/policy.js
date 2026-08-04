@@ -104,7 +104,23 @@ export const VERIFIED_KINDS = new Set(['develop', 'frontend', 'test', 'debug']);
 
 // The stage kinds that operate over existing workspace code, so the deterministic
 // project map (atlas) helps them. Plan/spec stages run before there is code to map.
-export const CODE_BEARING_KINDS = new Set(['develop', 'frontend', 'review', 'debug', 'test', 'security']);
+//
+// The name says "code-bearing" but the criterion is READS THE WORKSPACE, not
+// writes it — `review` and `security` were always here and write nothing. On
+// that criterion three kinds were missing and had to find the code by groping:
+// `design` reviews markup and styles across a codebase, `critique` checks
+// another agent's claims against what is actually there, and `deploy-prep`
+// writes a ship checklist for a system it cannot see. `architect` is included
+// for the same reason its mission demands — it has to know what already exists
+// before designing more.
+//
+// `plan` stays out on purpose. It is the one kind that legitimately runs before
+// any code, and the digest already returns '' for an empty repo, so including
+// it would buy nothing and cost prompt budget on every greenfield build.
+export const CODE_BEARING_KINDS = new Set([
+  'develop', 'frontend', 'review', 'debug', 'test', 'security',
+  'design', 'critique', 'deploy-prep', 'architect'
+]);
 
 // Deliberate, tracked exceptions to "opus is escalation-only, never first
 // pass". Kept as an explicit set (not inferred from POLICY) so the alignment
@@ -176,6 +192,15 @@ export function toolsFor(entry) {
     return [...a.tools];
   }
   return [...(entry.tools ?? [])];
+}
+
+// Which roster agent a task kind runs as, or null for the kinds that have no
+// agent (`test`, `mechanical`, `summarize`, `distill`). Retrieval uses this as
+// the audience: lessons carry `scope.agents`, and without an audience that
+// scoping does nothing, so a security lesson reaches a frontend stage.
+export function agentForKind(kind) {
+  const entry = POLICY.find((p) => p.kind === kind);
+  return entry?.agent ?? null;
 }
 
 // Does this kind have an escalation model at all? resolvePolicy returns the

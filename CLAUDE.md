@@ -1132,6 +1132,37 @@ compaction (manual or automatic) can never lose progress.
       ...message with `backticks` intact...
       ENDOFMSG
 - Working CLI: `node bin/raph.js <cmd>`; sandbox any run with `RAPHAEL_HOME=<dir>`.
+- STAGE CONTEXT GAPS A2/A3/A5 FIXED (session 2026-08-04, same day). All three
+  were "what a stage actually receives", and all three were silent — a
+  plausible prompt that was missing or wrong, so nothing failed.
+  A2: CODE_BEARING_KINDS said "code-bearing" but review+security were always in
+  it and write nothing, so the criterion has always been READS THE WORKSPACE.
+  Four kinds were missing on it — design (reviewed markup it had to grope for),
+  critique (checked claims with no way to look), deploy-prep, and architect
+  (whose mission demands knowing what already exists). `plan` stays out and the
+  reason is now stated, not implied.
+  A3: two paths to the same graph, one fresh. The prompt digest rebuilt every
+  node; `raph atlas where` — the command that digest TELLS the agent to run —
+  read a cache nothing refreshed. Both halves fixed and both got CHEAPER:
+  workspaceAtlasDigest now calls buildAndSaveAtlas with the previous doc (one
+  scan, one build, one write, incremental per-file SHA reuse instead of a full
+  rescan that was then discarded); ensureAtlas runs refreshAtlasIfStale (the
+  same check pulse has used since 17.4) instead of trusting the cache blindly.
+  A build grows code WITHOUT commits so git HEAD never moves mid-run — the
+  in-run save is the only thing that could catch the observed case of an atlas
+  captured at ONE file serving a whole run. Live-proven both directions.
+  A5: the audit said the kind "barely registers"; the match reasons showed it
+  was actively POISONING. The bare kind was prepended to the keyword-matched
+  text, and keyword lists contain role words — so at a `frontend` node the top
+  hit at 10.0 was a SECRET-ENV-VAR lesson matching on `keyword:frontend,browser`
+  in an app with no env vars. The fix was to use machinery that already existed
+  and was never called: lessons carry scope.agents, scoreLesson already honours
+  ctx.agent, POLICY knows each node's agent — the driver passed none. Now
+  agentForKind(kind) is the audience and the kind leaves the matched text.
+  Measured on the real 94-lesson brain: byte-identical lesson sets across kinds
+  went 5 -> 2, distinct sets 4 -> 7. Surfaced a real CURATION gap (not a code
+  one): the brain has zero lessons scoped to `planner` or `architect`.
+  5 gates proven RED-WITHOUT. 843 -> 854 tests. New test/stage-context.test.js.
 - AUTONOMY CHARTER + bypassPermissions (session 2026-08-04, owner directive
   "make bypassPermissions everywhere ... raphael should have its own set of
   preamble, rules and constraints ... an independent thinking system ... that

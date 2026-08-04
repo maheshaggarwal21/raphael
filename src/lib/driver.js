@@ -26,7 +26,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { resolvePolicy, routeEffortWithLessons, VERIFIED_KINDS, CODE_BEARING_KINDS } from './policy.js';
+import { resolvePolicy, routeEffortWithLessons, agentForKind, VERIFIED_KINDS, CODE_BEARING_KINDS } from './policy.js';
 import { loadIndex } from './compile.js';
 import { rank } from './match.js';
 import { computeConfidence } from './confidence.js';
@@ -43,7 +43,7 @@ import {
 } from './graphrun.js';
 import { makeStageRunner, buildStageArgs } from './stage-runner.js';
 import { readState, writeState, checkpoint, recordBoundary, recordLimit } from './academy.js';
-import { scanProject, buildAtlas, renderDigest } from './atlas.js';
+import { renderDigest, buildAndSaveAtlas, loadAtlasDoc } from './atlas.js';
 import { logEvent } from './events.js';
 import { atomicWrite } from './files.js';
 import { scrubSecrets } from './scrub.js';
@@ -555,11 +555,25 @@ export function renderStagePrompt(nodeOrKind, { project, brief, input, priorKind
 // Build the workspace's atlas digest for a code-bearing node — deterministic,
 // zero model tokens. Returns '' on any problem or an empty repo (capability
 // check: no code yet -> no map, so early nodes get no phantom map).
+//
+// It also SAVES what it built, which closes a real hole. Two paths reach the
+// same graph and only one of them was fresh: the digest was rebuilt at every
+// node, while `raph atlas where` — the command the digest itself tells the
+// agent to run — read the cache, which nothing refreshed during a run. A build
+// grows code at every node with no commits, so HEAD never moves and the cached
+// atlas stayed at whatever the first node saw. One live run held an atlas
+// captured at ONE file while later stages queried it for code that existed.
+//
+// Saving costs nothing extra here: the scan already happened. Passing the
+// previous doc also makes it INCREMENTAL (per-file SHA reuse) rather than the
+// full rescan this did before, so the fresher answer is also the cheaper one.
 export function workspaceAtlasDigest(workspace) {
   try {
     if (!workspace) return '';
-    const { extractions } = scanProject(workspace);
-    const atlas = buildAtlas(extractions, { project: path.basename(workspace) });
+    // One scan, one build, one write — buildAndSaveAtlas does all three and
+    // returns the same doc the digest renders from, so the prompt and the
+    // cached graph can never disagree about what the code looks like.
+    const { atlas } = buildAndSaveAtlas(workspace, { previous: loadAtlasDoc(workspace) });
     if (!atlas.nodes.length) return '';
     return renderDigest(atlas);
   } catch {
@@ -1084,7 +1098,26 @@ export function lessonMatchesFor(kind, input) {
   try {
     const { lessons } = loadIndex();
     if (!lessons.length) return [];
-    const ctx = { text: `${kind}\n${String(input ?? '').slice(0, 2000)}`, paths: [], stacks: [], injected: new Set() };
+    // The node's roster agent is the AUDIENCE, not part of the text. Lessons
+    // already carry `scope.agents` and scoreLesson already honours ctx.agent;
+    // the driver simply never passed one, so a lesson written for `security`
+    // arrived at the frontend stage exactly as often as at the security stage.
+    //
+    // The kind used to be PREPENDED to the matched text instead, which was
+    // worse than useless: keyword lists contain role words, so the bare string
+    // "frontend" made every lesson whose triggers mention frontend the top hit
+    // at the frontend node, whatever its subject. Measured on the real brain,
+    // five of ten kinds received a byte-identical set.
+    //
+    // Kinds with no roster agent (`test`, `mechanical`) pass null and keep the
+    // documented plain-session behaviour: no audience filter, sees everything.
+    const ctx = {
+      text: String(input ?? '').slice(0, 2000),
+      agent: agentForKind(kind),
+      paths: [],
+      stacks: [],
+      injected: new Set()
+    };
     return rank(lessons, ctx, 4.0)
       .slice(0, 5)
       .map((r) => ({
