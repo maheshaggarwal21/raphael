@@ -10,6 +10,8 @@ import {
   applyStageResult,
   renderStagePrompt,
   artifactFingerprint,
+  revisionFingerprint,
+  workspaceFingerprint,
   retryStage,
   parseDecisions,
   gateDeliverable,
@@ -1452,14 +1454,18 @@ test('a loop-back tells the node to re-check the WHOLE artifact, above the revie
   const base = { project: 'p', brief: 'b', input: 'THE REVIEW BODY', priorKind: 'the review that sent this back' };
 
   const plain = renderStagePrompt(node, { ...base, isLoopBack: false });
-  assert.ok(!/RE-CHECK THE WHOLE ARTIFACT/.test(plain), 'a first visit must not get the loop-back directive');
+  assert.ok(!/RE-CHECK THE WHOLE/.test(plain), 'a first visit must not get the loop-back directive');
 
   const looped = renderStagePrompt(node, { ...base, isLoopBack: true });
-  assert.match(looped, /RE-CHECK THE WHOLE ARTIFACT/);
-  assert.match(looped, /Rewrite the artifact in full/);
+  assert.match(looped, /RE-CHECK THE WHOLE OF YOUR WORK/);
+  // must demand a real change, and say the driver checks — the wording is
+  // deliberately not artifact-specific, since most loop targets (frontend,
+  // debug) write a spread of files rather than one document.
+  assert.match(looped, /ACTUALLY CHANGE IT/);
+  assert.match(looped, /compares your output against the previous version/);
   // ordering matters: the instruction must precede the findings it applies to
   assert.ok(
-    looped.indexOf('RE-CHECK THE WHOLE ARTIFACT') < looped.indexOf('THE REVIEW BODY'),
+    looped.indexOf('RE-CHECK THE WHOLE OF YOUR WORK') < looped.indexOf('THE REVIEW BODY'),
     'the directive must come before the review text, not read as an afterthought'
   );
 });
@@ -1487,6 +1493,169 @@ test('artifactFingerprint tells a real revision from a restated one', () => {
     assert.equal(artifactFingerprint({ id: 'x', kind: 'plan' }, dir), null);
     assert.equal(artifactFingerprint(node, null), null);
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- revision detection on loops whose target has no declared artifact ------
+//
+// Of the three real loops in full-build, only critique->architect targets a
+// node with an artifact. design-review->frontend and review->debug both target
+// builders that write a spread of files, so an artifact-only check silently did
+// nothing on exactly the loops most likely to spin.
+
+test('revisionFingerprint falls back to the code for a node with no artifact', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-rev-'));
+  try {
+    mkdirSync(path.join(dir, 'public'), { recursive: true });
+    writeFileSync(path.join(dir, 'public', 'app.js'), 'const a = 1;\n');
+    const node = { id: 'frontend', kind: 'frontend' };            // no artifact
+    const graph = { nodes: [node, { id: 'r', kind: 'review', artifact: 'reviews/r.md' }] };
+
+    const before = revisionFingerprint(node, dir, graph);
+    assert.ok(before, 'a builder with no artifact still fingerprints its code');
+
+    // rewriting identical bytes is not a revision
+    writeFileSync(path.join(dir, 'public', 'app.js'), 'const a = 1;\n');
+    assert.equal(revisionFingerprint(node, dir, graph), before);
+
+    // changing the code is
+    writeFileSync(path.join(dir, 'public', 'app.js'), 'const a = 2;\n');
+    assert.notEqual(revisionFingerprint(node, dir, graph), before);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a reviewer writing its own artifact does not read as the builder revising', () => {
+  // The trap: between two frontend visits, design-review writes its review
+  // file. A naive workspace hash would call that a real revision every time
+  // and the spin check would never fire.
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-rev2-'));
+  try {
+    mkdirSync(path.join(dir, 'public'), { recursive: true });
+    mkdirSync(path.join(dir, 'reviews'), { recursive: true });
+    writeFileSync(path.join(dir, 'public', 'app.js'), 'const a = 1;\n');
+    writeFileSync(path.join(dir, 'reviews', 'design-review.md'), 'round 1\n');
+
+    const frontend = { id: 'frontend', kind: 'frontend' };
+    const graph = { nodes: [frontend, { id: 'design-review', kind: 'design', artifact: 'reviews/design-review.md' }] };
+
+    const before = revisionFingerprint(frontend, dir, graph);
+    // the reviewer writes a new review; the builder changes nothing
+    writeFileSync(path.join(dir, 'reviews', 'design-review.md'), 'round 2 — quite different text\n');
+    assert.equal(revisionFingerprint(frontend, dir, graph), before,
+      'a declared artifact belonging to another node must not count as the builder revising');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('workspaceFingerprint ignores churn that no node owns', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'raph-rev3-'));
+  try {
+    writeFileSync(path.join(dir, 'app.js'), 'x\n');
+    const before = workspaceFingerprint(dir);
+    mkdirSync(path.join(dir, 'data'), { recursive: true });
+    writeFileSync(path.join(dir, 'data', 'runtime.json'), '{"t":1}\n');
+    mkdirSync(path.join(dir, 'node_modules', 'x'), { recursive: true });
+    writeFileSync(path.join(dir, 'node_modules', 'x', 'i.js'), 'noise\n');
+    assert.equal(workspaceFingerprint(dir), before, 'data/ and node_modules/ churn is not a revision');
+    assert.equal(workspaceFingerprint(null), null, 'no workspace, no fingerprint');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- a broken verify command must not read as a lying stage ----------------
+//
+// Observed live: `node --test test/` is malformed on this platform. It failed
+// three times against a frontend stage whose own suite was 54/54 green. The
+// stage was told its claim was false, told not to touch the verifier, burned
+// both repair attempts and escalated. The gate could not tell a broken command
+// from broken work, and blamed the model for both.
+
+test('the verify command is baselined once, before any node runs', async () => {
+  const dir = sandbox();
+  try {
+    startProject('vb', { title: 'VB', workspace: dir });
+    const state = readState('vb');
+    initDriver(state, { brief: 'b', pipeline: ['develop'], verify: 'some-broken-command' });
+    writeState('vb', state);
+
+    let verifyCalls = 0;
+    const seenBeforeAnySpawn = [];
+    let spawned = 0;
+    await drive('vb', {
+      runner: async () => { spawned += 1; return { ok: true, output: 'x\n\n## DECISIONS\n- none', tokens: 1, decisions: [] }; },
+      log: () => {},
+      workspace: dir,
+      verifyFn: () => { verifyCalls += 1; seenBeforeAnySpawn.push(spawned); return { ran: true, ok: false, detail: 'command not found' }; }
+    });
+
+    const s = readState('vb');
+    assert.equal(s.driver.verify_baseline?.ok, false, 'a command that cannot pass is recorded as such');
+    assert.equal(seenBeforeAnySpawn[0], 0, 'the baseline runs BEFORE the first node spawns — that is the point');
+    assert.ok(verifyCalls >= 1);
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a stage accused by an already-failing verifier is told to suspect the command', async () => {
+  const dir = sandbox();
+  try {
+    startProject('vc', { title: 'VC', workspace: dir });
+    const state = readState('vc');
+    initDriver(state, { brief: 'b', pipeline: ['develop'], verify: 'broken' });
+    writeState('vc', state);
+
+    await drive('vc', {
+      runner: async () => ({ ok: true, output: 'built\n\n## DECISIONS\n- none', tokens: 1, decisions: [] }),
+      log: () => {},
+      workspace: dir,
+      verifyFn: () => ({ ran: true, ok: false, detail: 'exited 1' })
+    });
+
+    const s = readState('vc');
+    const attempt = s.driver.nodes.develop.visits.at(-1).attempts.at(-1);
+    assert.equal(attempt.class, 'verify', 'it is still a verify failure — the gate does not silently pass');
+    assert.match(
+      attempt.evidence ?? '',
+      /already failed on the workspace before any stage ran/,
+      'the accusation must carry the caveat, or the stage is blamed for the owner\'s command'
+    );
+  } finally {
+    delete process.env.RAPHAEL_HOME;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a verifier that was green at baseline accuses the stage without hedging', async () => {
+  const dir = sandbox();
+  try {
+    startProject('vd', { title: 'VD', workspace: dir });
+    const state = readState('vd');
+    initDriver(state, { brief: 'b', pipeline: ['develop'], verify: 'npm test' });
+    writeState('vd', state);
+
+    let call = 0;
+    await drive('vd', {
+      runner: async () => ({ ok: true, output: 'built\n\n## DECISIONS\n- none', tokens: 1, decisions: [] }),
+      log: () => {},
+      workspace: dir,
+      // green at baseline, red once the stage has touched the code: a real lie
+      verifyFn: () => { call += 1; return call === 1 ? { ran: true, ok: true, detail: null } : { ran: true, ok: false, detail: 'not ok 1' }; }
+    });
+
+    const s = readState('vd');
+    const attempt = s.driver.nodes.develop.visits.at(-1).attempts.at(-1);
+    assert.equal(attempt.class, 'verify');
+    assert.ok(!/already failed on the workspace/.test(attempt.evidence ?? ''),
+      'a genuinely false claim must NOT be softened by the caveat');
+  } finally {
+    delete process.env.RAPHAEL_HOME;
     rmSync(dir, { recursive: true, force: true });
   }
 });

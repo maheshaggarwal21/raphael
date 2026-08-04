@@ -24,7 +24,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { resolvePolicy, routeEffortWithLessons, VERIFIED_KINDS, CODE_BEARING_KINDS } from './policy.js';
 import { loadIndex } from './compile.js';
@@ -150,10 +150,12 @@ const LOOPBACK_DIRECTIVE = `## A reviewer sent your previous work back
 
 Apply the changes below. Then, before you answer:
 
-1. RE-CHECK THE WHOLE ARTIFACT, not just the parts the review quoted. A fix
+1. RE-CHECK THE WHOLE OF YOUR WORK, not just the parts the review quoted. A fix
    that contradicts an untouched section is why loops repeat.
-2. Rewrite the artifact in full. Your response IS the new version — a summary
-   of what you changed is not a revision.
+2. ACTUALLY CHANGE IT. Edit the files, or produce the full revised document —
+   whichever your deliverable is. A description of what you would change is not
+   a revision, and the driver compares your output against the previous version
+   to check.
 3. In DECISIONS, state for each point whether you applied it, and if you did
    not, say why. Declining a point with a reason is a legitimate answer;
    silently skipping it is not.`;
@@ -624,6 +626,24 @@ export async function drive(project, {
     // A rerun after a --max-stages pause continues; the pause was the owner's ask.
     if (state.driver?.status === 'paused') state.driver.status = 'running';
 
+    // Run the owner's verify command ONCE against the workspace as it stands,
+    // before any node spawns, and remember whether it could pass at all.
+    //
+    // The gate cannot otherwise tell "this stage's work is broken" from "this
+    // command is broken", and it attributes both to the model. Observed live: a
+    // malformed verify command failed three times against a stage whose own
+    // suite was 54/54 green; the stage was told its claim was false, forbidden
+    // from touching the verifier, burned both repair attempts and escalated.
+    // One cheap invocation up front turns that into a named, visible fact.
+    if (state.driver.verify && state.driver.verify_baseline === undefined) {
+      const base = verifyFn(state.driver.verify, { cwd: ws ?? undefined });
+      state.driver.verify_baseline = { ok: Boolean(base.ok), at: new Date(now()).toISOString() };
+      writeState(project, state);
+      if (!base.ok) {
+        log(`  note: the verify command already fails on the workspace as it stands — if a stage is later accused of a false claim, suspect the command first`);
+      }
+    }
+
     let ran = 0;
     for (;;) {
       const action = nextAction(state);
@@ -709,7 +729,7 @@ export async function drive(project, {
       // answered without revising the thing under review, and the next review
       // round is about to re-read the same bytes. That is the loop spinning,
       // and it is invisible unless measured here.
-      const artifactBefore = action.isLoopBack ? artifactFingerprint(node, ws) : null;
+      const artifactBefore = action.isLoopBack ? revisionFingerprint(node, ws, state.driver.graph) : null;
 
       const gate = (output) => {
         // Persist the declared artifact before evaluating the check, so a
@@ -754,8 +774,17 @@ export async function drive(project, {
       if (result.ok && state.driver.verify && effectiveVerify(node)) {
         const v = verifyFn(state.driver.verify, { cwd: ws ?? undefined });
         if (v.ran && !v.ok) {
-          log(`  ${node.id}: verifier FAILED — the deliverable claimed success`);
-          result = { ...result, ok: false, verifyFailed: true, error: `stage reported success but the verifier disagreed. ${v.detail}` };
+          // If the command could not pass before the run began, say so in the
+          // same breath as the accusation. Otherwise a stage is told it lied
+          // when the gate itself was never satisfiable.
+          const suspectCommand = state.driver.verify_baseline?.ok === false;
+          log(suspectCommand
+            ? `  ${node.id}: verifier FAILED — but it also failed before the run started, so suspect the command, not this stage`
+            : `  ${node.id}: verifier FAILED — the deliverable claimed success`);
+          const caveat = suspectCommand
+            ? ' NOTE: this same command already failed on the workspace before any stage ran, so the command itself may be wrong rather than your work.'
+            : '';
+          result = { ...result, ok: false, verifyFailed: true, error: `stage reported success but the verifier disagreed.${caveat} ${v.detail}` };
         } else if (v.ran) {
           log(`  ${node.id}: verifier passed`);
         }
@@ -766,11 +795,12 @@ export async function drive(project, {
       // is exactly the kind of self-report this pipeline does not accept.
       let revised = null;
       if (artifactBefore !== null) {
-        const after = artifactFingerprint(node, ws);
+        const after = revisionFingerprint(node, ws, state.driver.graph);
+        const what = node.artifact ? node.artifact : 'the code';
         revised = after !== null && after !== artifactBefore;
         log(revised
-          ? `  ${node.id}: artifact changed since the review (revision is real)`
-          : `  ${node.id}: WARNING — artifact is byte-identical after a "changes" round trip; the next review will re-read the same bytes`);
+          ? `  ${node.id}: ${what} changed since the review (revision is real)`
+          : `  ${node.id}: WARNING — ${what} is byte-identical after a "changes" round trip; the next review will re-read the same bytes`);
       }
 
       // Scrub before anything derived from a run lands on disk or in the next
@@ -874,6 +904,57 @@ export function artifactFingerprint(node, workspace) {
   } catch {
     return null;
   }
+}
+
+// Directories that change without a node touching them, or that no node owns.
+const FINGERPRINT_SKIP_DIRS = new Set(['.git', 'node_modules', 'data', 'dist', 'build', 'coverage', '.cache']);
+const FINGERPRINT_MAX_FILES = 2000;
+
+// sha256 over the source files a node is responsible for, for nodes that
+// declare no single artifact — most builders (frontend, develop, debug) write
+// a spread of files rather than one document.
+//
+// Every artifact declared anywhere in the graph is EXCLUDED. Without that the
+// check is worthless on exactly the loops it matters for: between two frontend
+// visits the design reviewer writes reviews/design-review.md, so a naive
+// workspace hash always differs and every round trip would look like a real
+// revision.
+export function workspaceFingerprint(workspace, { exclude = [] } = {}) {
+  if (!workspace || !existsSync(workspace)) return null;
+  const skipFiles = new Set(exclude.map((rel) => path.resolve(workspace, rel)));
+  const files = [];
+  const walk = (dir) => {
+    if (files.length > FINGERPRINT_MAX_FILES) return;
+    let entries;
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (FINGERPRINT_SKIP_DIRS.has(e.name)) continue;
+        walk(full);
+      } else if (e.isFile() && !skipFiles.has(path.resolve(full))) {
+        files.push(full);
+      }
+    }
+  };
+  try { walk(workspace); } catch { return null; }
+  if (!files.length) return null;
+  // Sorted so the hash depends on content, never on directory-read order.
+  files.sort();
+  const h = createHash('sha256');
+  for (const f of files) {
+    h.update(path.relative(workspace, f).replace(/\\/g, '/'));
+    try { h.update(readFileSync(f)); } catch { h.update('<unreadable>'); }
+  }
+  return h.digest('hex');
+}
+
+// What this node is answerable for, across a loop-back: its declared artifact
+// when it has one, otherwise the code it writes.
+export function revisionFingerprint(node, workspace, graph = null) {
+  if (node?.artifact) return artifactFingerprint(node, workspace);
+  const artifacts = (graph?.nodes ?? []).map((n) => n.artifact).filter(Boolean);
+  return workspaceFingerprint(workspace, { exclude: artifacts });
 }
 
 // A graph may extend verification to a node the code would not otherwise
